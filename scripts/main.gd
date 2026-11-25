@@ -1,0 +1,1486 @@
+extends Node
+## Cena principal: monta a arena, as duas viewports (mundo + armas), HUD, menus, ondas, projéteis e música.
+
+var vpc: SubViewportContainer
+var vp: SubViewport
+var vpc2: SubViewportContainer
+var vp2: SubViewport
+var world: Node3D
+var vm_root: Node3D
+var player: CharacterBody3D
+var world_light: OmniLight3D
+var music: AudioStreamPlayer
+var slide_snd: AudioStreamPlayer
+
+var wave = 0
+var queue: Array = []
+var spawn_cd = 0.0
+var wave_delay = 1.2
+var wave_active = false
+var started = false
+
+# HUD
+var hud: Control
+var ui = {}
+var feed_box: VBoxContainer
+var menu: Control
+var dead_ov: Control
+var shown_rank = -1
+var b_dmg_w = 100.0
+var b_hold = 0.0
+var b_last = 100.0
+
+func _ready() -> void:
+	G.main = self
+	_input_map()
+	_build_viewports()
+	_build_world()
+	player = CharacterBody3D.new()
+	player.set_script(preload("res://scripts/player.gd"))
+	world.add_child(player)
+	G.player = player
+	player.global_position = Vector3(0, 2.3, 26)
+	_build_terminal()
+	_build_audio()
+	_build_hud()
+	_build_menus()
+	on_weapon_changed()
+	G.style_added.connect(_on_style)
+	get_viewport().size_changed.connect(_on_resize)
+	_apply_settings()
+	show_menu(false)
+	# teste automático (só quando chamado com: -- --autotest=modo)
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--autotest="):
+			_autotest(a.split("=")[1])
+
+# ---------------- terminal de arsenal ----------------
+const TERM_POS := Vector3(6.6, 2.2, 27.2)
+var term_light: OmniLight3D
+var term_ov: Control
+var term_list: VBoxContainer
+var near_term = false
+
+func _build_terminal() -> void:
+	var t = Node3D.new()
+	t.position = TERM_POS
+	t.rotation.y = -PI / 2
+	world.add_child(t)
+	var dk = G.lit(Color("2a2c33"), .6, .3)
+	var bz = G.lit(Color("8a8070"), .8, .1)
+	var parts = [[Vector3(1.6, .9, .8), dk, Vector3(0, .45, 0)], [Vector3(1.64, .06, .84), bz, Vector3(0, .92, 0)],
+		[Vector3(1.05, .82, .7), bz, Vector3(0, 1.37, -.08)], [Vector3(.86, .64, .02), G.unshaded(Color("021208")), Vector3(0, 1.39, .28)],
+		[Vector3(.9, .05, .28), dk, Vector3(0, .97, .22)]]
+	for i in 3: parts.append([Vector3(.05, .05, .02), G.unshaded([Color("ff3020"), Color("46ff8c"), Color("ffb030")][i]), Vector3(.62, .75 - i * .12, .41)])
+	for pt in parts:
+		var mi = MeshInstance3D.new()
+		var bm = BoxMesh.new()
+		bm.size = pt[0]
+		mi.mesh = bm
+		mi.material_override = pt[1]
+		mi.position = pt[2]
+		t.add_child(mi)
+	var lb = Label3D.new()
+	lb.text = "ARSENAL\n> REVOLVER\n> ESCOPETA\n> ESPADAS\n> FOGUETES\n> PREGOS\n> RAIO\n> ARPAO\n> GRANADAS\n      [E] ACESSAR_"
+	lb.font_size = 22
+	lb.pixel_size = .0028
+	lb.modulate = Color("46ff8c")
+	lb.outline_size = 0
+	lb.shaded = false
+	lb.double_sided = false
+	lb.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	lb.position = Vector3(0, 1.39, .295)
+	t.add_child(lb)
+	var sb = StaticBody3D.new()
+	sb.collision_layer = 1
+	sb.collision_mask = 0
+	var cs = CollisionShape3D.new()
+	var bs = BoxShape3D.new()
+	bs.size = Vector3(1.64, 1.8, .84)
+	cs.shape = bs
+	cs.position = Vector3(0, .9, 0)
+	sb.add_child(cs)
+	t.add_child(sb)
+	term_light = OmniLight3D.new()
+	term_light.light_color = Color("46ff8c")
+	term_light.omni_range = 7
+	term_light.light_energy = 1.2
+	term_light.position = TERM_POS + Vector3(-.8, 1.4, 0)
+	world.add_child(term_light)
+
+func _build_term_ui(layer: CanvasLayer) -> void:
+	term_ov = ColorRect.new()
+	term_ov.color = Color(0.0, 0.03, 0.01, 0.9)
+	term_ov.set_anchors_preset(Control.PRESET_FULL_RECT)
+	term_ov.visible = false
+	layer.add_child(term_ov)
+	var mc = MarginContainer.new()
+	mc.set_anchors_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "right"]: mc.add_theme_constant_override("margin_" + side, 90)
+	for side in ["top", "bottom"]: mc.add_theme_constant_override("margin_" + side, 30)
+	term_ov.add_child(mc)
+	var v = VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	mc.add_child(v)
+	var hd = HBoxContainer.new()
+	hd.add_child(_lbl("TERMINAL // ARSENAL", 30, Color("46ff8c"), 3))
+	var sp = Control.new()
+	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hd.add_child(sp)
+	hd.add_child(_lbl("marque as armas que vai levar e ligue as melhorias · ordem = teclas 1–8", 15, Color("8fd8a8"), 2))
+	v.add_child(hd)
+	var sc = ScrollContainer.new()
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(sc)
+	term_list = VBoxContainer.new()
+	term_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	term_list.add_theme_constant_override("separation", 6)
+	sc.add_child(term_list)
+	var cl = _btn("FECHAR [E]", func(): close_term())
+	var row = HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_END
+	row.add_child(cl)
+	v.add_child(row)
+
+func _term_style(on: bool) -> StyleBoxFlat:
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(.07, .3, .14, .9) if on else Color(.03, .08, .05, .9)
+	sb.border_color = Color("46ff8c") if on else Color(.2, .4, .28)
+	sb.set_border_width_all(1)
+	sb.set_content_margin_all(6)
+	return sb
+
+func _fill_term() -> void:
+	for c in term_list.get_children():
+		term_list.remove_child(c)
+		c.queue_free()
+	for k in G.WEAP.size():
+		var w = G.WEAP[k]
+		var n = G.loadout.find(k)
+		var pan = PanelContainer.new()
+		pan.add_theme_stylebox_override("panel", _term_style(n >= 0))
+		var hb = HBoxContainer.new()
+		hb.add_theme_constant_override("separation", 10)
+		pan.add_child(hb)
+		var eq = Button.new()
+		eq.toggle_mode = true
+		eq.button_pressed = n >= 0
+		eq.custom_minimum_size = Vector2(380, 64)
+		eq.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		eq.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		eq.text = ("[%d] " % (n + 1) if n >= 0 else "[  ] ") + w.name + "\n" + w.desc
+		eq.add_theme_font_size_override("font_size", 13)
+		eq.add_theme_color_override("font_color", Color("d8ffe4") if n >= 0 else Color("7fa08a"))
+		eq.add_theme_color_override("font_pressed_color", Color("d8ffe4"))
+		eq.add_theme_color_override("font_hover_pressed_color", Color("ffffff"))
+		for st in ["normal", "hover", "pressed", "hover_pressed", "focus"]: eq.add_theme_stylebox_override(st, _term_style(n >= 0))
+		eq.toggled.connect(_term_equip.bind(k))
+		hb.add_child(eq)
+		for u in G.UPG[w.id]:
+			var on: bool = G.UP[w.id][u[0]]
+			var b = Button.new()
+			b.custom_minimum_size = Vector2(250, 64)
+			b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			b.text = ("■ " if on else "□ ") + u[1] + "\n" + u[2]
+			b.add_theme_font_size_override("font_size", 13)
+			b.add_theme_color_override("font_color", Color("fff2b0") if on else Color("8fa898"))
+			b.add_theme_color_override("font_hover_color", Color.WHITE)
+			var ss = _term_style(on)
+			if on:
+				ss.bg_color = Color(.3, .25, .05, .9)
+				ss.border_color = Color("ffd040")
+			for st in ["normal", "hover", "pressed", "focus"]: b.add_theme_stylebox_override(st, ss)
+			b.pressed.connect(_term_up.bind(w.id, u[0]))
+			hb.add_child(b)
+		term_list.add_child(pan)
+
+func _term_equip(on: bool, k: int) -> void:
+	if on:
+		if not k in G.loadout:
+			G.loadout.append(k)
+			G.loadout.sort()
+	else:
+		if G.loadout.size() > 1: G.loadout.erase(k)
+	var w = player.weapons
+	if not w.prev in G.loadout: w.prev = G.loadout[0]
+	G.save()
+	G.snd("click", -4)
+	_fill_term.call_deferred()
+	on_weapon_changed()
+
+func _term_up(wid: String, u: String) -> void:
+	G.UP[wid][u] = not G.UP[wid][u]
+	player.weapons.apply_upgrades()
+	G.save()
+	G.snd("shell", -4)
+	_fill_term.call_deferred()
+
+func use_pressed() -> void:
+	if near_term and G.state == "play": open_term()
+
+func open_term() -> void:
+	G.state = "term"
+	player.fire_held = false
+	player.weapons.alt_release()
+	_fill_term()
+	term_ov.visible = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	G.snd("click", -4)
+
+func close_term() -> void:
+	if G.state != "term": return
+	term_ov.visible = false
+	var w = player.weapons
+	if not w.cur in G.loadout: w.switch_to(G.loadout[0])
+	on_weapon_changed()
+	G.state = "play"
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	G.snd("click", -6)
+
+func _upd_term() -> void:
+	var p = player.global_position
+	near_term = Vector2(p.x - TERM_POS.x, p.z - TERM_POS.z).length() < 3.2 and abs(p.y - TERM_POS.y) < 1.6
+	term_light.light_energy = 1.0 + sin(Time.get_ticks_msec() / 90.0) * .15 + (-.6 if G.rng.randf() < .02 else 0.0)
+
+func _auto_step(i: int) -> void:
+	var w = player.weapons
+	player.pitch = 0.05
+	if i == 16 and G.state == "play":
+		open_term()
+		get_tree().create_timer(0.3, true, false, true).timeout.connect(func():
+			var img = get_viewport().get_texture().get_image()
+			if img: img.save_png("/tmp/gshot_term.png"))
+		get_tree().create_timer(0.6, true, false, true).timeout.connect(close_term)
+		return
+	var k = i % 5
+	if k == 0:
+		w.alt_release()
+		w.switch_to((i / 5 + 2) % 8, true)
+	elif k == 1 or k == 4: w.try_fire()
+	elif k == 2: w.alt_press()
+	else:
+		w.try_fire()
+		w.alt_release()
+		w.punch()
+
+var _aim_boss = false
+var _aim_e = null
+func _deus_test() -> void:
+	start_mode("deus")
+	_aim_boss = true
+	G.fov_base = 75.0
+	player.global_position = Vector3(0, 1, 6)
+	var rt = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+	var shot = func(name):
+		var img = get_viewport().get_texture().get_image()
+		if img: img.save_png("/tmp/deus_%s.png" % name)
+	var atks = ["maos", "olhar", "sangue", "aureola", "dedo", "convulsao"]
+	rt.call(3.6, func(): G.fov_base = 24.0)
+	for j in 3: rt.call(4.4 + j * .5, shot.bind("intro_%d" % j))
+	rt.call(5.9, func(): G.fov_base = 75.0)
+	for i in atks.size():
+		var k = atks[i]
+		var t0 = 6.0 + i * 4.6
+		rt.call(t0, func():
+			player.hp = 100000.0
+			if G.boss:
+				G.boss._end(false)
+				G.boss._attack(k))
+		for j in 4: rt.call(t0 + .7 + j * .9, shot.bind("%d%s_%d" % [i, k, j]))
+	var t1 = 6.0 + atks.size() * 4.6
+	rt.call(t1, func(): if G.boss: G.boss._end(false); G.boss.hp = G.boss.max_hp * .45)
+	for j in 3: rt.call(t1 + .8 + j * .9, shot.bind("asc_%d" % j))
+	rt.call(t1 + 5.0, func(): if G.boss: G.boss.inv = false; G.boss.take_damage(9999999, "rev", false))
+	for j in 5: rt.call(t1 + 5.4 + j * .9, shot.bind("die_%d" % j))
+	rt.call(t1 + 10.0, func(): print("DEUSTEST OK boss=", G.boss, " grp=", get_tree().get_nodes_in_group("gabriel").size()); get_tree().quit())
+func _ceif_test() -> void:
+	start_mode("train")
+	for e in G.enemies: e.queue_free()
+	G.enemies.clear()
+	G.clear_timers()
+	player.global_position = Vector3(0, 1, 20)
+	spawn_enemy("husk", Vector3(0, 0.5, 4))
+	_aim_e = G.enemies.back()
+	G.fov_base = 50.0
+	var rt = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+	var shot = func(name):
+		var img = get_viewport().get_texture().get_image()
+		if img: img.save_png("/tmp/ce_%s.png" % name)
+	# anda até o jogador, depois cada golpe
+	for j in 6: rt.call(1.0 + j * .22, shot.bind("walk%d" % j))
+	var atks = ["slash", "overhead", "spin", "lunge"]
+	for i in atks.size():
+		var k = atks[i]
+		var t0 = 3.0 + i * 2.2
+		rt.call(t0, func():
+			if is_instance_valid(_aim_e):
+				_aim_e.cd = 99.0
+				_aim_e._start_atk(k))
+		for j in 6: rt.call(t0 + .1 + j * .17, shot.bind("%s%d" % [k, j]))
+	rt.call(12.5, func(): print("CEIFTEST OK alive=", is_instance_valid(_aim_e), " hp=", player.hp); get_tree().quit())
+func _gab_test() -> void:
+	start_mode("boss")
+	_aim_boss = true
+	G.fov_base = 38.0
+	var rt = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+	var shot = func(name):
+		var img = get_viewport().get_texture().get_image()
+		if img: img.save_png("/tmp/gab_%s.png" % name)
+	var atks = ["beam", "feathers", "spears", "quake", "dive", "sword", "orbs", "halo"]
+	for i in atks.size():
+		var k = atks[i]
+		rt.call(5.0 + i * 3.4, func():
+			player.hp = 100000.0
+			if G.boss:
+				G.boss.att = ""
+				G.boss._attack(k))
+		for j in 3:
+			rt.call(5.0 + i * 3.4 + 0.5 + j * 0.9, shot.bind("%d%s_%d" % [i, k, j]))
+	var t1 = 5.0 + atks.size() * 3.4
+	rt.call(t1, func(): if G.boss: G.boss.att = ""; G.boss.hp = G.boss.max_hp * .45)
+	for j in 3: rt.call(t1 + .6 + j * .8, shot.bind("asc_%d" % j))
+	rt.call(t1 + 3.4, func(): if G.boss: G.boss.take_damage(999999, "rev", false))
+	for j in 4: rt.call(t1 + 3.6 + j * .8, shot.bind("die_%d" % j))
+	rt.call(1.0, shot.bind("intro_0"))
+	rt.call(2.2, shot.bind("intro_1"))
+	rt.call(3.2, shot.bind("intro_2"))
+	rt.call(t1 + 7.5, func(): print("GABTEST OK boss=", G.boss, " groups=", get_tree().get_nodes_in_group("gabriel").size()); get_tree().quit())
+
+func _autotest(m: String) -> void:
+	if m == "gab":
+		_gab_test()
+		return
+	if m == "gun":
+		start_mode("train")
+		var rt = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+		var shot = func(name):
+			get_viewport().get_texture().get_image().save_png("/tmp/gun_%s.png" % name)
+		var w = player.weapons
+		rt.call(1.5, shot.bind("0idle"))
+		rt.call(1.7, func(): w.try_fire())
+		rt.call(1.76, shot.bind("1fire"))
+		rt.call(2.4, func(): w.rv_ammo = 0; w.start_rev_reload())
+		for j in 5: rt.call(2.5 + j * .13, shot.bind("2rel%d" % j))
+		rt.call(3.6, func(): w.alt_press())
+		for j in 3: rt.call(3.9 + j * .35, shot.bind("3chg%d" % j))
+		rt.call(5.0, func(): w.alt_release())
+		rt.call(5.6, func(): w.inspect())
+		for j in 3: rt.call(5.7 + j * .15, shot.bind("4insp%d" % j))
+		rt.call(6.8, func(): get_tree().quit())
+		return
+	if m == "menu":
+		get_tree().create_timer(1.5, true, false, true).timeout.connect(func():
+			get_viewport().get_texture().get_image().save_png("/tmp/menu.png")
+			get_tree().quit())
+		return
+	if m == "deus":
+		_deus_test()
+		return
+	if m == "rage":
+		start_mode("deus")
+		_aim_boss = true
+		G.fov_base = 80.0
+		var rt = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+		var shot = func(name):
+			var img = get_viewport().get_texture().get_image()
+			if img: img.save_png("/tmp/rage_%s.png" % name)
+		rt.call(4.0, func(): if G.boss: G.boss.hp = G.boss.max_hp * .45)
+		var la = [""]
+		var tk = Timer.new(); tk.wait_time = .1; tk.ignore_time_scale = true; add_child(tk); tk.start()
+		tk.timeout.connect(func():
+			player.hp = 100000.0
+			if G.boss and G.boss.att != la[0]:
+				la[0] = G.boss.att
+				print("t=%.1f att=%s sec=%s ph2=%s inv=%s" % [G.stats.t, G.boss.att, G.boss.sec, G.boss.ph2, G.boss.inv]))
+		for j in 4: rt.call(5.5 + j * 1.0, shot.bind("asc_%d" % j))
+		var atks = ["punhos", "lagrimas", "geiser", "mare"]
+		for i in atks.size():
+			var k = atks[i]
+			var t0 = 13.0 + i * 6.0
+			rt.call(t0, func(): if G.boss: G.boss._end(false); G.boss._attack(k))
+			for j in 3: rt.call(t0 + 1.0 + j * 1.3, shot.bind("%d%s_%d" % [i, k, j]))
+		rt.call(13.0 + atks.size() * 6.0 + 8.0, func(): print("RAGE END att=", G.boss.att if G.boss else "none"); get_tree().quit())
+		return
+	if m == "ceif":
+		_ceif_test()
+		return
+	start_mode(m)
+	for i in 40:
+		G.later(0.5 + i * 0.4, _auto_step.bind(i))
+	for k in 6:
+		get_tree().create_timer(2.0 + k * 2.5, true, false, true).timeout.connect(func():
+			var img = get_viewport().get_texture().get_image()
+			if img: img.save_png("/tmp/gshot_%s_%d.png" % [m, k]))
+	get_tree().create_timer(17.0, true, false, true).timeout.connect(func(): print("AUTOTEST OK mode=", m, " enemies=", G.enemies.size(), " hp=", player.hp, " boss=", G.boss != null, " kills=", G.stats.kills, " state=", G.state); get_tree().quit())
+
+# ---------------- entrada ----------------
+func _input_map() -> void:
+	var keys = {"fwd": [KEY_W, KEY_UP], "back": [KEY_S, KEY_DOWN], "left": [KEY_A, KEY_LEFT], "right": [KEY_D, KEY_RIGHT], "jump": [KEY_SPACE],
+		"dash": [KEY_SHIFT], "slide": [KEY_C, KEY_CTRL], "punch": [KEY_F], "inspect": [KEY_R], "swap": [KEY_Q], "use": [KEY_E],
+		"w1": [KEY_1], "w2": [KEY_2], "w3": [KEY_3], "w4": [KEY_4], "w5": [KEY_5], "w6": [KEY_6], "w7": [KEY_7], "w8": [KEY_8], "pause": [KEY_ESCAPE]}
+	for a in keys:
+		if not InputMap.has_action(a):
+			InputMap.add_action(a)
+		for k in keys[a]:
+			var ev = InputEventKey.new()
+			ev.physical_keycode = k
+			InputMap.action_add_event(a, ev)
+
+func _unhandled_input(ev: InputEvent) -> void:
+	if G.state == "term":
+		if ev.is_action_pressed("pause") or ev.is_action_pressed("use"): close_term()
+		return
+	if ev.is_action_pressed("pause"):
+		if G.state == "play": show_menu(true)
+		elif G.state == "paused": resume()
+		return
+	if G.state == "play":
+		if ev is InputEventMouseButton and ev.pressed and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		player.handle_input(ev)
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and G.state == "play":
+		show_menu(true)
+
+# ---------------- viewports (mundo pixelado + armas por cima) ----------------
+func _build_viewports() -> void:
+	vpc = SubViewportContainer.new()
+	vpc.stretch = true
+	vpc.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	vpc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vpc.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(vpc)
+	vp = SubViewport.new()
+	vp.own_world_3d = true
+	vp.handle_input_locally = false
+	vp.audio_listener_enable_3d = true
+	vpc.add_child(vp)
+	world = Node3D.new()
+	vp.add_child(world)
+	G.world = world
+	vpc2 = SubViewportContainer.new()
+	vpc2.stretch = true
+	vpc2.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	vpc2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vpc2.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(vpc2)
+	vp2 = SubViewport.new()
+	vp2.own_world_3d = true
+	vp2.transparent_bg = true
+	vp2.handle_input_locally = false
+	vpc2.add_child(vp2)
+	var vcam = Camera3D.new()
+	vcam.fov = 55
+	vcam.near = 0.01
+	vcam.far = 10
+	vp2.add_child(vcam)
+	vm_root = Node3D.new()
+	vp2.add_child(vm_root)
+	var env2 = Environment.new()
+	env2.background_mode = Environment.BG_CLEAR_COLOR
+	env2.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env2.ambient_light_color = Color("c8a894")
+	env2.ambient_light_energy = 0.9
+	var we2 = WorldEnvironment.new()
+	we2.environment = env2
+	vp2.add_child(we2)
+	var dl = DirectionalLight3D.new()
+	dl.rotation = Vector3(-0.8, 0.5, 0)
+	dl.light_energy = 1.1
+	vp2.add_child(dl)
+	var rim = DirectionalLight3D.new()
+	rim.rotation = Vector3(-0.3, PI + 0.9, 0)
+	rim.light_color = Color("ffb08a")
+	rim.light_energy = 0.6
+	vp2.add_child(rim)
+
+func _apply_settings() -> void:
+	vpc.stretch_shrink = 3 if G.retro else 1
+	vpc2.stretch_shrink = 3 if G.retro else 1
+
+func _on_resize() -> void:
+	pass
+
+# ---------------- arena ----------------
+func _tex(draw: Callable) -> ImageTexture:
+	var img = Image.create(64, 64, false, Image.FORMAT_RGBA8)
+	draw.call(img)
+	for y in 64:
+		for x in 64:
+			var c = img.get_pixel(x, y)
+			var k = G.rnd(-0.043, 0.043)
+			img.set_pixel(x, y, Color(clamp(c.r + k, 0, 1), clamp(c.g + k, 0, 1), clamp(c.b + k, 0, 1)))
+	return ImageTexture.create_from_image(img)
+
+func _rect(img: Image, x: int, y: int, w: int, h: int, c: Color) -> void:
+	img.fill_rect(Rect2i(x, y, w, h), c)
+
+func _mat_tex(t: Texture2D, scale := 0.25) -> StandardMaterial3D:
+	var m = StandardMaterial3D.new()
+	m.albedo_texture = t
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	m.uv1_triplanar = true
+	m.uv1_world_triplanar = true
+	m.uv1_scale = Vector3.ONE * scale
+	m.roughness = 0.9
+	return m
+
+func box(x: float, y: float, z: float, w: float, h: float, d: float, mat: Material) -> void:
+	var sb = StaticBody3D.new()
+	sb.collision_layer = 1
+	sb.collision_mask = 0
+	var mi = MeshInstance3D.new()
+	var bm = BoxMesh.new()
+	bm.size = Vector3(w, h, d)
+	mi.mesh = bm
+	mi.material_override = mat
+	sb.add_child(mi)
+	var cs = CollisionShape3D.new()
+	var bs = BoxShape3D.new()
+	bs.size = Vector3(w, h, d)
+	cs.shape = bs
+	sb.add_child(cs)
+	sb.position = Vector3(x, y + h / 2.0, z)
+	world.add_child(sb)
+
+func deco(p: Vector3, s: Vector3, c: Color) -> void:
+	var mi = MeshInstance3D.new()
+	var bm = BoxMesh.new()
+	bm.size = s
+	mi.mesh = bm
+	mi.material_override = G.unshaded(c)
+	mi.position = p
+	world.add_child(mi)
+
+func _build_world() -> void:
+	var env = Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color("2b0b0e")
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color("d0a088")
+	env.ambient_light_energy = 0.75
+	env.fog_enabled = true
+	env.fog_mode = Environment.FOG_MODE_DEPTH
+	env.fog_light_color = Color("2b0b0e")
+	env.fog_depth_begin = 28
+	env.fog_depth_end = 125
+	env.fog_density = 1.0
+	var we = WorldEnvironment.new()
+	we.environment = env
+	world.add_child(we)
+	var sun = DirectionalLight3D.new()
+	sun.light_color = Color("ffe2c4")
+	sun.light_energy = 0.8
+	sun.rotation = Vector3(-1.0, 0.6, 0)
+	world.add_child(sun)
+	world_light = OmniLight3D.new()
+	world_light.light_color = Color("ffc070")
+	world_light.omni_range = 22
+	world_light.light_energy = 0
+	world.add_child(world_light)
+	var t_floor = _tex(func(img: Image):
+		for y in 4:
+			for x in 4:
+				_rect(img, x * 16, y * 16, 16, 16, Color("3d2c27") if (x + y) % 2 else Color("352520"))
+		for i in 4:
+			_rect(img, i * 16, 0, 1, 64, Color("1d1210"))
+			_rect(img, 0, i * 16, 64, 1, Color("1d1210")))
+	var t_wall = _tex(func(img: Image):
+		_rect(img, 0, 0, 64, 64, Color("1e0b0b"))
+		for y in 8:
+			for x in range(-1, 4):
+				var c: Color = [Color("5a1e1c"), Color("4e1a18"), Color("62221f")][(x + y * 3 + 9) % 3]
+				var px = x * 16 + (y % 2) * 8 + 1
+				if px < 0: _rect(img, 0, y * 8 + 1, px + 14, 6, c)
+				else: _rect(img, px, y * 8 + 1, min(14, 64 - px), 6, c))
+	var t_metal = _tex(func(img: Image):
+		_rect(img, 0, 0, 64, 64, Color("4a4c55"))
+		_rect(img, 0, 31, 64, 2, Color("34363d"))
+		_rect(img, 31, 0, 2, 64, Color("34363d"))
+		for p in [[4, 4], [58, 4], [4, 58], [58, 58], [26, 26], [36, 36], [26, 36], [36, 26]]:
+			_rect(img, p[0], p[1], 2, 2, Color("8a8c95")))
+	var t_crate = _tex(func(img: Image):
+		_rect(img, 0, 0, 64, 64, Color("6a4426"))
+		for i in range(0, 64, 16): _rect(img, i, 0, 2, 64, Color("3a2414"))
+		_rect(img, 0, 0, 64, 4, Color("3a2414"))
+		_rect(img, 0, 60, 64, 4, Color("3a2414")))
+	var m_floor = _mat_tex(t_floor)
+	var m_wall = _mat_tex(t_wall)
+	var m_metal = _mat_tex(t_metal)
+	var m_crate = _mat_tex(t_crate, 0.5)
+	var A = G.A
+	box(0, -2, 0, A * 2 + 8, 2, A * 2 + 8, m_floor)
+	box(0, 0, -A - 1, A * 2 + 4, 16, 2, m_wall)
+	box(0, 0, A + 1, A * 2 + 4, 16, 2, m_wall)
+	box(-A - 1, 0, 0, 2, 16, A * 2, m_wall)
+	box(A + 1, 0, 0, 2, 16, A * 2, m_wall)
+	var red = Color("ff2a1a")
+	deco(Vector3(0, 11, -A + .05), Vector3(A * 2, .35, .1), red)
+	deco(Vector3(0, 11, A - .05), Vector3(A * 2, .35, .1), red)
+	deco(Vector3(-A + .05, 11, 0), Vector3(.1, .35, A * 2), red)
+	deco(Vector3(A - .05, 11, 0), Vector3(.1, .35, A * 2), red)
+	for p in [[15, 15], [-15, 15], [15, -15], [-15, -15]]:
+		box(p[0], 0, p[1], 4, 12, 4, m_metal)
+		deco(Vector3(p[0], 12.1, p[1]), Vector3(4.2, .2, 4.2), Color("ffb040"))
+	box(0, 0, -26, 18, 2.2, 6, m_metal)
+	box(0, 0, 26, 18, 2.2, 6, m_metal)
+	box(-26, 0, 0, 6, 2.2, 18, m_metal)
+	box(26, 0, 0, 6, 2.2, 18, m_metal)
+	box(0, 0, 0, 7, 1.1, 7, m_metal)
+	box(0, 1.1, 0, 3.5, 1.1, 3.5, m_metal)
+	deco(Vector3(0, 2.25, 0), Vector3(1.2, .1, 1.2), red)
+	for c in [[8, -6, 2], [-9, 7, 2], [-7, -10, 3], [10, 9, 3], [30, -12, 2], [-30, 12, 2], [12, 32, 2], [-12, -32, 2]]:
+		box(c[0], 0, c[1], c[2], c[2] * .75, c[2], m_crate)
+	box(34, 0, -34, 1.2, 10, 9, m_wall)
+	box(-34, 0, 34, 1.2, 10, 9, m_wall)
+	box(-34, 0, -34, 9, 10, 1.2, m_wall)
+	box(34, 0, 34, 9, 10, 1.2, m_wall)
+
+func world_flash(p: Vector3, e: float) -> void:
+	world_light.global_position = p
+	world_light.light_energy = max(world_light.light_energy, e)
+
+# ---------------- áudio contínuo ----------------
+func _build_audio() -> void:
+	music = AudioStreamPlayer.new()
+	var ms = G.stream("gabriel_theme")
+	if ms is AudioStreamOggVorbis: ms.loop = true
+	music.stream = ms
+	music.volume_db = -80
+	add_child(music)
+	slide_snd = AudioStreamPlayer.new()
+	var ss = G.stream("slide")
+	if ss is AudioStreamWAV:
+		ss.loop_mode = AudioStreamWAV.LOOP_FORWARD
+		ss.loop_begin = 0
+		ss.loop_end = int(ss.get_length() * ss.mix_rate) - 1
+	slide_snd.stream = ss
+	slide_snd.volume_db = -80
+	add_child(slide_snd)
+	slide_snd.play()
+
+# ---------------- HUD ----------------
+func _lbl(text: String, size: int, color := Color.WHITE, outline := 4) -> Label:
+	var l = Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_color_override("font_color", color)
+	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, .85))
+	l.add_theme_constant_override("outline_size", outline)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return l
+
+func _bar(w: float, h: float, bg: Color, fg: Color) -> Array:
+	var back = ColorRect.new()
+	back.color = bg
+	back.custom_minimum_size = Vector2(w, h)
+	back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var fill = ColorRect.new()
+	fill.color = fg
+	fill.size = Vector2(w, h)
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	back.add_child(fill)
+	return [back, fill]
+
+func _panel() -> PanelContainer:
+	var p = PanelContainer.new()
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.05, 0.01, 0.015, 0.8)
+	sb.border_color = Color(1, 1, 1, 0.1)
+	sb.set_border_width_all(1)
+	sb.set_content_margin_all(14)
+	sb.skew = Vector2(-0.14, 0)
+	p.add_theme_stylebox_override("panel", sb)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return p
+
+func _build_hud() -> void:
+	var layer = CanvasLayer.new()
+	layer.layer = 5
+	add_child(layer)
+	hud = Control.new()
+	hud.set_anchors_preset(Control.PRESET_FULL_RECT)
+	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(hud)
+	# vinheta de dano e clarão
+	var vig = TextureRect.new()
+	var gt = GradientTexture2D.new()
+	var gr = Gradient.new()
+	gr.set_color(0, Color(0.8, 0, 0, 0))
+	gr.set_color(1, Color(0.8, 0, 0, 0.75))
+	gr.add_point(0.55, Color(0.8, 0, 0, 0))
+	gt.gradient = gr
+	gt.fill = GradientTexture2D.FILL_RADIAL
+	gt.fill_from = Vector2(0.5, 0.5)
+	gt.fill_to = Vector2(1.0, 1.0)
+	vig.texture = gt
+	vig.stretch_mode = TextureRect.STRETCH_SCALE
+	vig.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vig.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vig.modulate.a = 0
+	hud.add_child(vig)
+	ui.vig = vig
+	var fl = ColorRect.new()
+	fl.color = Color.WHITE
+	fl.set_anchors_preset(Control.PRESET_FULL_RECT)
+	fl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fl.modulate.a = 0
+	hud.add_child(fl)
+	ui.flash = fl
+	# mira e marcador de acerto
+	var cross = Control.new()
+	cross.set_anchors_preset(Control.PRESET_CENTER)
+	cross.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(cross)
+	for r in [Rect2(-1, -12, 2, 7), Rect2(-1, 5, 2, 7), Rect2(-12, -1, 7, 2), Rect2(5, -1, 7, 2)]:
+		var c = ColorRect.new()
+		c.color = Color.WHITE
+		c.position = r.position
+		c.size = r.size
+		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cross.add_child(c)
+	var hit = Control.new()
+	hit.set_anchors_preset(Control.PRESET_CENTER)
+	hit.rotation = PI / 4
+	hit.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hit.modulate.a = 0
+	hud.add_child(hit)
+	for r in [Rect2(-1, -17, 2, 9), Rect2(-1, 8, 2, 9), Rect2(-17, -1, 9, 2), Rect2(8, -1, 9, 2)]:
+		var c = ColorRect.new()
+		c.color = Color.WHITE
+		c.position = r.position
+		c.size = r.size
+		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hit.add_child(c)
+	ui.hit = hit
+	# vida e dash (canto inferior esquerdo)
+	var bl = _panel()
+	bl.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	bl.position = Vector2(24, -150)
+	bl.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	hud.add_child(bl)
+	var blv = VBoxContainer.new()
+	blv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bl.add_child(blv)
+	var row = HBoxContainer.new()
+	row.add_child(_lbl("VIDA", 14, Color("c9b2a6"), 2))
+	var sp = Control.new()
+	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(sp)
+	ui.hp_txt = _lbl("100", 24)
+	row.add_child(ui.hp_txt)
+	blv.add_child(row)
+	var hb = _bar(270, 18, Color("3a0c0c"), Color("e0261a"))
+	blv.add_child(hb[0])
+	ui.hp_fill = hb[1]
+	blv.add_child(_lbl("DASH", 14, Color("c9b2a6"), 2))
+	var dr = HBoxContainer.new()
+	dr.add_theme_constant_override("separation", 6)
+	blv.add_child(dr)
+	ui.pips = []
+	for i in 3:
+		var pb = _bar(86, 9, Color("1d2a30"), Color("40e8ff"))
+		dr.add_child(pb[0])
+		ui.pips.append(pb[1])
+	# arma (canto inferior direito)
+	var br = _panel()
+	hud.add_child(br)
+	br.anchor_left = 1; br.anchor_right = 1; br.anchor_top = 1; br.anchor_bottom = 1
+	br.offset_right = -24; br.offset_bottom = -24; br.offset_left = -24; br.offset_top = -24
+	br.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	br.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	var brv = VBoxContainer.new()
+	brv.alignment = BoxContainer.ALIGNMENT_END
+	brv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	brv.custom_minimum_size = Vector2(250, 0)
+	br.add_child(brv)
+	ui.wname = _lbl("REVÓLVER", 28, Color("e0a83a"))
+	ui.wname.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	brv.add_child(ui.wname)
+	var cb = _bar(250, 6, Color("0b2228"), Color("40e8ff"))
+	brv.add_child(cb[0])
+	ui.chg = cb[1]
+	ui.rico = _lbl("", 20, Color("40e8ff"))
+	ui.rico.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	brv.add_child(ui.rico)
+	var ar = HBoxContainer.new()
+	ar.alignment = BoxContainer.ALIGNMENT_END
+	ar.add_theme_constant_override("separation", 5)
+	brv.add_child(ar)
+	ui.ammo = []
+	for i in 10:
+		var a = ColorRect.new()
+		a.custom_minimum_size = Vector2(9, 22)
+		a.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ar.add_child(a)
+		ui.ammo.append(a)
+	ui.slots = _lbl("", 15, Color(1, 1, 1, .6), 2)
+	ui.slots.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	brv.add_child(ui.slots)
+	var kh = _lbl("Q troca · R girar/recarregar · F soco · E terminal", 13, Color("c9b2a6"), 2)
+	kh.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	brv.add_child(kh)
+	# estilo (canto superior direito)
+	var sty = VBoxContainer.new()
+	sty.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	sty.position = Vector2(-280, 20)
+	sty.custom_minimum_size = Vector2(256, 0)
+	sty.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(sty)
+	ui.sty = sty
+	ui.rank = _lbl("D", 64, Color.WHITE, 6)
+	ui.rank.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	sty.add_child(ui.rank)
+	ui.rword = _lbl("DESTRUTIVO", 16)
+	ui.rword.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	sty.add_child(ui.rword)
+	var rb = _bar(256, 5, Color(1, 1, 1, .12), Color.WHITE)
+	sty.add_child(rb[0])
+	ui.rfill = rb[1]
+	feed_box = VBoxContainer.new()
+	feed_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sty.add_child(feed_box)
+	# onda, faixa e chefe
+	ui.wave = _lbl("PREPARE-SE", 18)
+	ui.wave.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	ui.wave.position = Vector2(-150, 18)
+	ui.wave.custom_minimum_size = Vector2(300, 0)
+	ui.wave.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hud.add_child(ui.wave)
+	var ban = VBoxContainer.new()
+	ban.set_anchors_preset(Control.PRESET_CENTER)
+	ban.position = Vector2(-400, -200)
+	ban.custom_minimum_size = Vector2(800, 0)
+	ban.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ban.modulate.a = 0
+	hud.add_child(ban)
+	ui.ban = ban
+	ui.bt = _lbl("", 72, Color("e8261a"), 8)
+	ui.bt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ban.add_child(ui.bt)
+	ui.bs = _lbl("", 20)
+	ui.bs.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ban.add_child(ui.bs)
+	var boss = VBoxContainer.new()
+	boss.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	boss.position = Vector2(-410, 64)
+	boss.custom_minimum_size = Vector2(820, 0)
+	boss.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	boss.visible = false
+	hud.add_child(boss)
+	ui.boss = boss
+	var bn = _lbl("Gabriel", 26, Color("efe6da"), 5)
+	ui.bname = bn
+	bn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	boss.add_child(bn)
+	var bback = ColorRect.new()
+	bback.color = Color(.08, .02, .02, .85)
+	bback.custom_minimum_size = Vector2(820, 10)
+	boss.add_child(bback)
+	var bdmg = ColorRect.new()
+	bdmg.color = Color("e0c070")
+	bdmg.size = Vector2(820, 10)
+	bback.add_child(bdmg)
+	var bfill = ColorRect.new()
+	bfill.color = Color("b0221a")
+	bfill.size = Vector2(820, 10)
+	bback.add_child(bfill)
+	ui.bdmg = bdmg
+	ui.bfill = bfill
+	# aviso do terminal
+	ui.prompt = _lbl("[E]  TERMINAL DE ARSENAL", 20, Color("46ff8c"), 3)
+	ui.prompt.set_anchors_preset(Control.PRESET_CENTER)
+	ui.prompt.position = Vector2(-200, 60)
+	ui.prompt.custom_minimum_size = Vector2(400, 0)
+	ui.prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ui.prompt.visible = false
+	hud.add_child(ui.prompt)
+	# luneta do fuzil de raio
+	var sc = Control.new()
+	sc.set_anchors_preset(Control.PRESET_FULL_RECT)
+	sc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sc.visible = false
+	sc.draw.connect(func():
+		var sz = sc.size
+		var c = sz / 2
+		var r = sz.y * .42
+		var big = sz.length()
+		sc.draw_arc(c, r + big / 2, 0, TAU, 96, Color.BLACK, big)
+		sc.draw_arc(c, r, 0, TAU, 96, Color("40e8ff"), 3)
+		sc.draw_line(Vector2(c.x - r, c.y), Vector2(c.x - 12, c.y), Color(0, 0, 0, .85), 2)
+		sc.draw_line(Vector2(c.x + 12, c.y), Vector2(c.x + r, c.y), Color(0, 0, 0, .85), 2)
+		sc.draw_line(Vector2(c.x, c.y + 12), Vector2(c.x, c.y + r), Color(0, 0, 0, .85), 2)
+		sc.draw_circle(c, 2, Color("ff3a2a")))
+	sc.resized.connect(sc.queue_redraw)
+	hud.add_child(sc)
+	hud.move_child(sc, 2)
+	ui.scope = sc
+
+func banner(t: String, s := "") -> void:
+	ui.bt.text = t
+	ui.bs.text = s
+	var tw = create_tween()
+	tw.tween_property(ui.ban, "modulate:a", 1.0, .25)
+	tw.tween_interval(1.6)
+	tw.tween_property(ui.ban, "modulate:a", 0.0, .35)
+
+func _on_style(label: String) -> void:
+	var l = _lbl("+ " + label, 16, Color.WHITE, 3)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	feed_box.add_child(l)
+	feed_box.move_child(l, 0)
+	while feed_box.get_child_count() > 6:
+		feed_box.get_child(feed_box.get_child_count() - 1).queue_free()
+		feed_box.remove_child(feed_box.get_child(feed_box.get_child_count() - 1))
+	var tw = create_tween()
+	tw.tween_interval(2.2)
+	tw.tween_property(l, "modulate:a", 0.0, .45)
+	tw.tween_callback(l.queue_free)
+
+func on_weapon_changed() -> void:
+	if ui.is_empty() or not ui.has("slots"): return
+	var w = player.weapons
+	ui.wname.text = G.WEAP[w.cur].name
+	var parts = []
+	for n in G.loadout.size():
+		var k = G.loadout[n]
+		var t = "%d %s" % [n + 1, G.WEAP[k].short]
+		parts.append("[" + t + "]" if k == w.cur else t)
+	ui.slots.text = "  ".join(parts)
+
+func _upd_hud(dt: float) -> void:
+	var p = player
+	var w = p.weapons
+	ui.hp_txt.text = str(int(ceil(max(0.0, p.hp))))
+	ui.hp_fill.size.x = 270.0 * clamp(p.hp / 100.0, 0.0, 1.0)
+	for i in 3:
+		ui.pips[i].size.x = 86.0 * clamp(p.stamina - i, 0.0, 1.0)
+	var id: String = w.id()
+	var X = w.X
+	var cc = Color("40e8ff")
+	var cv = w.charge if w.charging else 0.0
+	ui.rico.text = ("RICOCHETE ×%d" % w.bounces(w.charge)) if w.charging and w.charge > .1 else ""
+	if id == "nail":
+		cv = X.heat if X.over <= 0 else 1.0
+		cc = Color("ff3a1a") if X.over > 0 else Color("ff9a30")
+		if X.over > 0: ui.rico.text = "SUPERAQUECIDA"
+	elif id == "rail":
+		cv = 1.0 - w.cd / X.rail_max if w.cd > 0 else 1.0
+	ui.chg.size.x = 250.0 * cv
+	ui.chg.color = cc
+	var mx = 0
+	var a = 0
+	var col = Color.WHITE
+	var rs = Vector2(9, 22)
+	match id:
+		"rev": mx = w.rv_max; a = w.rv_ammo; col = Color("e8c060"); rs = Vector2(8, 18)
+		"sg": mx = w.sg_max; a = w.sg_ammo; col = Color("d82020")
+		"rocket":
+			var ai = X.ammo_info(id)
+			mx = 1; a = ai[0]; col = Color("e8261a"); rs = Vector2(16, 26)
+		"sword":
+			var ai = X.ammo_info(id)
+			mx = 4; a = ai[0]; col = Color("e8f4ff"); rs = Vector2(7, 28)
+	for i in 10:
+		var r: ColorRect = ui.ammo[i]
+		r.visible = i < mx
+		r.custom_minimum_size = rs
+		r.color = col if i < a else Color(1, 1, 1, .13)
+	var scoped: bool = id == "rail" and w.zoom and X.zb > .7 and G.state == "play"
+	ui.scope.visible = scoped
+	vpc2.visible = not scoped
+	if term_light: _upd_term()
+	ui.prompt.visible = near_term and G.state == "play"
+	G.hurt_v *= exp(-dt * 3)
+	G.flash *= exp(-dt * 8)
+	G.hit_v *= exp(-dt * 10)
+	ui.vig.modulate.a = max(G.hurt_v, (.35 + sin(Time.get_ticks_msec() / 180.0) * .15) if p.hp < 30 else 0.0)
+	ui.flash.modulate.a = G.flash
+	ui.hit.modulate = Color(1, .2, .1, G.hit_v) if G.hit_kill else Color(1, 1, 1, G.hit_v)
+	# estilo
+	var rk = G.rank()
+	G.style = max(0.0, G.style - dt * (5 + rk * 4))
+	var r2 = int(G.style / 100.0)
+	G.best_rank = max(G.best_rank, r2)
+	if r2 != shown_rank:
+		var R = G.RANKS[r2]
+		ui.rank.text = R[0]
+		ui.rword.text = R[1]
+		ui.sty.modulate = R[2]
+		if r2 > shown_rank:
+			ui.rank.pivot_offset = ui.rank.size * Vector2(1, .5)
+			ui.rank.scale = Vector2.ONE * 1.5
+			create_tween().tween_property(ui.rank, "scale", Vector2.ONE, .3)
+		shown_rank = r2
+	ui.rfill.size.x = 256.0 * fmod(G.style, 100.0) / 100.0
+	ui.sty.modulate.a = 1.0 if (G.style > 0 or feed_box.get_child_count() > 0) else .35
+	if G.mode == "boss" or G.mode == "deus": ui.wave.text = ""
+	elif G.mode == "train": ui.wave.text = "TREINO · ESC PAUSA"
+	elif wave > 0: ui.wave.text = "ONDA %d · %d RESTANTES" % [wave, G.enemies.size() + queue.size()]
+	else: ui.wave.text = "PREPARE-SE"
+	var bs = G.boss
+	if bs and is_instance_valid(bs) and bs.alive and bs.spawn_t <= 0:
+		ui.boss.visible = true
+		var wv: float = max(0.0, bs.hp / bs.max_hp * 100.0)
+		if wv < b_last:
+			b_hold = .6
+			b_last = wv
+		if b_hold > 0: b_hold -= dt
+		else: b_dmg_w += (wv - b_dmg_w) * (1.0 - exp(-4 * dt))
+		b_dmg_w = max(b_dmg_w, wv)
+		ui.bfill.size.x = 8.2 * wv
+		ui.bdmg.size.x = 8.2 * b_dmg_w
+	else:
+		ui.boss.visible = false
+		b_dmg_w = 100; b_last = 100
+
+# ---------------- menus ----------------
+func _btn(text: String, cb: Callable, alt := false) -> Button:
+	var b = Button.new()
+	b.text = "  " + text + "  "
+	b.add_theme_font_size_override("font_size", 24)
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color("2a2c33") if alt else Color("e8261a")
+	sb.set_content_margin_all(12)
+	sb.skew = Vector2(-0.14, 0)
+	var sh: StyleBoxFlat = sb.duplicate()
+	sh.bg_color = Color("3a3d46") if alt else Color("ff3a2a")
+	b.add_theme_stylebox_override("normal", sb)
+	b.add_theme_stylebox_override("hover", sh)
+	b.add_theme_stylebox_override("pressed", sh)
+	b.add_theme_stylebox_override("focus", sh)
+	b.custom_minimum_size = Vector2(170, 52)
+	b.pressed.connect(cb)
+	return b
+
+func _build_menus() -> void:
+	var layer = CanvasLayer.new()
+	layer.layer = 10
+	add_child(layer)
+	menu = ColorRect.new()
+	menu.color = Color(0.06, 0.01, 0.015, 0.88)
+	menu.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(menu)
+	var center = CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	menu.add_child(center)
+	var v = VBoxContainer.new()
+	v.custom_minimum_size = Vector2(860, 0)
+	v.add_theme_constant_override("separation", 14)
+	center.add_child(v)
+	var title = RichTextLabel.new()
+	title.bbcode_enabled = true
+	title.fit_content = true
+	title.scroll_active = false
+	title.add_theme_font_size_override("normal_font_size", 84)
+	title.add_theme_color_override("font_outline_color", Color.BLACK)
+	title.add_theme_constant_override("outline_size", 10)
+	title.text = "[color=#e8261a]FÚRIA[/color] [color=#e0a83a]DE[/color] [color=#e8261a]AÇO[/color]"
+	v.add_child(title)
+	ui.msub = _lbl("ESCOLHA O MODO", 18, Color("c9b2a6"), 2)
+	v.add_child(ui.msub)
+	var btns = HBoxContainer.new()
+	btns.add_theme_constant_override("separation", 14)
+	v.add_child(btns)
+	ui.cont = _btn("CONTINUAR", func(): resume())
+	btns.add_child(ui.cont)
+	btns.add_child(_btn("ONDAS", func(): start_mode("waves")))
+	btns.add_child(_btn("TREINO", func(): start_mode("train"), true))
+	btns.add_child(_btn("GABRIEL", func(): start_mode("boss"), true))
+	btns.add_child(_btn("DEUS", func(): start_mode("deus"), true))
+	v.add_child(_lbl("CONTROLES", 20, Color("e0a83a"), 2))
+	var grid = GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 40)
+	v.add_child(grid)
+	for c in [["Mover", "W A S D"], ["Pular / pulo na parede", "ESPAÇO"], ["Dash (3 cargas, invencível)", "SHIFT"], ["Deslizar / pisão no ar", "C"],
+		["Atirar", "CLIQUE ESQ."], ["Especial da arma", "CLIQUE DIR."], ["Soco / aparar projétil", "F"],
+		["Girar / recarregar", "R"], ["Trocar arma", "Q · 1–8 · RODA"], ["Terminal de arsenal (perto dele)", "E"], ["Pausar", "ESC"]]:
+		var hb = HBoxContainer.new()
+		hb.custom_minimum_size = Vector2(400, 0)
+		hb.add_child(_lbl(c[0], 16, Color.WHITE, 2))
+		var s = Control.new()
+		s.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		hb.add_child(s)
+		hb.add_child(_lbl(c[1], 15, Color("e0a83a"), 2))
+		grid.add_child(hb)
+	var set = HBoxContainer.new()
+	set.add_theme_constant_override("separation", 22)
+	v.add_child(set)
+	set.add_child(_lbl("Sensibilidade", 16, Color.WHITE, 2))
+	var sens = HSlider.new()
+	sens.min_value = 0.3; sens.max_value = 3.0; sens.step = 0.1; sens.value = G.sens_mult
+	sens.custom_minimum_size = Vector2(150, 24)
+	sens.value_changed.connect(func(x): G.sens_mult = x; G.save())
+	set.add_child(sens)
+	set.add_child(_lbl("Campo de visão", 16, Color.WHITE, 2))
+	var fov = HSlider.new()
+	fov.min_value = 80; fov.max_value = 120; fov.step = 1; fov.value = G.fov_base
+	fov.custom_minimum_size = Vector2(150, 24)
+	fov.value_changed.connect(func(x): G.fov_base = x; G.save())
+	set.add_child(fov)
+	var retro = CheckBox.new()
+	retro.text = "Visual retrô pixelado"
+	retro.button_pressed = G.retro
+	retro.toggled.connect(func(on): G.retro = on; _apply_settings(); G.save())
+	set.add_child(retro)
+	# volume geral e da música
+	var vrow = HBoxContainer.new()
+	vrow.add_theme_constant_override("separation", 22)
+	v.add_child(vrow)
+	for item in [["Volume", "vol"], ["Música", "mvol"]]:
+		vrow.add_child(_lbl(item[0], 16, Color.WHITE, 2))
+		var sl = HSlider.new()
+		sl.min_value = 0; sl.max_value = 100; sl.step = 1
+		sl.value = round(float(G.get(item[1])) * 100)
+		sl.custom_minimum_size = Vector2(220, 24)
+		var pct = _lbl("%d%%" % int(sl.value), 15, Color("e0a83a"), 2)
+		pct.custom_minimum_size = Vector2(48, 0)
+		var key = item[1]
+		sl.value_changed.connect(func(x):
+			G.set(key, x / 100.0)
+			pct.text = "%d%%" % int(x)
+			G.apply_volume()
+			G.save())
+		sl.drag_ended.connect(func(_c): if key == "vol": G.snd("click", -2))
+		vrow.add_child(sl)
+		vrow.add_child(pct)
+	v.add_child(_lbl("Cure-se com sangue: dano de perto recupera vida. Apare as esferas laranja com F para devolvê-las.", 14, Color("a8928a"), 2))
+	# tela de morte
+	dead_ov = ColorRect.new()
+	dead_ov.color = Color(0.06, 0.01, 0.015, 0.9)
+	dead_ov.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dead_ov.visible = false
+	layer.add_child(dead_ov)
+	var c2 = CenterContainer.new()
+	c2.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dead_ov.add_child(c2)
+	var v2 = VBoxContainer.new()
+	v2.add_theme_constant_override("separation", 18)
+	c2.add_child(v2)
+	v2.add_child(_lbl("VOCÊ CAIU", 84, Color("e8261a"), 10))
+	ui.dstats = _lbl("", 22)
+	v2.add_child(ui.dstats)
+	v2.add_child(_btn("DE NOVO", func(): start_mode(G.mode)))
+	_build_term_ui(layer)
+
+func show_menu(paused: bool) -> void:
+	G.state = "paused" if paused else "menu"
+	ui.cont.visible = paused
+	ui.msub.text = ("PAUSADO · " + {"waves": "ONDAS", "train": "TREINO", "boss": "GABRIEL", "deus": "DEUS"}[G.mode]) if paused else "ESCOLHA O MODO"
+	menu.visible = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	player.fire_held = false
+	player.weapons.alt_release()
+
+func resume() -> void:
+	G.state = "play"
+	term_ov.visible = false
+	menu.visible = false
+	dead_ov.visible = false
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+func start_mode(m: String) -> void:
+	G.mode = m
+	reset()
+	started = true
+	resume()
+
+func die() -> void:
+	player.dead = true
+	G.state = "dead"
+	var t = int(G.stats.t)
+	ui.dstats.text = "ONDA %d     ABATES %d     MELHOR RANK %s     TEMPO %d:%02d" % [wave, G.stats.kills, G.RANKS[G.best_rank][0], t / 60, t % 60]
+	dead_ov.visible = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+func reset() -> void:
+	for e in G.enemies:
+		if is_instance_valid(e): e.queue_free()
+	G.enemies.clear()
+	if G.boss and is_instance_valid(G.boss): G.boss.queue_free()
+	G.boss = null
+	for gb in get_tree().get_nodes_in_group("gabriel"): gb.queue_free()
+	for p in G.projs:
+		if is_instance_valid(p.m): p.m.queue_free()
+	G.projs.clear()
+	G.clear_timers()
+	player.reset_at(Vector3(0, 2.3, 26))
+	player.weapons.reset_ammo()
+	player.weapons.switch_to(G.loadout[0], true)
+	wave = 0
+	queue.clear()
+	wave_active = false
+	wave_delay = 1.2
+	G.style = 0
+	G.best_rank = 0
+	G.stats = {"kills": 0, "t": 0.0}
+	for c in feed_box.get_children(): c.queue_free()
+	if G.mode == "boss":
+		G.later(1.2, respawn_gabriel)
+	elif G.mode == "deus":
+		G.later(1.2, respawn_deus)
+	elif G.mode == "train":
+		for d in [["husk", -8, 12], ["husk", 0, 8], ["husk", 8, 12], ["brute", 0, -8], ["drone", -14, 4], ["drone", 14, 4]]:
+			spawn_enemy(d[0], Vector3(d[1], 0, d[2]), true)
+		banner("TREINO", "ALVOS INFINITOS")
+
+# ---------------- inimigos e ondas ----------------
+func respawn_deus() -> void:
+	if G.mode == "deus" and G.boss == null: spawn_enemy("deus", Vector3(0, 0, -30))
+
+func respawn_gabriel() -> void:
+	if G.mode == "boss" and G.boss == null: spawn_enemy("gabriel", Vector3(0, 0, -30))
+
+func spawn_point() -> Vector3:
+	for i in 20:
+		var a = G.rnd(0, TAU)
+		var r = G.rnd(22, 38)
+		var p = Vector3(cos(a) * r, 0.5, sin(a) * r)
+		if Vector2(p.x - player.global_position.x, p.z - player.global_position.z).length() < 18: continue
+		if G.in_solid(p + Vector3(0, 0.6, 0)): continue
+		return p
+	return Vector3(0, 0.5, -36)
+
+func spawn_enemy(kind: String, at = null, dummy := false) -> void:
+	var p: Vector3 = at if at != null else spawn_point()
+	if kind == "deus":
+		if not ResourceLoader.exists("res://deus/deus.glb"): return
+		var dn = Node3D.new()
+		dn.set_script(preload("res://scripts/deus.gd"))
+		world.add_child(dn)
+		dn.setup(p if at != null else Vector3(0, 0, -30))
+		G.boss = dn
+		G.enemies.append(dn)
+		if ui.has("bname"): ui.bname.text = "Deus"
+		banner("DEUS", "AQUELE QUE TUDO VÊ")
+		G.snd("angel", -2, .45)
+		G.flash = .8
+		return
+	if kind == "gabriel":
+		if not ResourceLoader.exists("res://gabriel.glb"): return
+		var g = Node3D.new()
+		g.set_script(preload("res://scripts/gabriel.gd"))
+		world.add_child(g)
+		g.setup(p)
+		G.boss = g
+		G.enemies.append(g)
+		if ui.has("bname"): ui.bname.text = "Gabriel"
+		banner("GABRIEL", "O ARAUTO DE MUITOS OLHOS")
+		G.snd("angel", -4)
+		G.flash = .6
+		return
+	var e = CharacterBody3D.new()
+	e.set_script(preload("res://scripts/enemy.gd"))
+	world.add_child(e)
+	e.setup(kind, Vector3(p.x, 0.5, p.z), dummy)
+	G.enemies.append(e)
+	G.emit("blood2", Vector3(p.x, .3, p.z), 14, 8, .15, .6)
+	G.snd("spawn", -14)
+
+func _start_wave() -> void:
+	wave += 1
+	wave_active = true
+	queue.clear()
+	if wave % 10 == 0:
+		queue.append("deus")
+		for i in wave / 2: queue.append("husk")
+		banner("ONDA %d" % wave, "DEUS DESPERTA")
+		G.snd("wave", -6)
+		return
+	if wave % 5 == 0:
+		queue.append("gabriel")
+		for i in wave: queue.append("husk")
+		banner("ONDA %d" % wave, "GABRIEL DESCE")
+		G.snd("wave", -6)
+		return
+	for i in 2 + wave * 2: queue.append("husk")
+	for i in wave: queue.append("drone")
+	for i in (int((wave - 1) / 2.0) if wave >= 3 else 0): queue.append("brute")
+	queue.shuffle()
+	banner("ONDA %d" % wave, "%d INIMIGOS" % queue.size())
+	G.snd("wave", -6)
+
+func _upd_waves(dt: float) -> void:
+	if G.mode != "waves": return
+	if not wave_active:
+		wave_delay -= dt
+		if wave_delay <= 0: _start_wave()
+		return
+	spawn_cd -= dt
+	if queue.size() > 0 and spawn_cd <= 0 and G.enemies.size() < 12:
+		spawn_enemy(queue.pop_front())
+		spawn_cd = .7
+	if queue.is_empty() and G.enemies.is_empty():
+		wave_active = false
+		wave_delay = 3.5
+		G.heal(25)
+		banner("ONDA %d LIMPA" % wave, "+25 VIDA")
+
+# marcadores sobre os últimos inimigos (visíveis através das paredes)
+var _mark_mesh: SphereMesh
+var _mark_mat: StandardMaterial3D
+func _upd_marks() -> void:
+	var normal = []
+	for e in G.enemies:
+		if not e.is_boss: normal.append(e)
+	var show: bool = G.mode != "train" and (G.mode == "boss" or G.mode == "deus" or queue.is_empty()) and normal.size() <= 3
+	if _mark_mesh == null:
+		_mark_mesh = SphereMesh.new()
+		_mark_mesh.radius = .32; _mark_mesh.height = .64; _mark_mesh.radial_segments = 4; _mark_mesh.rings = 1
+		_mark_mat = StandardMaterial3D.new()
+		_mark_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_mark_mat.albedo_color = Color("ff2a1a")
+		_mark_mat.no_depth_test = true
+		_mark_mat.render_priority = 10
+	for e in normal:
+		if e.mark == null:
+			e.mark = MeshInstance3D.new()
+			e.mark.mesh = _mark_mesh
+			e.mark.material_override = _mark_mat
+			world.add_child(e.mark)
+		e.mark.visible = show and e.spawn_t <= 0
+		if e.mark.visible:
+			var hh: float = 1.6 if e.fly else e.h + .7
+			e.mark.global_position = e.global_position + Vector3(0, hh + sin(Time.get_ticks_msec() / 200.0) * .15, 0)
+			e.mark.rotation.y += .05
+
+# ---------------- projéteis inimigos (esferas e penas) ----------------
+var _orb_mesh: SphereMesh
+func spawn_orb(pos: Vector3, vel: Vector3) -> void:
+	if _orb_mesh == null:
+		_orb_mesh = SphereMesh.new()
+		_orb_mesh.radius = .32; _orb_mesh.height = .64; _orb_mesh.radial_segments = 8; _orb_mesh.rings = 4
+	var m = MeshInstance3D.new()
+	m.mesh = _orb_mesh
+	var mat = StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color("ff7a1a")
+	m.material_override = mat
+	world.add_child(m)
+	m.global_position = pos
+	G.projs.append({"m": m, "mat": mat, "vel": vel, "owner": "enemy", "life": 7.0, "big": false})
+
+var _fth_mesh: BoxMesh
+func spawn_feather(pos: Vector3, vel: Vector3) -> void:
+	if _fth_mesh == null:
+		_fth_mesh = BoxMesh.new()
+		_fth_mesh.size = Vector3(.16, .5, 1.8)
+	var m = MeshInstance3D.new()
+	m.mesh = _fth_mesh
+	var mat = StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color("fff4dc")
+	m.material_override = mat
+	world.add_child(m)
+	m.global_position = pos
+	m.look_at(pos + vel, Vector3.UP)
+	G.projs.append({"m": m, "mat": mat, "vel": vel, "owner": "enemy", "life": 6.0, "big": false, "feather": true})
+
+func parry_proj(p: Dictionary, d: Vector3) -> void:
+	p.owner = "player"
+	p.big = true
+	p.mat.albedo_color = Color("bff8ff")
+	p.vel = d * 85.0
+	p.life = 4.0
+	G.later(.25, func():
+		if is_instance_valid(p.m):
+			world_flash(p.m.global_position, 12)
+			G.emit("cyan", p.m.global_position, 22, 18, .14, .5)
+			G.emit("spark", p.m.global_position, 16, 20, .1, .4))
+
+func _upd_projs(dt: float, t: float) -> void:
+	for p in G.projs:
+		if p.life <= 0: continue
+		p.life -= dt
+		var m: MeshInstance3D = p.m
+		m.global_position += p.vel * dt
+		if not p.get("feather", false):
+			m.scale = Vector3.ONE * (1.9 if p.big else 1.0) * (1 + sin(t * 30) * .15)
+		var q = m.global_position
+		if p.owner == "enemy":
+			if q.distance_to(player.global_position + Vector3(0, .9, 0)) < 1.0 and G.hurt_player(20):
+				p.life = 0
+		else:
+			G.emit("cyan" if G.rng.randf() < .5 else "spark", q, 2, 2, .12, .35, Vector3.ZERO, 0)
+			for e in G.enemies.duplicate():
+				if not is_instance_valid(e) or not e.alive or e.spawn_t > 0: continue
+				if q.distance_to(e.center()) < e.r + 1.3:
+					G.hurt_enemy(e, 220, "parry", q, false, p.vel.normalized())
+					G.blast(q, 1.0, "parry")
+					p.life = 0
+					break
+		if p.life > 0 and G.in_solid(q):
+			if p.owner == "enemy": G.emit("spark", q, 8, 8, .1, .4)
+			else: G.blast(q, 1.0, "parry")
+			p.life = 0
+		if p.life <= 0: m.queue_free()
+	G.projs = G.projs.filter(func(p): return p.life > 0)
+
+# ---------------- hitstop (congelar o tempo) ----------------
+func hitstop(t: float) -> void:
+	Engine.time_scale = 0.03
+	get_tree().create_timer(t, true, false, true).timeout.connect(func(): Engine.time_scale = 1.0)
+
+# ---------------- laço ----------------
+func _physics_process(dt: float) -> void:
+	world_light.light_energy *= exp(-dt * 14)
+	if G.state != "play":
+		return
+	G.stats.t += dt
+	G.tick_timers(dt)
+	G.enemies = G.enemies.filter(func(e): return is_instance_valid(e) and e.alive)
+	_separate()
+	_upd_waves(dt)
+	_upd_projs(dt, Time.get_ticks_msec() / 1000.0)
+	_upd_marks()
+
+func _separate() -> void:
+	var es: Array = G.enemies
+	for i in es.size():
+		for j in range(i + 1, es.size()):
+			var a = es[i]
+			var b = es[j]
+			if a.fly != b.fly or a.is_boss or b.is_boss: continue
+			var d = Vector2(b.global_position.x - a.global_position.x, b.global_position.z - a.global_position.z)
+			var l = d.length()
+			var mn: float = a.r + b.r
+			if l > 0 and l < mn:
+				var push = d / l * (mn - l) * 0.5
+				a.velocity -= Vector3(push.x, 0, push.y) * 8
+				b.velocity += Vector3(push.x, 0, push.y) * 8
+
+func _process(dt: float) -> void:
+	if _aim_e != null and is_instance_valid(_aim_e):
+		var de = _aim_e.global_position + Vector3(0, 1.2, 0) - (player.global_position + Vector3(0, 1.6, 0))
+		player.yaw = atan2(-de.x, -de.z)
+		player.pitch = clamp(atan2(de.y, Vector2(de.x, de.z).length()), -1.2, 1.2)
+		player.hp = max(player.hp, 1000.0)
+		player.velocity.x = 0; player.velocity.z = 0
+		if G.stats.t > 2.6:
+			player.global_position = Vector3(_aim_e.global_position.x + 1.5, player.global_position.y, _aim_e.global_position.z + 4.6)
+	if _aim_boss and is_instance_valid(G.boss) and G.boss != null:
+		var d = (G.boss.center() + (Vector3(0, 6, 0) if G.boss.kind == "deus" else Vector3.ZERO)) - (player.global_position + Vector3(0, 1.6, 0))
+		player.yaw = atan2(-d.x, -d.z)
+		player.pitch = clamp(atan2(d.y, Vector2(d.x, d.z).length()), -1.2, 1.2)
+		player.hp = max(player.hp, 1000.0)
+	_upd_hud(dt)
+	# som contínuo do deslize
+	var sl: bool = G.state == "play" and player.sliding and player.is_on_floor()
+	var target = -10.0 if sl else -60.0
+	slide_snd.volume_db = lerp(slide_snd.volume_db, target, 1.0 - exp(-(25.0 if sl else 10.0) * dt))
+	# música do Gabriel
+	var want: bool = G.state == "play" and G.boss != null and is_instance_valid(G.boss) and G.boss.alive
+	if want and not music.playing:
+		music.play()
+	var mt = (-6.0 + linear_to_db(max(G.mvol, .001))) if want and G.mvol > .001 else -60.0
+	music.volume_db = lerp(music.volume_db, mt, 1.0 - exp(-(1.2 if want else 2.0) * dt))
+	if not want and music.playing and music.volume_db < -55: music.stop()
+	var base_p = .8 if (want and G.boss.kind == "deus") else 1.0
+	if want and G.boss.hp < G.boss.max_hp * .5: music.pitch_scale = base_p * 1.06
+	else: music.pitch_scale = base_p

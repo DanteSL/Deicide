@@ -1,0 +1,33 @@
+FÚRIA DE AÇO — versão Godot 4.7 (etapa 2 — completa)
+
+COMO ABRIR
+1. Abra o Godot (Downloads\Godot\Godot_v4.7.2-stable_win64.exe).
+2. No gerenciador de projetos, clique em "Importar" e escolha o arquivo project.godot desta pasta.
+3. Clique em "Importar e editar". Na primeira vez ele importa os sons e o modelo do Gabriel (leva alguns segundos).
+4. Aperte F5 (ou o botão ▶ no canto superior direito) para jogar.
+
+O QUE TEM
+- Arena, movimento completo (dash, deslize, pisão, pulo na parede)
+- Revólver (giro, ricochete carregado, recarga do tambor) e escopeta (giro a cada tiro, rajada dupla, recarga invertida)
+- Soco / aparar com congelamento de tempo, explosão do projétil devolvido
+- Inimigos, ondas, modo treino, ranking de estilo, cura com sangue
+- Gabriel com o modelo 3D: asas, auréolas, mãos e 4 ataques, barra de chefe, música e bater de asas
+- DEUS: chefe colossal (botão DEUS no menu, e a cada 10 ondas) com 6 ataques
+- Ceifadora: inimiga corpo a corpo com esqueleto, anda desfilando e golpeia com o cajado-foice
+- 8 armas, cada uma com clique esquerdo e direito próprios:
+  1 Revólver · 2 Escopeta · 3 Espadas aladas · 4 Lança-foguetes · 5 Pregadora
+  6 Fuzil de raio (luneta no direito) · 7 Arpão (gancho no direito) · 8 Lança-granadas
+- Terminal de arsenal na arena (luz verde, à direita do início): chegue perto e aperte E
+  para escolher quais armas levar e ligar/desligar as 3 melhorias de cada uma
+- Teclas 1–8 seguem a ordem das armas equipadas; Q volta para a anterior; roda do mouse alterna
+- Equipamento, melhorias e configurações ficam salvos (user://save.cfg)
+
+ONDE MEXER
+- scripts/main.gd     arena, HUD, menus, ondas, projéteis
+- scripts/player.gd   movimento e câmera
+- scripts/weapons.gd  revólver, escopeta, soco, troca de armas e animações
+- scripts/extra_weapons.gd  espadas, foguetes, pregadora, raio, arpão e granadas
+- scripts/enemy.gd    inimigos comuns
+- scripts/gabriel.gd  chefe Gabriel
+- scripts/g.gd        utilidades globais (som, partículas, dano, estilo)
+- sfx/                sons (.wav / .ogg / .mp3)
