@@ -1,44 +1,110 @@
-# Deicide
+<div align="center">
 
-FPS frenético no estilo ULTRAKILL, feito em **Godot 4.7** (GDScript).
+# DEICIDE
+
+**FPS de arena frenético no estilo ULTRAKILL — mate os anjos, depois mate Deus.**
+
+![Godot 4.7](https://img.shields.io/badge/Godot-4.7-478cbf?logo=godotengine&logoColor=white)
+![GDScript](https://img.shields.io/badge/linguagem-GDScript-355570)
+![Plataforma](https://img.shields.io/badge/plataforma-Windows%20%7C%20Linux%20%7C%20macOS-555)
+
+![Menu do jogo](docs/img/menu.jpg)
+
+</div>
+
+---
+
+## Sobre
+
+*Deicide* é um jogo de tiro em primeira pessoa rápido e violento, feito inteiro em **Godot 4.7** com GDScript.
+Você corre, desliza, dá dash, pula nas paredes, gira as armas e devolve projéteis no soco enquanto enfrenta
+ondas de servas aladas, o arcanjo **Gabriel** e, por fim, o próprio **Deus**.
+
+O sangue dos inimigos cura você — quanto mais perto e mais agressivo, mais você sobrevive.
+Um ranking de estilo (D → ULTRA) recompensa variar as armas, acertar na cabeça e aparar ataques.
+
+| | |
+|---|---|
+| ![Gabriel](docs/img/gabriel.jpg) | ![Deus, segunda fase](docs/img/deus_fase2.jpg) |
+| **Gabriel**, o Arauto de Muitos Olhos | **Deus** na segunda fase: a arena inundada de sangue |
+| ![Ceifadora](docs/img/ceifadora.jpg) | ![Revólver](docs/img/revolver.jpg) |
+| A **Ceifadora**, com esqueleto animado por código | O revólver: gira, ricocheteia e recarrega bala por bala |
 
 ## Como jogar
 
-1. Instale o [Godot 4.7](https://godotengine.org/download).
-2. Abra o Godot → **Importar** → escolha o `project.godot` desta pasta.
-3. Aperte **F5**.
+1. Baixe o **[Godot 4.7](https://godotengine.org/download)** (versão padrão, não precisa da .NET).
+2. Clone ou baixe este repositório:
+   ```bash
+   git clone https://github.com/DanteSL/Deicide.git
+   ```
+3. Abra o Godot → **Importar** → escolha o arquivo `project.godot`.
+4. Na primeira abertura o Godot importa modelos e sons (alguns segundos).
+5. Aperte **F5**.
 
 ## Modos
 
-- **Ondas**: hordas crescentes. A cada 5 ondas aparece **Gabriel** e a cada 10 aparece **Deus**.
-- **Treino**: alvos infinitos para testar as armas.
-- **Gabriel**: chefe anjo com asas articuladas, 8 ataques e segunda fase.
-- **Deus**: chefe colossal com crista de mãos decepadas, cachoeiras de sangue, arena inundada e segunda fase.
+| Modo | Descrição |
+|---|---|
+| **Ondas** | Hordas crescentes. A cada 5 ondas aparece Gabriel; a cada 10, Deus. |
+| **Treino** | Alvos infinitos para testar armas e melhorias. |
+| **Gabriel** | Luta direta contra o arcanjo (8 ataques, segunda fase). |
+| **Deus** | Luta direta contra Deus (10 ataques, segunda fase com a arena inundada). |
 
 ## Controles
 
 | Ação | Tecla |
 |---|---|
-| Mover / pular | WASD / Espaço |
-| Dash / deslizar / pancada no chão | Shift / C / C no ar |
-| Atirar / especial da arma | Clique esquerdo / direito |
-| Trocar arma | Q · 1–8 · roda do mouse |
-| Girar / recarregar | R |
-| Soco e rebater projéteis | F |
-| Terminal de arsenal (perto dele) | E |
-| Pausar | ESC |
+| Mover | **W A S D** |
+| Pular / pulo na parede | **Espaço** |
+| Dash (3 cargas, invencível) | **Shift** |
+| Deslizar / pisão no ar | **C** |
+| Atirar | **Clique esquerdo** |
+| Especial da arma | **Clique direito** |
+| Trocar arma | **Q** (anterior) · **1–8** · **roda do mouse** |
+| Girar / recarregar | **R** |
+| Soco e rebater projéteis | **F** |
+| Terminal de arsenal (perto dele) | **E** |
+| Pausar / configurações | **ESC** |
 
-## Armas
+No menu de pausa dá para ajustar sensibilidade, campo de visão, volume geral, volume da música
+e o visual retrô pixelado. Tudo fica salvo.
 
-Revólver (ricochete carregado), escopeta (rajada dupla), espadas aladas, lança-foguetes,
-pregadora, fuzil de raio, arpão e lança-granadas — cada uma com 3 melhorias no terminal da arena.
+## Documentação
 
-## Estrutura
+| Documento | Conteúdo |
+|---|---|
+| [Jogabilidade](docs/JOGABILIDADE.md) | Movimento, estilo, cura com sangue, aparar projéteis |
+| [Armas](docs/ARMAS.md) | As 8 armas, botão direito de cada uma e as 24 melhorias |
+| [Inimigos e chefes](docs/INIMIGOS.md) | Servas, brutamontes, drones, Gabriel e Deus — todos os ataques |
+| [Arquitetura](docs/ARQUITETURA.md) | Como o código está organizado, como adicionar armas e inimigos, testes |
+| [Histórico de mudanças](CHANGELOG.md) | O que foi feito em cada etapa |
 
-- `scripts/main.gd` — arena, HUD, menus, ondas e terminal
-- `scripts/player.gd` — movimento (dash, slide, slam, pulo na parede)
-- `scripts/weapons.gd` / `scripts/extra_weapons.gd` — armas em primeira pessoa
-- `scripts/enemy.gd` / `scripts/ceifadora.gd` — inimigos (a Ceifadora tem esqueleto animado por código)
-- `scripts/gabriel.gd` / `scripts/deus.gd` — chefes
-- `scripts/g.gd` — estado global, sons, partículas, salvamento
-- `sfx/` — sons e música
+## Estrutura do projeto
+
+```
+Deicide/
+├── project.godot          # configuração do projeto Godot
+├── main.tscn              # cena principal (tudo é montado por código)
+├── scripts/
+│   ├── g.gd               # autoload: estado global, sons, partículas, dano, salvamento
+│   ├── main.gd            # arena, HUD, menus, ondas, projéteis, terminal de arsenal
+│   ├── player.gd          # movimento e câmera
+│   ├── weapons.gd         # revólver, escopeta, soco e troca de armas
+│   ├── extra_weapons.gd   # espadas, foguetes, pregadora, raio, arpão e granadas
+│   ├── enemy.gd           # inimigos comuns
+│   ├── ceifadora.gd       # esqueleto e animação procedural da Ceifadora
+│   ├── gabriel.gd         # chefe Gabriel
+│   └── deus.gd            # chefe Deus
+├── gabriel.glb            # modelo do Gabriel (asas em duas partes, auréolas, mãos)
+├── gabriel_tex.jpg        # textura do Gabriel
+├── ceifadora.glb          # modelo da Ceifadora com esqueleto de 24 ossos
+├── deus/                  # modelo animado de Deus, mão decepada e texturas
+├── sfx/                   # efeitos sonoros e música (gerados por código)
+└── docs/                  # documentação e imagens
+```
+
+## Créditos
+
+- Design, direção e modelos 3D de origem: **DanteSL**
+- Código, animações procedurais, rigging e sons: feitos em conjunto com **Claude** (Anthropic)
+- Inspiração: *ULTRAKILL* (New Blood Interactive)
