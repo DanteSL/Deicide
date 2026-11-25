@@ -21,7 +21,7 @@ Você corre, desliza, dá dash, pula nas paredes, gira as armas e devolve projé
 ondas de servas aladas, o arcanjo **Gabriel** e, por fim, o próprio **Deus**.
 
 O sangue dos inimigos cura você — quanto mais perto e mais agressivo, mais você sobrevive.
-Um ranking de estilo (D → ULTRA) recompensa variar as armas, acertar na cabeça e aparar ataques.
+Um ranking de heresia (de Devoto a Supremo Sacrilégio) recompensa variar as armas, acertar na cabeça e aparar ataques, e enche a barra de **Blasfêmia**: cheia, ela para o tempo e executa com raios todos os anjos na tela.
 
 | | |
 |---|---|
