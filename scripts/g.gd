@@ -30,9 +30,13 @@ var retro = true
 var rng = RandomNumberGenerator.new()
 
 const RANKS := [
-	["D", "DESTRUTIVO", Color("9a9a9a")], ["C", "CRUEL", Color("4fa3ff")], ["B", "BRUTAL", Color("4fe07a")],
-	["A", "ATROZ", Color("ffd23a")], ["S", "SELVAGEM", Color("ff8a1a")], ["SS", "SUPER SELVAGEM", Color("ff3a2a")],
-	["SSS", "SUPREMO SANGUINÁRIO", Color("ff2a7a")]]
+	["D", "DEVOTO", Color("a8a29a")], ["C", "CÉTICO", Color("9fc4ff")], ["B", "HEREGE", Color("e8c45a")],
+	["A", "APÓSTATA", Color("ff9a2a")], ["S", "SEM FÉ", Color("ff5a1a")], ["SS", "SEM SALVAÇÃO", Color("ff2a2a")],
+	["SSS", "SUPREMO SACRILÉGIO", Color("ff1a5a")]]
+
+## Blasfêmia: enche com o estilo (mais rápido nos ranks altos). Cheia, G libera o ritual.
+var blas = 0.0
+var blas_on = false
 
 signal style_added(label: String)
 
@@ -218,6 +222,8 @@ func _process(dt: float) -> void:
 # ---------------- estilo ----------------
 func add_style(pts: float, label: String) -> void:
 	style = min(RANKS.size() * 100 - 1, style + pts)
+	if not blas_on:
+		blas = min(100.0, blas + pts * (0.05 + rank() * 0.025))
 	style_added.emit(label)
 
 func rank() -> int:
@@ -238,6 +244,7 @@ func hurt_player(d: float) -> bool:
 	shake = max(shake, 0.45)
 	snd("hurt", -4)
 	style = max(0.0, style - 45.0)
+	blas = max(0.0, blas - 4.0)
 	if player.hp <= 0.0:
 		main.die()
 	return true
@@ -264,7 +271,7 @@ func hurt_enemy(e, dmg: float, src: String, point: Vector3, head: bool, dir := V
 	return e.take_damage(dmg, src, head)
 
 const KILL_LABEL := {"rev": "ABATE", "rico": "RICOCHETE", "sg": "ABATE", "punch": "NOCAUTE", "parry": "DEVOLVIDO", "slam": "ESMAGADO",
-	"sword": "ESPADA ALADA", "rocket": "FOGUETE", "nail": "PREGADO", "rail": "TRESPASSADO", "harp": "ARPOADO", "gren": "GRANADA", "burn": "QUEIMADO"}
+	"sword": "ESPADA ALADA", "rocket": "FOGUETE", "nail": "PREGADO", "rail": "TRESPASSADO", "harp": "ARPOADO", "gren": "GRANADA", "burn": "QUEIMADO", "blas": "EXECUTADO"}
 var _last_src = ""
 var _streak = 0
 func on_kill(e, src: String, head: bool) -> void:

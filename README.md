@@ -63,6 +63,7 @@ Um ranking de estilo (D → ULTRA) recompensa variar as armas, acertar na cabeç
 | Trocar arma | **Q** (anterior) · **1–8** · **roda do mouse** |
 | Girar / recarregar | **R** |
 | Soco e rebater projéteis | **F** |
+| Blasfêmia (com a barra cheia) | **G** |
 | Terminal de arsenal (perto dele) | **E** |
 | Pausar / configurações | **ESC** |
 

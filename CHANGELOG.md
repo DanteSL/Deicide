@@ -1,6 +1,15 @@
 # Histórico de mudanças
 
-## Deicide (atual)
+## Trilha sonora e Blasfêmia
+
+- Trilha sonora própria, sintetizada em código (coral, órgão, sinos e percussão industrial):
+  - **Réquiem para um Deus** no menu;
+  - **Hosana em Chamas** nas ondas, em duas camadas: o coral toca sempre e a fúria (bateria, baixo e metais)
+    entra conforme o rank sobe;
+  - **Gloria Sanguinis** para Deus, com a camada de sangue somando na segunda fase.
+- Ranking de heresia (Devoto → Supremo Sacrilégio) e a barra de **Blasfêmia** (tecla G).
+
+## Deicide
 
 - O jogo passa a se chamar **Deicide**.
 - Revólver novo no mesmo estilo da escopeta (armação vermelha, cano de aço, detalhes dourados), com tambor

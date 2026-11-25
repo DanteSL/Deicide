@@ -9,7 +9,14 @@ var world: Node3D
 var vm_root: Node3D
 var player: CharacterBody3D
 var world_light: OmniLight3D
-var music: AudioStreamPlayer
+const MUS := {"menu": "res://musica/menu.ogg", "coro": "res://musica/combate_coro.ogg", "furia": "res://musica/combate_furia.ogg",
+	"gabriel": "res://sfx/gabriel_theme.ogg", "deus": "res://musica/deus.ogg", "sangue": "res://musica/deus_sangue.ogg"}
+const MUS_GROUP := {"coro": ["coro", "furia"], "furia": ["coro", "furia"], "deus": ["deus", "sangue"], "sangue": ["deus", "sangue"]}
+var mus = {}
+var mus_w = {}
+var _mus_us = 0
+var world_env: Environment
+var world_sun: DirectionalLight3D
 var slide_snd: AudioStreamPlayer
 
 var wave = 0
@@ -403,10 +410,32 @@ func _autotest(m: String) -> void:
 			var t0 = 13.0 + i * 6.0
 			rt.call(t0, func(): if G.boss: G.boss._end(false); G.boss._attack(k))
 			for j in 3: rt.call(t0 + 1.0 + j * 1.3, shot.bind("%d%s_%d" % [i, k, j]))
-		rt.call(13.0 + atks.size() * 6.0 + 8.0, func(): print("RAGE END att=", G.boss.att if G.boss else "none"); get_tree().quit())
+		rt.call(13.0 + atks.size() * 6.0 + 8.0, func(): print("RAGE END att=", G.boss.att if G.boss else "none", " mus=", mus_w); get_tree().quit())
 		return
 	if m == "ceif":
 		_ceif_test()
+		return
+	if m == "blas":
+		start_mode("train")
+		var shotb = func(nm):
+			var img = get_viewport().get_texture().get_image()
+			if img: img.save_png("/tmp/blas_%s.png" % nm)
+		var rtb = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+		rtb.call(1.0, func():
+			player.yaw = 0.0; player.pitch = -.05
+			G.style = 420.0
+			G.blas = 45.0
+			print("MUS ", mus_w, " playing coro=", mus.coro.playing, " furia=", mus.furia.playing))
+		rtb.call(2.5, func():
+			print("MUS2 ", mus_w, " blas=", G.blas, " fill=", ui.blfill.size)
+			shotb.call("antes")
+			G.blas = 100.0)
+		rtb.call(2.8, func(): shotb.call("cheia"); print("alvos ", _blas_targets().size(), " de ", G.enemies.size()); blasfemia())
+		rtb.call(3.4, func(): shotb.call("congelado"); print("ts=", Engine.time_scale, " MUS3 ", mus_w))
+		rtb.call(3.98, func(): shotb.call("raio"))
+		rtb.call(4.1, func(): shotb.call("raio2"))
+		rtb.call(5.0, func(): shotb.call("depois"); print("vivos ", G.enemies.size(), " kills ", G.stats.kills, " rank ", G.rank(), " blas_on ", G.blas_on))
+		rtb.call(8.5, func(): shotb.call("fim"); print("BLAS OK blas_on=", G.blas_on, " ts=", Engine.time_scale, " bg=", world_env.background_color); get_tree().quit())
 		return
 	start_mode(m)
 	for i in 40:
@@ -420,7 +449,7 @@ func _autotest(m: String) -> void:
 # ---------------- entrada ----------------
 func _input_map() -> void:
 	var keys = {"fwd": [KEY_W, KEY_UP], "back": [KEY_S, KEY_DOWN], "left": [KEY_A, KEY_LEFT], "right": [KEY_D, KEY_RIGHT], "jump": [KEY_SPACE],
-		"dash": [KEY_SHIFT], "slide": [KEY_C, KEY_CTRL], "punch": [KEY_F], "inspect": [KEY_R], "swap": [KEY_Q], "use": [KEY_E],
+		"dash": [KEY_SHIFT], "slide": [KEY_C, KEY_CTRL], "punch": [KEY_F], "inspect": [KEY_R], "swap": [KEY_Q], "use": [KEY_E], "blas": [KEY_G],
 		"w1": [KEY_1], "w2": [KEY_2], "w3": [KEY_3], "w4": [KEY_4], "w5": [KEY_5], "w6": [KEY_6], "w7": [KEY_7], "w8": [KEY_8], "pause": [KEY_ESCAPE]}
 	for a in keys:
 		if not InputMap.has_action(a):
@@ -433,6 +462,9 @@ func _input_map() -> void:
 func _unhandled_input(ev: InputEvent) -> void:
 	if G.state == "term":
 		if ev.is_action_pressed("pause") or ev.is_action_pressed("use"): close_term()
+		return
+	if ev.is_action_pressed("blas") and G.state == "play":
+		blasfemia()
 		return
 	if ev.is_action_pressed("pause"):
 		if G.state == "play": show_menu(true)
@@ -573,7 +605,9 @@ func _build_world() -> void:
 	var we = WorldEnvironment.new()
 	we.environment = env
 	world.add_child(we)
+	world_env = env
 	var sun = DirectionalLight3D.new()
+	world_sun = sun
 	sun.light_color = Color("ffe2c4")
 	sun.light_energy = 0.8
 	sun.rotation = Vector3(-1.0, 0.6, 0)
@@ -647,12 +681,15 @@ func world_flash(p: Vector3, e: float) -> void:
 
 # ---------------- áudio contínuo ----------------
 func _build_audio() -> void:
-	music = AudioStreamPlayer.new()
-	var ms = G.stream("gabriel_theme")
-	if ms is AudioStreamOggVorbis: ms.loop = true
-	music.stream = ms
-	music.volume_db = -80
-	add_child(music)
+	for k in MUS:
+		var mp = AudioStreamPlayer.new()
+		var ms = load(MUS[k]) if ResourceLoader.exists(MUS[k]) else null
+		if ms is AudioStreamOggVorbis: ms.loop = true
+		mp.stream = ms
+		mp.volume_db = -80
+		add_child(mp)
+		mus[k] = mp
+		mus_w[k] = 0.0
 	slide_snd = AudioStreamPlayer.new()
 	var ss = G.stream("slide")
 	if ss is AudioStreamWAV:
@@ -842,6 +879,20 @@ func _build_hud() -> void:
 	var rb = _bar(256, 5, Color(1, 1, 1, .12), Color.WHITE)
 	sty.add_child(rb[0])
 	ui.rfill = rb[1]
+	var bsp = Control.new()
+	bsp.custom_minimum_size = Vector2(0, 6)
+	sty.add_child(bsp)
+	ui.bword = _lbl("BLASFÊMIA", 13, Color("ff4a3a"), 3)
+	ui.bword.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	sty.add_child(ui.bword)
+	var bb = _bar(256, 9, Color(.25, 0, .02, .7), Color("d01a1a"))
+	sty.add_child(bb[0])
+	ui.blback = bb[0]
+	ui.blfill = bb[1]
+	ui.bkey = _lbl("[G] LIBERAR A BLASFÊMIA", 15, Color.WHITE, 4)
+	ui.bkey.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	ui.bkey.visible = false
+	sty.add_child(ui.bkey)
 	feed_box = VBoxContainer.new()
 	feed_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sty.add_child(feed_box)
@@ -1004,7 +1055,7 @@ func _upd_hud(dt: float) -> void:
 	ui.hit.modulate = Color(1, .2, .1, G.hit_v) if G.hit_kill else Color(1, 1, 1, G.hit_v)
 	# estilo
 	var rk = G.rank()
-	G.style = max(0.0, G.style - dt * (5 + rk * 4))
+	if not G.blas_on: G.style = max(0.0, G.style - dt * (5 + rk * 4))
 	var r2 = int(G.style / 100.0)
 	G.best_rank = max(G.best_rank, r2)
 	if r2 != shown_rank:
@@ -1018,6 +1069,7 @@ func _upd_hud(dt: float) -> void:
 			create_tween().tween_property(ui.rank, "scale", Vector2.ONE, .3)
 		shown_rank = r2
 	ui.rfill.size.x = 256.0 * fmod(G.style, 100.0) / 100.0
+	_upd_blas_hud()
 	ui.sty.modulate.a = 1.0 if (G.style > 0 or feed_box.get_child_count() > 0) else .35
 	if G.mode == "boss" or G.mode == "deus": ui.wave.text = ""
 	elif G.mode == "train": ui.wave.text = "TREINO · ESC PAUSA"
@@ -1219,6 +1271,8 @@ func reset() -> void:
 	wave_delay = 1.2
 	G.style = 0
 	G.best_rank = 0
+	G.blas = 0.0
+	_blas_end(true)
 	G.stats = {"kills": 0, "t": 0.0}
 	for c in feed_box.get_children(): c.queue_free()
 	if G.mode == "boss":
@@ -1474,13 +1528,214 @@ func _process(dt: float) -> void:
 	var sl: bool = G.state == "play" and player.sliding and player.is_on_floor()
 	var target = -10.0 if sl else -60.0
 	slide_snd.volume_db = lerp(slide_snd.volume_db, target, 1.0 - exp(-(25.0 if sl else 10.0) * dt))
-	# música do Gabriel
-	var want: bool = G.state == "play" and G.boss != null and is_instance_valid(G.boss) and G.boss.alive
-	if want and not music.playing:
-		music.play()
-	var mt = (-6.0 + linear_to_db(max(G.mvol, .001))) if want and G.mvol > .001 else -60.0
-	music.volume_db = lerp(music.volume_db, mt, 1.0 - exp(-(1.2 if want else 2.0) * dt))
-	if not want and music.playing and music.volume_db < -55: music.stop()
-	var base_p = .8 if (want and G.boss.kind == "deus") else 1.0
-	if want and G.boss.hp < G.boss.max_hp * .5: music.pitch_scale = base_p * 1.06
-	else: music.pitch_scale = base_p
+	_upd_music()
+
+
+# ---------------- música em camadas ----------------
+## coro sempre nas ondas; fúria entra conforme o rank; Deus ganha a camada de sangue na fase 2.
+func _upd_music() -> void:
+	var now = Time.get_ticks_usec()
+	var dt = clamp((now - _mus_us) / 1000000.0, 0.0, .1) if _mus_us > 0 else 0.016
+	_mus_us = now
+	var tgt = {}
+	for k in MUS: tgt[k] = 0.0
+	var boss_ok: bool = G.boss != null and is_instance_valid(G.boss) and G.boss.alive
+	if G.state == "menu":
+		tgt.menu = 1.0
+	elif started:
+		if boss_ok and G.boss.kind == "deus":
+			tgt.deus = 1.0
+			tgt.sangue = 1.0 if G.boss.ph2 else 0.0
+		elif boss_ok:
+			tgt.gabriel = 1.0
+		else:
+			var fighting: bool = G.enemies.size() > 0 or wave_active or G.mode == "train"
+			tgt.coro = 1.0 if fighting else .5
+			tgt.furia = clamp((G.style - 100.0) / 250.0, 0.0, 1.0) if fighting else 0.0
+			if G.blas_on: tgt.furia = 1.0
+		var k2 = {"paused": .4, "term": .55, "dead": .3}.get(G.state, 1.0)
+		if G.blas_on and Engine.time_scale < .5: k2 = .12
+		for k in tgt: tgt[k] *= k2
+	for k in MUS:
+		var p: AudioStreamPlayer = mus[k]
+		if p.stream == null: continue
+		var w: float = mus_w[k]
+		var up: float = 2.5 if k == "furia" else 1.2
+		var down: float = .35 if k == "furia" else 1.0
+		w = move_toward(w, tgt[k], (up if tgt[k] > w else down) * dt)
+		mus_w[k] = w
+		var grp: Array = MUS_GROUP.get(k, [k])
+		if tgt[k] > 0.0 and not p.playing:
+			for g in grp: mus[g].play()
+		var vol = w * G.mvol
+		p.volume_db = (-4.0 + linear_to_db(vol)) if vol > .0005 else -80.0
+	for k in MUS:
+		var grp: Array = MUS_GROUP.get(k, [k])
+		var silent = true
+		for g in grp:
+			if mus_w[g] > .0005 or tgt[g] > 0.0: silent = false
+		if silent and mus[k].playing: mus[k].stop()
+	mus.gabriel.pitch_scale = 1.06 if (boss_ok and G.boss.kind != "deus" and G.boss.ph2) else 1.0
+
+# ---------------- Blasfêmia ----------------
+var _blas_marks: Array = []
+var _blas_env_tw: Tween
+
+func _upd_blas_hud() -> void:
+	var full: bool = G.blas >= 100.0
+	ui.blfill.size.x = 256.0 * G.blas / 100.0
+	var pulse = .5 + .5 * sin(Time.get_ticks_msec() / 90.0)
+	ui.blfill.color = Color("d01a1a").lerp(Color("ffe0d0"), pulse * .8) if full else Color("d01a1a")
+	ui.bkey.visible = full and not G.blas_on
+	ui.bkey.modulate = Color(1, .35 + .65 * pulse, .3 + .7 * pulse)
+	ui.bword.text = "BLASFÊMIA" + (" · CHEIA" if full else "")
+	if G.blas_on:
+		ui.rank.text = "SSS"
+		ui.rword.text = "DEICIDA"
+		ui.sty.modulate = Color(1, .1 + .2 * pulse, .15)
+		shown_rank = -1
+
+func _blas_targets() -> Array:
+	var out = []
+	var cam: Camera3D = G.cam
+	var space = world.get_world_3d().direct_space_state
+	var list = G.enemies.duplicate()
+	if G.boss != null and is_instance_valid(G.boss) and not list.has(G.boss): list.append(G.boss)
+	for e in list:
+		if not is_instance_valid(e) or not e.alive: continue
+		var c: Vector3 = e.center() if e.has_method("center") else e.global_position
+		if not cam.is_position_in_frustum(c): continue
+		if not e.get("is_boss"):
+			var q = PhysicsRayQueryParameters3D.create(cam.global_position, c, 1)
+			if space.intersect_ray(q): continue
+		out.append(e)
+	return out
+
+func blasfemia() -> void:
+	if G.blas < 100.0 or G.blas_on: return
+	G.blas_on = true
+	G.blas = 0.0
+	G.snd("blasfemia", 0)
+	banner("BLASFÊMIA", "o céu se cala")
+	G.shake = max(G.shake, .4)
+	var targets = _blas_targets()
+	# o céu escurece e fica vermelho
+	if _blas_env_tw: _blas_env_tw.kill()
+	_blas_env_tw = create_tween().set_parallel().set_ignore_time_scale()
+	_blas_env_tw.tween_property(world_env, "background_color", Color("050000"), .35)
+	_blas_env_tw.tween_property(world_env, "fog_light_color", Color("120000"), .35)
+	_blas_env_tw.tween_property(world_env, "ambient_light_color", Color("ff3020"), .35)
+	_blas_env_tw.tween_property(world_env, "ambient_light_energy", .55, .35)
+	_blas_env_tw.tween_property(world_sun, "light_energy", 0.0, .35)
+	# o tempo para; marcas de julgamento sobre cada alvo
+	Engine.time_scale = 0.03
+	for e in targets:
+		var mk = MeshInstance3D.new()
+		var cm = CylinderMesh.new()
+		cm.top_radius = .08
+		cm.bottom_radius = .08
+		cm.height = 120
+		mk.mesh = cm
+		var mt: StandardMaterial3D = G.unshaded(Color(1, .1, .05, .35)).duplicate()
+		mt.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mk.material_override = mt
+		world.add_child(mk)
+		var c: Vector3 = e.center() if e.has_method("center") else e.global_position
+		mk.global_position = c + Vector3(0, 60, 0)
+		_blas_marks.append(mk)
+	get_tree().create_timer(1.1, true, false, true).timeout.connect(_blas_strike.bind(targets))
+
+func _blas_strike(targets: Array) -> void:
+	for mk in _blas_marks:
+		if is_instance_valid(mk): mk.queue_free()
+	_blas_marks.clear()
+	Engine.time_scale = 1.0
+	if G.state != "play" and G.state != "paused":
+		_blas_end(false)
+		return
+	G.shake = 1.2
+	G.flash = .7
+	var n = 0
+	for e in targets:
+		if not is_instance_valid(e) or not e.alive: continue
+		var c: Vector3 = e.center() if e.has_method("center") else e.global_position
+		_bolt(c, n * .06)
+		var boss: bool = e.get("is_boss") == true
+		var dmg: float = e.max_hp * .08 if boss else 99999.0
+		var tgt = e
+		G.later(n * .06, func():
+			if is_instance_valid(tgt) and tgt.alive:
+				G.emit("blood", c, 30, 14, .16, .9)
+				G.emit("blood2", c, 20, 9, .2, 1.1)
+				G.hurt_enemy(tgt, dmg, "blas", c, false))
+		n += 1
+	G.add_style(150, "BLASFÊMIA")
+	G.style = G.RANKS.size() * 100 - 1
+	get_tree().create_timer(2.6, true, false, true).timeout.connect(_blas_end.bind(false))
+
+func _bolt(p: Vector3, delay: float) -> void:
+	var root = Node3D.new()
+	world.add_child(root)
+	root.global_position = p
+	var segs = 7
+	var top = p + Vector3(G.rnd(-6, 6), 70, G.rnd(-6, 6))
+	var prev = top
+	var mat: StandardMaterial3D = G.unshaded(Color(1, .85, .8)).duplicate()
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	var hmat: StandardMaterial3D = G.unshaded(Color(1, .05, .02, .35)).duplicate()
+	hmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	hmat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	for i in segs:
+		var u = float(i + 1) / segs
+		var nxt = top.lerp(p, u) + (Vector3(G.rnd(-2.5, 2.5), 0, G.rnd(-2.5, 2.5)) * (1.0 - u) if i < segs - 1 else Vector3.ZERO)
+		var m = MeshInstance3D.new()
+		var bm = BoxMesh.new()
+		var L = prev.distance_to(nxt)
+		bm.size = Vector3(.5, .5, L)
+		m.mesh = bm
+		m.material_override = mat
+		root.add_child(m)
+		var halo = MeshInstance3D.new()
+		var hm = BoxMesh.new()
+		hm.size = Vector3(1.6, 1.6, L)
+		halo.mesh = hm
+		halo.material_override = hmat
+		m.add_child(halo)
+		m.global_position = (prev + nxt) * .5
+		m.look_at(nxt, Vector3.UP if abs((nxt - prev).normalized().y) < .99 else Vector3.RIGHT)
+		prev = nxt
+	var glow = OmniLight3D.new()
+	glow.light_color = Color(1, .2, .1)
+	glow.omni_range = 18
+	glow.light_energy = 0
+	root.add_child(glow)
+	root.visible = false
+	var tw = create_tween()
+	tw.tween_interval(delay)
+	tw.tween_callback(func():
+		root.visible = true
+		glow.light_energy = 9
+		G.snd("raio", -3, G.rnd(.85, 1.1))
+		world_flash(p, 6))
+	tw.tween_property(mat, "albedo_color", Color(1, .1, .05, 0), .45)
+	tw.parallel().tween_property(hmat, "albedo_color", Color(1, .05, .02, 0), .45)
+	tw.parallel().tween_property(glow, "light_energy", 0.0, .45)
+	tw.tween_callback(root.queue_free)
+
+func _blas_end(instant: bool) -> void:
+	for mk in _blas_marks:
+		if is_instance_valid(mk): mk.queue_free()
+	_blas_marks.clear()
+	if G.blas_on and Engine.time_scale < .5: Engine.time_scale = 1.0
+	G.blas_on = false
+	shown_rank = -1
+	if world_env == null: return
+	if _blas_env_tw: _blas_env_tw.kill()
+	var vals = {"background_color": Color("2b0b0e"), "fog_light_color": Color("2b0b0e"), "ambient_light_color": Color("d0a088"), "ambient_light_energy": .75}
+	if instant:
+		for k in vals: world_env.set(k, vals[k])
+		world_sun.light_energy = .8
+		return
+	_blas_env_tw = create_tween().set_parallel().set_ignore_time_scale()
+	for k in vals: _blas_env_tw.tween_property(world_env, k, vals[k], 1.5)
+	_blas_env_tw.tween_property(world_sun, "light_energy", .8, 1.5)

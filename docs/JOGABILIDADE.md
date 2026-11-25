@@ -18,11 +18,22 @@ cura mais. Por isso o jogo recompensa lutar de perto.
 
 ## Estilo
 
-Cada ação estilosa soma pontos e sobe o ranking no canto da tela:
-**D → C → B → A → S → SS → SSS → ULTRA**.
+Cada ação estilosa soma pontos e sobe o ranking de heresia no canto da tela:
+**D Devoto → C Cético → B Herege → A Apóstata → S Sem Fé → SS Sem Salvação → SSS Supremo Sacrilégio**.
 
 Valem mais: tiros na cabeça, ricochetes, aparar projéteis, abates no ar, trocar de arma rápido
 (**TROCA RÁPIDA**) e variar as armas. Repetir a mesma coisa rende menos. O ranking cai se você parar de agir.
+
+## Blasfêmia
+
+Abaixo do ranking fica a barra de **Blasfêmia**. Ela enche com o estilo, mais rápido quanto mais alto o rank,
+e perde um pouco quando você leva dano. Cheia, aperte **G**:
+
+1. o tempo para, o céu escurece e fica vermelho, e uma marca desce sobre cada inimigo **visível na tela**;
+2. um segundo depois, raios caem do céu e **executam** todos os marcados (chefes perdem 8% da vida);
+3. o ranking vai direto para **SSS — DEICIDA**.
+
+Inimigos atrás de paredes ou fora da tela escapam, então escolha bem a hora.
 
 ## Aparar (soco)
 
