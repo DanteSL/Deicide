@@ -1,4 +1,4 @@
-# Fúria de Aço
+# Deicide
 
 FPS frenético no estilo ULTRAKILL, feito em **Godot 4.7** (GDScript).
 

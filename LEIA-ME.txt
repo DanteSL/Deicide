@@ -1,4 +1,4 @@
-FÚRIA DE AÇO — versão Godot 4.7 (etapa 2 — completa)
+DEICIDE — Godot 4.7
 
 COMO ABRIR
 1. Abra o Godot (Downloads\Godot\Godot_v4.7.2-stable_win64.exe).

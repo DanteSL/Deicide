@@ -1080,7 +1080,7 @@ func _build_menus() -> void:
 	title.add_theme_font_size_override("normal_font_size", 84)
 	title.add_theme_color_override("font_outline_color", Color.BLACK)
 	title.add_theme_constant_override("outline_size", 10)
-	title.text = "[color=#e8261a]FÚRIA[/color] [color=#e0a83a]DE[/color] [color=#e8261a]AÇO[/color]"
+	title.text = "[color=#e8261a]DEI[/color][color=#e0a83a]CIDE[/color]"
 	v.add_child(title)
 	ui.msub = _lbl("ESCOLHA O MODO", 18, Color("c9b2a6"), 2)
 	v.add_child(ui.msub)
