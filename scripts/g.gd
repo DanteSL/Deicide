@@ -36,6 +36,8 @@ const RANKS := [
 
 ## Blasfêmia: enche com o estilo (mais rápido nos ranks altos). Cheia, G libera o ritual.
 var blas = 0.0
+## recordes por modo: {"waves": {"rank": 5, "wave": 12, "kills": 80}}
+var rec = {}
 var blas_on = false
 
 signal style_added(label: String)
@@ -407,6 +409,8 @@ func load_save() -> void:
 		retro = bool(cf.get_value("cfg", "retro", retro))
 		vol = float(cf.get_value("cfg", "vol", vol))
 		mvol = float(cf.get_value("cfg", "mvol", mvol))
+		var r = cf.get_value("rec", "all", {})
+		if r is Dictionary: rec = r
 	apply_volume()
 
 func apply_volume() -> void:
@@ -423,4 +427,5 @@ func save() -> void:
 	cf.set_value("cfg", "retro", retro)
 	cf.set_value("cfg", "vol", vol)
 	cf.set_value("cfg", "mvol", mvol)
+	cf.set_value("rec", "all", rec)
 	cf.save(SAVE)

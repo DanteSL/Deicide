@@ -7,6 +7,8 @@
   - **Hosana em Chamas** nas ondas, em duas camadas: o coral toca sempre e a fúria (bateria, baixo e metais)
     entra conforme o rank sobe;
   - **Gloria Sanguinis** para Deus, com a camada de sangue somando na segunda fase.
+- Menu principal novo, desenhado em código: auréola quebrada cheia de olhos, raios de luz, cinzas e sangue,
+  painel com descrição, perigo e recorde de cada modo, configurações e controles.
 - Ranking de heresia (Devoto → Supremo Sacrilégio) e a barra de **Blasfêmia** (tecla G).
 
 ## Deicide

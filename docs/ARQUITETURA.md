@@ -9,6 +9,7 @@ cria a arena, as luzes, o HUD, os menus e o jogador. Isso facilita mudar tudo pe
 |---|---|
 | `g.gd` (autoload `G`) | Estado global (modo, estado, inimigos, projéteis, chefe), sons (`G.snd`), partículas (`G.emit`), traçantes, dano (`G.hurt_enemy`, `G.hurt_player`, `G.blast`), estilo, temporizadores de jogo (`G.later`), armas/melhorias e salvamento. |
 | `main.gd` | Arena e materiais, dois viewports (mundo e arma em primeira pessoa), HUD, menus, ondas, projéteis inimigos, terminal de arsenal, música e os modos de teste automático. |
+| `menu_ui.gd` | Menu principal e de pausa: arte de fundo desenhada em `_draw()`, lista de modos, páginas de modo, configurações e controles. |
 | `player.gd` | `CharacterBody3D` do jogador: movimento, dash, deslize, pisão, pulo na parede, câmera e repasse da entrada para as armas. |
 | `weapons.gd` | Viewmodel e lógica do revólver, escopeta e soco/aparar; troca de armas, recargas e animações (giro, recuo, balanço). |
 | `extra_weapons.gd` | As outras 6 armas: modelos, projéteis no mundo e botão direito de cada uma. |

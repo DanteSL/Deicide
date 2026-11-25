@@ -380,9 +380,21 @@ func _autotest(m: String) -> void:
 		rt.call(6.8, func(): get_tree().quit())
 		return
 	if m == "menu":
-		get_tree().create_timer(1.5, true, false, true).timeout.connect(func():
-			get_viewport().get_texture().get_image().save_png("/tmp/menu.png")
-			get_tree().quit())
+		var rtm = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+		var shm = func(nm): get_viewport().get_texture().get_image().save_png("/tmp/menu_%s.png" % nm)
+		G.rec["waves"] = {"rank": 5, "wave": 14, "kills": 212}
+		rtm.call(1.5, func(): shm.call("a"); print("ts=", Engine.time_scale, " size=", menu.size, " mod=", menu.modulate))
+		rtm.call(1.6, func(): menu.buttons[4].grab_focus())
+		rtm.call(2.1, shm.bind("deus"))
+		rtm.call(2.2, func(): menu._show_page("cfg"); menu.buttons[6].grab_focus())
+		rtm.call(2.7, shm.bind("cfg"))
+		rtm.call(2.8, func(): menu._show_page("ctl"))
+		rtm.call(3.2, shm.bind("ctl"))
+		rtm.call(3.3, func(): start_mode("waves"))
+		rtm.call(5.0, func(): show_menu(true))
+		rtm.call(5.6, shm.bind("pause"))
+		rtm.call(5.8, func(): quit_to_menu())
+		rtm.call(6.5, func(): shm.call("volta"); print("MENU OK state=", G.state, " started=", started, " enemies=", G.enemies.size()); get_tree().quit())
 		return
 	if m == "deus":
 		_deus_test()
@@ -1114,95 +1126,10 @@ func _build_menus() -> void:
 	var layer = CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
-	menu = ColorRect.new()
-	menu.color = Color(0.06, 0.01, 0.015, 0.88)
+	menu = preload("res://scripts/menu_ui.gd").new()
 	menu.set_anchors_preset(Control.PRESET_FULL_RECT)
 	layer.add_child(menu)
-	var center = CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	menu.add_child(center)
-	var v = VBoxContainer.new()
-	v.custom_minimum_size = Vector2(860, 0)
-	v.add_theme_constant_override("separation", 14)
-	center.add_child(v)
-	var title = RichTextLabel.new()
-	title.bbcode_enabled = true
-	title.fit_content = true
-	title.scroll_active = false
-	title.add_theme_font_size_override("normal_font_size", 84)
-	title.add_theme_color_override("font_outline_color", Color.BLACK)
-	title.add_theme_constant_override("outline_size", 10)
-	title.text = "[color=#e8261a]DEI[/color][color=#e0a83a]CIDE[/color]"
-	v.add_child(title)
-	ui.msub = _lbl("ESCOLHA O MODO", 18, Color("c9b2a6"), 2)
-	v.add_child(ui.msub)
-	var btns = HBoxContainer.new()
-	btns.add_theme_constant_override("separation", 14)
-	v.add_child(btns)
-	ui.cont = _btn("CONTINUAR", func(): resume())
-	btns.add_child(ui.cont)
-	btns.add_child(_btn("ONDAS", func(): start_mode("waves")))
-	btns.add_child(_btn("TREINO", func(): start_mode("train"), true))
-	btns.add_child(_btn("GABRIEL", func(): start_mode("boss"), true))
-	btns.add_child(_btn("DEUS", func(): start_mode("deus"), true))
-	v.add_child(_lbl("CONTROLES", 20, Color("e0a83a"), 2))
-	var grid = GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 40)
-	v.add_child(grid)
-	for c in [["Mover", "W A S D"], ["Pular / pulo na parede", "ESPAÇO"], ["Dash (3 cargas, invencível)", "SHIFT"], ["Deslizar / pisão no ar", "C"],
-		["Atirar", "CLIQUE ESQ."], ["Especial da arma", "CLIQUE DIR."], ["Soco / aparar projétil", "F"],
-		["Girar / recarregar", "R"], ["Trocar arma", "Q · 1–8 · RODA"], ["Terminal de arsenal (perto dele)", "E"], ["Pausar", "ESC"]]:
-		var hb = HBoxContainer.new()
-		hb.custom_minimum_size = Vector2(400, 0)
-		hb.add_child(_lbl(c[0], 16, Color.WHITE, 2))
-		var s = Control.new()
-		s.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		hb.add_child(s)
-		hb.add_child(_lbl(c[1], 15, Color("e0a83a"), 2))
-		grid.add_child(hb)
-	var set = HBoxContainer.new()
-	set.add_theme_constant_override("separation", 22)
-	v.add_child(set)
-	set.add_child(_lbl("Sensibilidade", 16, Color.WHITE, 2))
-	var sens = HSlider.new()
-	sens.min_value = 0.3; sens.max_value = 3.0; sens.step = 0.1; sens.value = G.sens_mult
-	sens.custom_minimum_size = Vector2(150, 24)
-	sens.value_changed.connect(func(x): G.sens_mult = x; G.save())
-	set.add_child(sens)
-	set.add_child(_lbl("Campo de visão", 16, Color.WHITE, 2))
-	var fov = HSlider.new()
-	fov.min_value = 80; fov.max_value = 120; fov.step = 1; fov.value = G.fov_base
-	fov.custom_minimum_size = Vector2(150, 24)
-	fov.value_changed.connect(func(x): G.fov_base = x; G.save())
-	set.add_child(fov)
-	var retro = CheckBox.new()
-	retro.text = "Visual retrô pixelado"
-	retro.button_pressed = G.retro
-	retro.toggled.connect(func(on): G.retro = on; _apply_settings(); G.save())
-	set.add_child(retro)
-	# volume geral e da música
-	var vrow = HBoxContainer.new()
-	vrow.add_theme_constant_override("separation", 22)
-	v.add_child(vrow)
-	for item in [["Volume", "vol"], ["Música", "mvol"]]:
-		vrow.add_child(_lbl(item[0], 16, Color.WHITE, 2))
-		var sl = HSlider.new()
-		sl.min_value = 0; sl.max_value = 100; sl.step = 1
-		sl.value = round(float(G.get(item[1])) * 100)
-		sl.custom_minimum_size = Vector2(220, 24)
-		var pct = _lbl("%d%%" % int(sl.value), 15, Color("e0a83a"), 2)
-		pct.custom_minimum_size = Vector2(48, 0)
-		var key = item[1]
-		sl.value_changed.connect(func(x):
-			G.set(key, x / 100.0)
-			pct.text = "%d%%" % int(x)
-			G.apply_volume()
-			G.save())
-		sl.drag_ended.connect(func(_c): if key == "vol": G.snd("click", -2))
-		vrow.add_child(sl)
-		vrow.add_child(pct)
-	v.add_child(_lbl("Cure-se com sangue: dano de perto recupera vida. Apare as esferas laranja com F para devolvê-las.", 14, Color("a8928a"), 2))
+	menu.setup(self)
 	# tela de morte
 	dead_ov = ColorRect.new()
 	dead_ov.color = Color(0.06, 0.01, 0.015, 0.9)
@@ -1218,14 +1145,17 @@ func _build_menus() -> void:
 	v2.add_child(_lbl("VOCÊ CAIU", 84, Color("e8261a"), 10))
 	ui.dstats = _lbl("", 22)
 	v2.add_child(ui.dstats)
-	v2.add_child(_btn("DE NOVO", func(): start_mode(G.mode)))
+	var dh = HBoxContainer.new()
+	dh.add_theme_constant_override("separation", 14)
+	v2.add_child(dh)
+	dh.add_child(_btn("DE NOVO", func(): start_mode(G.mode)))
+	dh.add_child(_btn("MENU", func(): quit_to_menu(), true))
 	_build_term_ui(layer)
 
 func show_menu(paused: bool) -> void:
 	G.state = "paused" if paused else "menu"
-	ui.cont.visible = paused
-	ui.msub.text = ("PAUSADO · " + {"waves": "ONDAS", "train": "TREINO", "boss": "GABRIEL", "deus": "DEUS"}[G.mode]) if paused else "ESCOLHA O MODO"
-	menu.visible = true
+	dead_ov.visible = false
+	menu.open(paused)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	player.fire_held = false
 	player.weapons.alt_release()
@@ -1243,7 +1173,29 @@ func start_mode(m: String) -> void:
 	started = true
 	resume()
 
+func _store_record() -> void:
+	if not started or G.stats.t < 1.0: return
+	var r: Dictionary = G.rec.get(G.mode, {})
+	r["rank"] = max(int(r.get("rank", 0)), G.best_rank)
+	r["kills"] = max(int(r.get("kills", 0)), int(G.stats.kills))
+	if G.mode == "waves": r["wave"] = max(int(r.get("wave", 0)), wave)
+	G.rec[G.mode] = r
+	G.save()
+
+func quit_to_menu() -> void:
+	_store_record()
+	started = false
+	reset()
+	for e in G.enemies:
+		if is_instance_valid(e): e.queue_free()
+	G.enemies.clear()
+	if G.boss and is_instance_valid(G.boss): G.boss.queue_free()
+	G.boss = null
+	G.clear_timers()
+	show_menu(false)
+
 func die() -> void:
+	_store_record()
 	player.dead = true
 	G.state = "dead"
 	var t = int(G.stats.t)
@@ -1252,6 +1204,7 @@ func die() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 func reset() -> void:
+	_store_record()
 	for e in G.enemies:
 		if is_instance_valid(e): e.queue_free()
 	G.enemies.clear()
