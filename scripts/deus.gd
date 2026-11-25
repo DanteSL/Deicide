@@ -51,6 +51,8 @@ var flood_y = -.6
 var flood_t = .45
 var hand_proj = []
 var inv = false
+## true enquanto Deus espera no altar / durante a cutscene: anima, mas não age
+var cine = false
 var dying = false
 var die_t = 0.0
 var gfx = []
@@ -392,6 +394,11 @@ func _physics_process(dt: float) -> void:
 		crest_r = max(.2, crest_r - dt * .15)
 		return
 	if not alive: return
+	if cine:
+		_anim(dt)
+		_upd_crest(dt)
+		_fx(dt)
+		return
 	_anim(dt)
 	# reação da crista ao golpe atual
 	var tsp = .18 if not ph2 else .3

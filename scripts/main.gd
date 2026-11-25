@@ -16,6 +16,14 @@ var mus = {}
 var mus_w = {}
 var _mus_us = 0
 var world_env: Environment
+var build_root: Node3D
+var arena_root: Node3D
+var trono: Node3D
+var level := "arena"
+const LEVEL_ENV := {
+	"arena": {"background_color": Color("2b0b0e"), "fog_light_color": Color("2b0b0e"), "ambient_light_color": Color("d0a088"), "ambient_light_energy": .75, "fog_depth_begin": 28.0, "fog_depth_end": 125.0, "sun": .8},
+	"trono": {"background_color": Color("160205"), "fog_light_color": Color("2a0a0c"), "ambient_light_color": Color("e8d2c0"), "ambient_light_energy": .55, "fog_depth_begin": 50.0, "fog_depth_end": 190.0, "sun": .55},
+}
 var world_sun: DirectionalLight3D
 var slide_snd: AudioStreamPlayer
 
@@ -41,6 +49,9 @@ func _ready() -> void:
 	G.main = self
 	_input_map()
 	_build_viewports()
+	arena_root = Node3D.new()
+	arena_root.name = "Arena"
+	build_root = arena_root
 	_build_world()
 	player = CharacterBody3D.new()
 	player.set_script(preload("res://scripts/player.gd"))
@@ -48,6 +59,12 @@ func _ready() -> void:
 	G.player = player
 	player.global_position = Vector3(0, 2.3, 26)
 	_build_terminal()
+	world.add_child(arena_root)
+	trono = Node3D.new()
+	trono.name = "SalaDoTrono"
+	trono.set_script(preload("res://scripts/trono.gd"))
+	trono.build(self)
+	build_root = world
 	_build_audio()
 	_build_hud()
 	_build_menus()
@@ -72,7 +89,7 @@ func _build_terminal() -> void:
 	var t = Node3D.new()
 	t.position = TERM_POS
 	t.rotation.y = -PI / 2
-	world.add_child(t)
+	build_root.add_child(t)
 	var dk = G.lit(Color("2a2c33"), .6, .3)
 	var bz = G.lit(Color("8a8070"), .8, .1)
 	var parts = [[Vector3(1.6, .9, .8), dk, Vector3(0, .45, 0)], [Vector3(1.64, .06, .84), bz, Vector3(0, .92, 0)],
@@ -114,7 +131,7 @@ func _build_terminal() -> void:
 	term_light.omni_range = 7
 	term_light.light_energy = 1.2
 	term_light.position = TERM_POS + Vector3(-.8, 1.4, 0)
-	world.add_child(term_light)
+	build_root.add_child(term_light)
 
 func _build_term_ui(layer: CanvasLayer) -> void:
 	term_ov = ColorRect.new()
@@ -250,7 +267,7 @@ func close_term() -> void:
 
 func _upd_term() -> void:
 	var p = player.global_position
-	near_term = Vector2(p.x - TERM_POS.x, p.z - TERM_POS.z).length() < 3.2 and abs(p.y - TERM_POS.y) < 1.6
+	near_term = level == "arena" and Vector2(p.x - TERM_POS.x, p.z - TERM_POS.z).length() < 3.2 and abs(p.y - TERM_POS.y) < 1.6
 	term_light.light_energy = 1.0 + sin(Time.get_ticks_msec() / 90.0) * .15 + (-.6 if G.rng.randf() < .02 else 0.0)
 
 func _auto_step(i: int) -> void:
@@ -276,8 +293,13 @@ func _auto_step(i: int) -> void:
 
 var _aim_boss = false
 var _aim_e = null
+func _skip_cut_test() -> void:
+	trono._start_cut()
+	trono._end_cut(true)
+
 func _deus_test() -> void:
 	start_mode("deus")
+	_skip_cut_test()
 	_aim_boss = true
 	G.fov_base = 75.0
 	player.global_position = Vector3(0, 1, 6)
@@ -401,6 +423,8 @@ func _autotest(m: String) -> void:
 		return
 	if m == "rage":
 		start_mode("deus")
+		_skip_cut_test()
+		player.global_position = Vector3(0, 1, 6)
 		_aim_boss = true
 		G.fov_base = 80.0
 		var rt = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
@@ -426,6 +450,33 @@ func _autotest(m: String) -> void:
 		return
 	if m == "ceif":
 		_ceif_test()
+		return
+	if m == "trono":
+		start_mode("deus")
+		var rtt = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+		var sht = func(nm): get_viewport().get_texture().get_image().save_png("/tmp/tr_%s.png" % nm)
+		var view = func(pos, at, nm):
+			trono.cam.global_position = pos
+			trono.cam.look_at(at, Vector3.UP)
+			trono.cam.make_current()
+		rtt.call(1.5, sht.bind("0corredor"))
+		rtt.call(1.6, func(): player.global_position = Vector3(0, 1.2, 57))
+		rtt.call(5.8, sht.bind("1porta"))
+		rtt.call(6.0, func(): player.global_position = Vector3(0, 1.2, 40))
+		rtt.call(6.6, sht.bind("2salao_jogador"))
+		rtt.call(6.7, func(): view.call(Vector3(0, 30, 44), Vector3(0, 8, -50), ""))
+		rtt.call(7.0, sht.bind("3geral"))
+		rtt.call(7.1, func(): view.call(Vector3(34, 7, 34), Vector3(0, 4, -10), ""))
+		rtt.call(7.4, sht.bind("4fontes"))
+		rtt.call(7.5, func(): view.call(Vector3(-20, 14, -10), Vector3(-46, 14, -30), ""))
+		rtt.call(7.8, sht.bind("5cachoeiras"))
+		rtt.call(7.9, func(): view.call(Vector3(0, 14, -26), Vector3(0, 22, -66), ""))
+		rtt.call(8.2, sht.bind("6trono"))
+		rtt.call(8.3, func(): player.cam.make_current(); player.global_position = Vector3(0, 1.2, 13))
+		for k in [1.5, 5.0, 9.5, 13.5, 18.0, 20.8]:
+			rtt.call(8.6 + k, sht.bind("c_%04.1f" % k))
+		rtt.call(8.6 + 23.0, func(): sht.call("z_luta"); print("TRONO stage=", trono.stage, " cine=", G.boss.cine if G.boss else "-", " inv=", G.boss.inv if G.boss else "-", " frozen=", player.frozen, " mus=", mus_w))
+		rtt.call(8.6 + 27.0, func(): sht.call("z_luta2"); print("TRONO OK att=", G.boss.att if G.boss else "-", " pos=", G.boss.global_position if G.boss else "-"); get_tree().quit())
 		return
 	if m == "blas":
 		start_mode("train")
@@ -590,7 +641,7 @@ func box(x: float, y: float, z: float, w: float, h: float, d: float, mat: Materi
 	cs.shape = bs
 	sb.add_child(cs)
 	sb.position = Vector3(x, y + h / 2.0, z)
-	world.add_child(sb)
+	build_root.add_child(sb)
 
 func deco(p: Vector3, s: Vector3, c: Color) -> void:
 	var mi = MeshInstance3D.new()
@@ -599,7 +650,7 @@ func deco(p: Vector3, s: Vector3, c: Color) -> void:
 	mi.mesh = bm
 	mi.material_override = G.unshaded(c)
 	mi.position = p
-	world.add_child(mi)
+	build_root.add_child(mi)
 
 func _build_world() -> void:
 	var env = Environment.new()
@@ -1056,7 +1107,7 @@ func _upd_hud(dt: float) -> void:
 		r.color = col if i < a else Color(1, 1, 1, .13)
 	var scoped: bool = id == "rail" and w.zoom and X.zb > .7 and G.state == "play"
 	ui.scope.visible = scoped
-	vpc2.visible = not scoped
+	vpc2.visible = not scoped and not player.frozen
 	if term_light: _upd_term()
 	ui.prompt.visible = near_term and G.state == "play"
 	G.hurt_v *= exp(-dt * 3)
@@ -1088,7 +1139,7 @@ func _upd_hud(dt: float) -> void:
 	elif wave > 0: ui.wave.text = "ONDA %d · %d RESTANTES" % [wave, G.enemies.size() + queue.size()]
 	else: ui.wave.text = "PREPARE-SE"
 	var bs = G.boss
-	if bs and is_instance_valid(bs) and bs.alive and bs.spawn_t <= 0:
+	if bs and is_instance_valid(bs) and bs.alive and bs.spawn_t <= 0 and not bs.get("cine"):
 		ui.boss.visible = true
 		var wv: float = max(0.0, bs.hp / bs.max_hp * 100.0)
 		if wv < b_last:
@@ -1215,7 +1266,8 @@ func reset() -> void:
 		if is_instance_valid(p.m): p.m.queue_free()
 	G.projs.clear()
 	G.clear_timers()
-	player.reset_at(Vector3(0, 2.3, 26))
+	_set_level("trono" if G.mode == "deus" else "arena")
+	player.reset_at(Vector3(0, 2.3, 104) if level == "trono" else Vector3(0, 2.3, 26))
 	player.weapons.reset_ammo()
 	player.weapons.switch_to(G.loadout[0], true)
 	wave = 0
@@ -1231,13 +1283,47 @@ func reset() -> void:
 	if G.mode == "boss":
 		G.later(1.2, respawn_gabriel)
 	elif G.mode == "deus":
-		G.later(1.2, respawn_deus)
+		spawn_deus_cine()
 	elif G.mode == "train":
 		for d in [["husk", -8, 12], ["husk", 0, 8], ["husk", 8, 12], ["brute", 0, -8], ["drone", -14, 4], ["drone", 14, 4]]:
 			spawn_enemy(d[0], Vector3(d[1], 0, d[2]), true)
 		banner("TREINO", "ALVOS INFINITOS")
 
 # ---------------- inimigos e ondas ----------------
+func _set_level(l: String) -> void:
+	if trono == null: return
+	if l != level:
+		if l == "trono":
+			world.remove_child(arena_root)
+			world.add_child(trono)
+		else:
+			world.remove_child(trono)
+			world.add_child(arena_root)
+		level = l
+	if trono: trono.reset_state()
+	var E: Dictionary = LEVEL_ENV[level]
+	for k in E:
+		if k != "sun": world_env.set(k, E[k])
+	world_sun.light_energy = E.sun
+	world_sun.light_color = Color("ffe2c4") if level == "arena" else Color("fff4e8")
+
+## Deus já espera no alto do altar; a luta só começa depois da cutscene.
+func spawn_deus_cine() -> void:
+	if not ResourceLoader.exists("res://deus/deus.glb"): return
+	var dn = Node3D.new()
+	dn.set_script(preload("res://scripts/deus.gd"))
+	world.add_child(dn)
+	dn.setup(Vector3(0, 0, -60))
+	dn.cine = true
+	dn.inv = true
+	dn.spawn_t = 0.0
+	dn.global_position = trono.DEUS_POS
+	dn.rotation.y = 0.0
+	G.boss = dn
+	G.enemies.append(dn)
+	trono.deus = dn
+	if ui.has("bname"): ui.bname.text = "Deus"
+
 func respawn_deus() -> void:
 	if G.mode == "deus" and G.boss == null: spawn_enemy("deus", Vector3(0, 0, -30))
 
@@ -1495,6 +1581,9 @@ func _upd_music() -> void:
 	var boss_ok: bool = G.boss != null and is_instance_valid(G.boss) and G.boss.alive
 	if G.state == "menu":
 		tgt.menu = 1.0
+	elif started and level == "trono" and trono.stage != "fight":
+		tgt.menu = .25 if trono.stage == "cut" else .85
+		if G.state == "paused": tgt.menu *= .4
 	elif started:
 		if boss_ok and G.boss.kind == "deus":
 			tgt.deus = 1.0
@@ -1565,7 +1654,7 @@ func _blas_targets() -> Array:
 	return out
 
 func blasfemia() -> void:
-	if G.blas < 100.0 or G.blas_on: return
+	if G.blas < 100.0 or G.blas_on or player.frozen: return
 	G.blas_on = true
 	G.blas = 0.0
 	G.snd("blasfemia", 0)
@@ -1684,11 +1773,12 @@ func _blas_end(instant: bool) -> void:
 	shown_rank = -1
 	if world_env == null: return
 	if _blas_env_tw: _blas_env_tw.kill()
-	var vals = {"background_color": Color("2b0b0e"), "fog_light_color": Color("2b0b0e"), "ambient_light_color": Color("d0a088"), "ambient_light_energy": .75}
+	var E: Dictionary = LEVEL_ENV[level]
+	var vals = {"background_color": E.background_color, "fog_light_color": E.fog_light_color, "ambient_light_color": E.ambient_light_color, "ambient_light_energy": E.ambient_light_energy}
 	if instant:
 		for k in vals: world_env.set(k, vals[k])
-		world_sun.light_energy = .8
+		world_sun.light_energy = E.sun
 		return
 	_blas_env_tw = create_tween().set_parallel().set_ignore_time_scale()
 	for k in vals: _blas_env_tw.tween_property(world_env, k, vals[k], 1.5)
-	_blas_env_tw.tween_property(world_sun, "light_energy", .8, 1.5)
+	_blas_env_tw.tween_property(world_sun, "light_energy", E.sun, 1.5)

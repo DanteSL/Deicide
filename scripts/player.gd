@@ -52,7 +52,11 @@ func _ready() -> void:
 	weapons = preload("res://scripts/weapons.gd").new()
 	add_child(weapons)
 
+## congelado durante cutscenes
+var frozen := false
+
 func reset_at(p: Vector3) -> void:
+	frozen = false
 	global_position = p
 	velocity = Vector3.ZERO
 	hp = 100.0
@@ -66,7 +70,7 @@ func reset_at(p: Vector3) -> void:
 	land = 0
 
 func handle_input(ev: InputEvent) -> void:
-	if G.state != "play":
+	if G.state != "play" or frozen:
 		return
 	if ev is InputEventMouseMotion:
 		mdx += ev.relative.x
@@ -171,7 +175,7 @@ func slam_impact() -> void:
 			G.hurt_enemy(e, 35, "slam", e.center(), false)
 
 func _physics_process(dt: float) -> void:
-	if G.state != "play" or dead:
+	if G.state != "play" or dead or frozen:
 		_apply_cam(dt)
 		return
 	var zs = 0.4 if weapons.zoom else 1.0

@@ -50,7 +50,7 @@ Com 75%, 50% e 25% de vida chama reforços.
 
 ![A crista de mãos decepadas](img/deus_crista.jpg)
 
-Aparece a cada 10 ondas ou no modo **Deus**. 6 500 de vida, 32 metros de altura. Uma crista de 14 mãos
+Aparece a cada 10 ondas ou no modo **Deus**, onde espera no alto do altar da Sala do Trono e recebe você com uma cutscene. 6 500 de vida, 32 metros de altura. Uma crista de 14 mãos
 decepadas gira atrás dele, pingando sangue. **A cabeça é ponto fraco.**
 
 | Ataque | Como desviar |
