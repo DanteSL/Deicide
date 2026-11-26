@@ -1,5 +1,19 @@
 # Histórico de mudanças
 
+## Texturas novas: mármore com veios de ouro, folha de ouro e colunas jônicas
+
+- Texturas enviadas pelo jogador: mármore branco com veios de ouro (paredes, piso, colunas) e folha de ouro
+  (trombetas, frisos, portão, estrela do piso). Viraram texturas sem emenda com mapa de relevo, e o mármore usa um
+  shader de "ladrilho hexagonal aleatório" (cada pedaço do chão pega uma parte sorteada da foto: a repetição some).
+  Os veios de ouro ficam metálicos e brilham.
+- Coluna jônica modelada a partir da imagem de inspiração: base com anéis, fuste canelado (24 caneluras, com êntase),
+  capitel com óvulos, cordão e volutas em espiral douradas e ábaco.
+- Átrio das Trombetas: piso e plataformas no mármore novo, ouro texturizado e uma colunata jônica de 15 colunas em
+  volta da praça com arquitrave, friso de ouro e cornija (vão aberto para o lado do portão). A entrada também usa o mármore.
+- Gabriel corrompido: o mármore vira uma pintura fluida vermelha, preta e dourada (paleta da imagem enviada, gerada no
+  shader, sem marca d'água) que se espalha a partir do Gabriel com uma borda em brasa.
+- Trono de Deus: mesmo mármore com veios de ouro e folha de ouro, e as colunas das paredes viraram colunas jônicas.
+
 ## Azazel: olhos de verdade nas torres e auréola parada
 
 - Os olhos das torres eram um quadrado com um olho desenhado. Agora são globos oculares 3D numa órbita de pedra:

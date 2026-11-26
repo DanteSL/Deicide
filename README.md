@@ -71,8 +71,8 @@ Um ranking de heresia (de Devoto a Supremo Sacrilégio) recompensa variar as arm
 | O portão do céu na entrada do Gabriel | O Átrio das Trombetas angelical |
 | ![Gabriel corrompido](docs/img/gabriel_inferno.jpg) | ![Azazel](docs/img/azazel_chora.jpg) |
 | Na metade da vida o Gabriel se corrompe e o céu vira inferno | **Azazel** chorando sangue no Lamento |
-| ![Arena do Azazel](docs/img/azazel_arena.jpg) | |
-| O Olho da Tempestade: raios caindo nas marcas | |
+| ![Arena do Azazel](docs/img/azazel_arena.jpg) | ![Trono](docs/img/trono_marmore.jpg) |
+| O Olho da Tempestade: raios caindo nas marcas | O salão do trono em mármore com veios de ouro e colunas jônicas |
 
 ## Como jogar
 

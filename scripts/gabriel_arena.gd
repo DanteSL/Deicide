@@ -6,8 +6,9 @@ extends Node3D
 
 const R := 46.0
 var t := 0.0
-var m_marble: StandardMaterial3D
-var m_marble2: StandardMaterial3D
+const CM = preload("res://scripts/ceu_mats.gd")
+var m_marble: ShaderMaterial
+var m_marble2: ShaderMaterial
 var m_gold: StandardMaterial3D
 var m_gold_glow: StandardMaterial3D
 var m_inlay: StandardMaterial3D
@@ -31,6 +32,7 @@ var corrupted := false
 var gore: Node3D
 var _orig := {}
 var arena_lights: Array = []
+var hall_marbles: Array = []
 var corrupt_k := 0.0
 var blood_rain: CPUParticles3D
 var trumpet_fire: Array = []
@@ -60,34 +62,12 @@ void fragment(){
 """
 
 func _mats() -> void:
-	m_marble = StandardMaterial3D.new()
-	var nt = NoiseTexture2D.new()
-	var nz = FastNoiseLite.new(); nz.frequency = .02; nz.fractal_octaves = 5; nz.seed = 33
-	nt.noise = nz; nt.seamless = true; nt.width = 512; nt.height = 512
-	var g = Gradient.new(); g.set_color(0, Color("d6d0ca")); g.set_color(1, Color("fffdfa"))
-	nt.color_ramp = g
-	m_marble.albedo_texture = nt
-	m_marble.uv1_triplanar = true; m_marble.uv1_world_triplanar = true
-	m_marble.uv1_scale = Vector3.ONE * .06
-	m_marble.roughness = .35
-	m_marble2 = m_marble.duplicate()
-	m_marble2.albedo_color = Color(.88, .85, .82)
-	m_gold = StandardMaterial3D.new()
-	m_gold.albedo_color = Color("d8a640")
-	m_gold.metallic = .75
-	m_gold.roughness = .28
-	m_gold.emission_enabled = true
-	m_gold.emission = Color("3a2408")
-	m_gold_glow = m_gold.duplicate()
-	m_gold_glow.emission = Color("ffcf6a")
-	m_gold_glow.emission_energy_multiplier = .6
-	m_inlay = StandardMaterial3D.new()
-	m_inlay.albedo_color = Color("e0b04a")
-	m_inlay.metallic = .6
-	m_inlay.roughness = .3
-	m_inlay.emission_enabled = true
-	m_inlay.emission = Color("ffc860")
-	m_inlay.emission_energy_multiplier = .35
+	# texturas do jogador: mármore branco com veios de ouro e folha de ouro
+	m_marble = CM.marble(Color(1, 1, 1), .07)
+	m_marble2 = CM.marble(Color(.86, .84, .82), .09)
+	m_gold = CM.gold()
+	m_gold_glow = CM.gold(Color(1, .95, .85), .6)
+	m_inlay = CM.gold(Color(1, .92, .75), .35, .3)
 
 func _body(mi: Node3D, shape: Shape3D, pos: Vector3, rot := Vector3.ZERO, shape_pos := Vector3.ZERO) -> StaticBody3D:
 	var sb = StaticBody3D.new()
@@ -126,6 +106,7 @@ func build(_m: Node) -> void:
 	_mats()
 	_floor()
 	_balustrade()
+	_colonnade()
 	_trumpets()
 	_platforms()
 	_sky()
@@ -191,6 +172,32 @@ func _balustrade() -> void:
 		var sh = BoxShape3D.new(); sh.size = Vector3(ln + 1, 60, 1.2)
 		var wall = _body(null, sh, mid + Vector3(0, 30, 0))
 		_aim(wall, p1 + Vector3(0, 30, 0), Vector3.UP); wall.rotate_object_local(Vector3.UP, PI / 2)
+
+# ---------- colunata jônica em volta da praça, com entablamento dourado ----------
+func _colonnade() -> void:
+	var n = 16
+	var rr = R - 2.4
+	var H = 13.0
+	var tops = []
+	for i in n:
+		var a = PI / 16 + i * TAU / n
+		if absf(wrapf(a - PI / 2, -PI, PI)) < .2: tops.append(null); continue   # vão voltado para o portão
+		var p = Vector3(cos(a), 0, sin(a)) * rr
+		_cyl(1.45, 1.6, .6, m_marble2, p + Vector3(0, .3, 0), false, 12)
+		CM.column(self, p + Vector3(0, .6, 0), H, m_marble, m_gold, true, -a)
+		tops.append(p + Vector3(0, .6 + H, 0))
+	# vigas entre colunas vizinhas: arquitrave de mármore + friso de ouro + cornija
+	for i in n:
+		var a0 = tops[i]; var a1 = tops[(i + 1) % n]
+		if a0 == null or a1 == null: continue
+		var mid = (a0 + a1) * .5
+		var ln = a0.distance_to(a1)
+		var bx = _box(Vector3(ln + 1.2, 1.1, 1.5), m_marble, mid + Vector3(0, .55, 0), false)
+		_aim(bx, a1 + Vector3(0, .55, 0), Vector3.UP); bx.rotate_object_local(Vector3.UP, PI / 2)
+		var fz = _box(Vector3(ln + 1.2, .45, 1.58), m_gold, mid + Vector3(0, 1.3, 0), false)
+		_aim(fz, a1 + Vector3(0, 1.3, 0), Vector3.UP); fz.rotate_object_local(Vector3.UP, PI / 2)
+		var cn = _box(Vector3(ln + 1.6, .35, 1.9), m_marble, mid + Vector3(0, 1.7, 0), false)
+		_aim(cn, a1 + Vector3(0, 1.7, 0), Vector3.UP); cn.rotate_object_local(Vector3.UP, PI / 2)
 
 # ---------- oito trombetas gigantes ----------
 func _trumpets() -> void:
@@ -425,6 +432,8 @@ func _process(dt: float) -> void:
 	t += dt
 	_upd_hall(dt)
 	if clouds_mat: clouds_mat.set_shader_parameter("time_s", t)
+	if corrupted:
+		m_marble.set_shader_parameter("time_s", t); m_marble2.set_shader_parameter("time_s", t)
 	for pf in puffs:
 		pf.a += pf.spd * dt
 		pf.n.position.x = cos(pf.a) * pf.d
@@ -504,8 +513,7 @@ const HELL := {"marble": Color(.42, .09, .08), "marble2": Color(.22, .04, .04), 
 	"iris": Color(1, .05, .02), "feather": Color(.15, .02, .02), "statue": Color(.55, .2, .18), "light": Color(1, .25, .12)}
 
 func _snap() -> void:
-	if _orig.has("marble"): return
-	_orig.marble = m_marble.albedo_color; _orig.marble2 = m_marble2.albedo_color
+	if _orig.has("gold"): return
 	_orig.gold = m_gold.albedo_color; _orig.gold_e = m_gold.emission; _orig.goldg_e = m_gold_glow.emission
 	_orig.inlay = m_inlay.albedo_color; _orig.inlay_e = m_inlay.emission
 	_orig.cloud = m_cloud.albedo_color if m_cloud else Color.WHITE
@@ -520,8 +528,7 @@ func _snap() -> void:
 func _set_corrupt(k: float) -> void:
 	_snap()
 	corrupt_k = k
-	m_marble.albedo_color = _orig.marble.lerp(HELL.marble, k)
-	m_marble2.albedo_color = _orig.marble2.lerp(HELL.marble2, k)
+	for mm in marble_mats(): mm.set_shader_parameter("corrupt", k)
 	m_gold.albedo_color = _orig.gold.lerp(HELL.gold, k); m_gold.emission = _orig.gold_e.lerp(HELL.gold_e, k)
 	m_gold_glow.emission = _orig.goldg_e.lerp(Color(1, .1, 0), k)
 	m_inlay.albedo_color = _orig.inlay.lerp(HELL.inlay, k); m_inlay.emission = _orig.inlay_e.lerp(HELL.inlay_e, k)
@@ -538,19 +545,24 @@ func _set_corrupt(k: float) -> void:
 		if clouds2_mat and _orig.c2.size() == 3: clouds2_mat.set_shader_parameter(["c_lit", "c_shadow", "c_deep"][i], (_orig.c2[i] as Vector3).lerp(hell_c[i], k))
 	for l in arena_lights: l.light_color = (_orig.light as Color).lerp(HELL.light, k)
 
-## chamado quando o Gabriel chega à metade da vida
+func marble_mats() -> Array:
+	return [m_marble, m_marble2] + hall_marbles
+
+## chamado quando o Gabriel chega à metade da vida: a pintura vermelha e preta se espalha a partir dele
 func corrupt() -> void:
 	if corrupted: return
 	corrupted = true
+	var cc = G.boss.global_position if G.boss and is_instance_valid(G.boss) else Vector3.ZERO
+	for mm in [m_marble, m_marble2]: mm.set_shader_parameter("corrupt_center", Vector3(cc.x, 0, cc.z))
 	var tw = create_tween()
-	tw.tween_method(_set_corrupt, 0.0, 1.0, 3.0).set_trans(Tween.TRANS_SINE)
+	tw.tween_method(_set_corrupt, 0.0, 1.0, 6.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	if M: G.later(1.2, func(): if corrupted and M.level == "gabriel": M.apply_env("gabriel_inferno"))
 	for fp in trumpet_fire: fp.emitting = true
 	_spawn_gore()
 
 func purify() -> void:
 	corrupted = false
-	if _orig.has("marble"): _set_corrupt(0.0)
+	if _orig.has("gold"): _set_corrupt(0.0)
 	for fp in trumpet_fire: fp.emitting = false
 	if gore and is_instance_valid(gore): gore.queue_free()
 	gore = null
@@ -656,8 +668,7 @@ func _entrance() -> void:
 	m_dark.albedo_texture = nt; m_dark.uv1_triplanar = true; m_dark.uv1_world_triplanar = true; m_dark.uv1_scale = Vector3.ONE * .12
 	m_dark.roughness = .95
 	m_gem = StandardMaterial3D.new(); m_gem.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; m_gem.albedo_color = Color(.4, 1, .35)
-	var white_m = m_marble.duplicate()
-	white_m.albedo_color = Color(1.05, 1.0, .98)
+	var white_m = CM.marble(Color(1.05, 1.0, .98), .08)
 	# --- ruínas na chegada ---
 	_box(Vector3(34, 1, 30), m_dark, _h(Vector3(0, -.5, 41)))
 	var rng = RandomNumberGenerator.new(); rng.seed = 5150

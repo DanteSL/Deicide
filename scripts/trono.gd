@@ -15,8 +15,9 @@ const LINES := [
 
 var main: Node
 var stage := "door"   # door → hall → cut → fight
-var m_marble: StandardMaterial3D
-var m_marble2: StandardMaterial3D
+const CM = preload("res://scripts/ceu_mats.gd")
+var m_marble: Material
+var m_marble2: Material
 var m_gold: StandardMaterial3D
 var m_gold_dark: StandardMaterial3D
 var m_blood_still: ShaderMaterial
@@ -159,24 +160,13 @@ func _mats() -> void:
 	gr.set_color(0, Color("8f8780")); gr.set_color(1, Color("e2ddd6"))
 	gr.add_point(.15, Color("cfc8c0"))
 	nt.color_ramp = gr
-	m_marble = StandardMaterial3D.new()
-	m_marble.albedo_texture = nt
-	m_marble.uv1_triplanar = true; m_marble.uv1_world_triplanar = true
-	m_marble.uv1_scale = Vector3.ONE * .06
-	m_marble.roughness = .25
-	m_marble.metallic_specular = .7
-	m_marble2 = m_marble.duplicate()
-	m_marble2.albedo_color = Color(.78, .74, .72)
-	m_gold = StandardMaterial3D.new()
-	m_gold.albedo_color = Color("d09a32")
-	m_gold.metallic = .55
-	m_gold.roughness = .3
-	m_gold.emission_enabled = true
-	m_gold.emission = Color("4a3008")
-	m_gold.rim_enabled = true; m_gold.rim = .6; m_gold.rim_tint = .8
-	m_gold_dark = m_gold.duplicate()
-	m_gold_dark.albedo_color = Color("9a7428")
-	m_gold_dark.emission = Color("2a1a04")
+	# mármore branco com veios de ouro e folha de ouro (mesmas texturas do céu do Gabriel)
+	m_marble = CM.marble(Color(1, 1, 1), .06)
+	m_marble2 = CM.marble(Color(.9, .87, .85), .07)
+	for mm in [m_marble, m_marble2]: mm.set_shader_parameter("gold_shine", .35); mm.set_shader_parameter("scale", .045)
+	m_gold = CM.gold(Color(1, .95, .85))
+	m_gold.rim_enabled = true; m_gold.rim = .4; m_gold.rim_tint = .8
+	m_gold_dark = CM.gold(Color(.72, .6, .45))
 	_blood_sh = Shader.new()
 	_blood_sh.code = BLOOD_SHADER
 	m_blood_still = bm(3, 1.0)
@@ -322,8 +312,8 @@ func _hall() -> void:
 	for z in range(-78, 46, 12):
 		for sx in [-1, 1]:
 			var x = sx * 42.6
-			blk(x, 0, z, 4.4, 1.2, 4.4, m_gold)
-			cyl(x, 1.2, z, 1.4, 1.65, 38.0, m_marble)
+			blk(x, 0, z, 4.8, 1.2, 4.8, m_gold)
+			CM.column(self, Vector3(x, 1.2, z), 38.0, m_marble, m_gold, true, PI / 2)
 			blk(x, 39.2, z, 4.6, 1.4, 4.6, m_gold, false)
 	# estandartes vermelhos entre as colunas
 	var banner = StandardMaterial3D.new()
