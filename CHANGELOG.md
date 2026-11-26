@@ -1,5 +1,24 @@
 # Histórico de mudanças
 
+## Novo chefe: AZAZEL, o Vigia da Tempestade
+
+- Um olho gigante cercado de asas cobertas de olhos, sob uma coroa de anéis (6200 de vida, novo modo no menu).
+- Animação por shader no modelo inteiro: as asas batem presas ao corpo (raiz parada, ponta forte, descida rápida e
+  subida lenta), as penas compridas de baixo balançam como um véu, o olho central pisca com pálpebra de verdade e os
+  olhinhos das asas piscam cada um no seu ritmo. A pupila acende quando ele carrega um raio.
+- O olho é o ponto fraco (dano maior), mas fechado ele protege; tiros fortes fazem ele piscar.
+- Ataques de raio: Raios do Céu (marcas no chão e o raio cai), Olhar Fulminante (raio direto do olho que se divide no
+  chão), Varredura (raio rasteiro varrendo a arena, pule), Descarga (anéis elétricos pelo chão), Gaiola de Raios
+  (pilares que fecham em volta de você) e Olhos das Asas (leques de esferas).
+- LAMENTO (abaixo de 50%): fecha o olho, treme e abre chorando sangue — fios de sangue escorrem do olho e das asas,
+  ele fica avermelhado, os raios ficam vermelhos e ele ataca mais rápido.
+- Arena O OLHO DA TEMPESTADE: templo de pedra molhada flutuando sobre nuvens de tempestade, piso de lajes com rejunte,
+  poças, três anéis de runas que brilham e um olho em mosaico no centro, oito torres-para-raio de obsidiana com coroas
+  de cobre e olhos de pedra que piscam, pilares quebrados, ilhas de rocha flutuando, chuva e relâmpagos ao longe que
+  iluminam as nuvens. No Lamento a tempestade vira sangue: céu vermelho, chuva de sangue, runas e juntas cheias de
+  sangue, e os olhos das torres choram.
+- Barra de vida própria com ornamento de olho que pisca (e chora na segunda fase).
+
 ## Portão do céu e Gabriel corrompido
 
 - Portão novo na entrada do Gabriel, inspirado nos portões do céu: pares de colunas brancas caneladas com capitéis

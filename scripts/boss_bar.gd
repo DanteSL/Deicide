@@ -25,6 +25,13 @@ const THEMES := {
 		"ghost": Color("f0c0b0"), "orn": Color("0c040e"), "orn2": Color("d9a441"),
 		"name_col": Color("f2e6d6"), "name_edge": Color("5a0a12"), "sub_col": Color("c9a06a"),
 	},
+	"azazel": {
+		"name": "AZAZEL", "sub": "O VIGIA DA TEMPESTADE",
+		"frame": Color("10141e"), "edge": Color("03040a"), "hi": Color("5a7aa8"),
+		"cell": Color("070a12"), "fill": Color("3a8ae0"), "fill_hi": Color("bfe6ff"),
+		"ghost": Color("e0f0ff"), "orn": Color("d8d4cc"), "orn2": Color("7ac8ff"),
+		"name_col": Color("e8f0ff"), "name_edge": Color("0a1428"), "sub_col": Color("8ab0e0"),
+	},
 	"lilith": {
 		"name": "LILITH", "sub": "A RAINHA DO ABISMO",
 		"frame": Color("1a0606"), "edge": Color("040000"), "hi": Color("a02a1a"),
@@ -161,6 +168,43 @@ func _orn_deus(c: Vector2, th: Dictionary) -> void:
 	draw_circle(c + Vector2(sin(t * .8) * 3, 2), 1.8, Color.BLACK)
 	# lágrima de sangue
 	draw_line(c + Vector2(0, 9), c + Vector2(0, 22 + sin(t * 3) * 2), Color(.7, .02, .05), 2.5)
+
+func _orn_azazel(c: Vector2, th: Dictionary) -> void:
+	var bone: Color = th.orn
+	var el: Color = th.orn2
+	var red: bool = G.boss != null and G.boss.get("ph2") == true
+	if red: el = Color(1, .2, .1)
+	# asas de penas em leque dos dois lados
+	for s in [-1, 1]:
+		for k in 6:
+			var a: float = -PI * .5 + s * (.35 + k * .2)
+			var ln: float = 54.0 - k * 5.0 + sin(t * 2.4 + k * .7) * 3.0
+			var p0 := c + Vector2(s * 10, 0)
+			var p1 := p0 + Vector2(cos(a) * ln * (1 if s > 0 else 1), sin(a) * ln) * Vector2(1, .55)
+			draw_line(p0, p1, bone, 3.0 - k * .3)
+			draw_circle(p1, 2.0, bone)
+	# coroa de anéis
+	draw_arc(c + Vector2(0, -16), 13, 0, TAU, 32, bone, 1.6)
+	draw_arc(c + Vector2(0, -16), 9, 0, TAU, 32, el, 1.0)
+	# olho central que pisca
+	var bl: float = clampf(sin(t * 1.3) * 8.0 - 7.0, 0.0, 1.0)
+	var hh: float = 7.0 * (1.0 - bl)
+	var pts := PackedVector2Array()
+	for i in 13:
+		var u: float = float(i) / 12.0
+		pts.append(c + Vector2(lerp(-16.0, 16.0, u), -sin(u * PI) * hh))
+	for i in range(11, 0, -1):
+		var u: float = float(i) / 12.0
+		pts.append(c + Vector2(lerp(-16.0, 16.0, u), sin(u * PI) * hh))
+	if hh > .5:
+		draw_colored_polygon(pts, Color(.92, .9, .86))
+		draw_circle(c, min(5.5, hh), el)
+		draw_circle(c, min(2.2, hh), Color.BLACK)
+	draw_line(c + Vector2(-16, 0), c + Vector2(16, 0), bone, 1.4)
+	# lágrimas de sangue na segunda fase
+	if red:
+		for s in [-1, 1]:
+			draw_line(c + Vector2(s * 6, 5), c + Vector2(s * 7, 22 + sin(t * 3 + s) * 2), Color(.7, .02, .05), 2.5)
 
 func _orn_lilith(c: Vector2, th: Dictionary) -> void:
 	var dark: Color = th.orn
@@ -314,6 +358,7 @@ func _draw() -> void:
 	if kind == "gabriel": _orn_gabriel(oc, th)
 	elif kind == "miguel": _orn_miguel(oc, th)
 	elif kind == "lilith": _orn_lilith(oc, th)
+	elif kind == "azazel": _orn_azazel(oc, th)
 	else: _orn_deus(oc, th)
 	# título abaixo da barra
 	_spaced(f_sub, Vector2(cx, BAR_Y + BAR_H + 30), th.sub, 12, th.sub_col, 3.0, Color(0, 0, 0, .8), 3)

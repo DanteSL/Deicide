@@ -12,6 +12,7 @@ const MODES := {
 	"train": ["TREINO", "Alvos que sempre voltam, e aqui você não morre. Teste as armas, as melhorias e a Blasfêmia.", 0],
 	"boss": ["GABRIEL", "O Arauto de Muitos Olhos. Oito ataques e uma segunda fase de julgamento, no Átrio das Trombetas acima das nuvens.", 4],
 	"lilith": ["LILITH", "A Rainha do Abismo: asas de morcego, garras e fogo, numa ilha de rocha cercada por um lago de lava.", 4],
+	"azazel": ["AZAZEL", "O Vigia: um olho gigante de asas cobertas de olhos, que comanda os raios no Olho da Tempestade. Na metade da vida ele chora sangue.", 5],
 	"miguel": ["MIGUEL", "O Arcanjo Velado: quatro braços, asas cheias de olhos e uma arena só dele sob o eclipse.", 4],
 	"deus": ["DEUS", "O Criador em pessoa, coroado de mãos decepadas. Quando ele sangra, a arena afoga.", 5],
 }
@@ -146,6 +147,7 @@ func _build() -> void:
 	_entry("GABRIEL", "", func(): main.start_mode("boss"), "boss")
 	_entry("MIGUEL", "", func(): main.start_mode("miguel"), "miguel")
 	_entry("LILITH", "", func(): main.start_mode("lilith"), "lilith")
+	_entry("AZAZEL", "", func(): main.start_mode("azazel"), "azazel")
 	_entry("DEUS", "", func(): main.start_mode("deus"), "deus")
 	var gap = Control.new(); gap.custom_minimum_size = Vector2(0, 14); list.add_child(gap)
 	_entry("CONFIGURAÇÕES", "", func(): _show_page("cfg"), "cfg", true)
@@ -206,7 +208,7 @@ func _entry(text: String, _desc: String, cb: Callable, key: String, small := fal
 	st.content_margin_left = 58
 	for s in ["normal", "hover", "pressed", "focus", "hover_pressed", "disabled"]:
 		b.add_theme_stylebox_override(s, st)
-	b.custom_minimum_size = Vector2(440, 38 if small else 48)
+	b.custom_minimum_size = Vector2(440, 33 if small else 44)
 	b.set_meta("st", st)
 	b.set_meta("key", key)
 	b.set_meta("small", small)
@@ -218,12 +220,12 @@ func _entry(text: String, _desc: String, cb: Callable, key: String, small := fal
 	bar.add_theme_stylebox_override("panel", bs)
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar.position = Vector2(30, 7)
-	bar.size = Vector2(0, (48 if not small else 38) - 14)
+	bar.size = Vector2(0, (44 if not small else 33) - 14)
 	bar.show_behind_parent = true
 	b.add_child(bar)
 	b.set_meta("bar", bar)
 	var num = _lbl("", 14 if small else 16, GOLD, f_wide)
-	num.position = Vector2(0, 13 if not small else 10)
+	num.position = Vector2(0, 11 if not small else 8)
 	b.add_child(num)
 	b.set_meta("num", num)
 	b.mouse_entered.connect(func(): b.grab_focus())
