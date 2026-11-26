@@ -56,6 +56,8 @@ var door_snd_done := false
 var halo: MeshInstance3D
 var flames: Array = []
 var spouts: Array = []
+var fontes: Array = []
+var falls: Array = []
 var deus: Node = null
 var cam: Camera3D
 var ct := 0.0
@@ -78,6 +80,7 @@ uniform int mode = 1;
 uniform float seed = 0.0;
 uniform float flow = 0.0;
 uniform vec2 stretch = vec2(1.0, 1.0);
+uniform float surf_thick = 1.0; // espessura do modo 3 (menor = vermelho mais vivo)
 uniform vec4 fresh : source_color = vec4(.50, .015, .025, 1.0);
 uniform vec4 deep : source_color = vec4(.13, .0, .008, 1.0);
 uniform vec4 dried : source_color = vec4(.20, .025, .02, 1.0);
@@ -91,7 +94,7 @@ void fragment() {
 	vec2 uv = UV;
 	vec2 q = (uv - .5) * 2.0;
 	float m = 1.0;
-	float thick = 1.0;
+	float thick = surf_thick;
 	if (mode == 1) {
 		float r = length(q);
 		float edge = .55 + .45 * fbm(q * 1.8 + seed);
@@ -1272,7 +1275,10 @@ func _fountain(x: float, z: float) -> void:
 	f.scale = Vector3.ONE * FONTE_SCALE
 	f.rotation.y = PI / 8.0
 	add_child(f)
-	var m_bl = bm(3, 4.0 + x * .01 + z * .003, .35)
+	fontes.append(f)
+	# mesmo vermelho do sangue que escorre nas paredes
+	var m_bl: ShaderMaterial = bm(3, 4.0 + x * .01 + z * .003, .35).duplicate()
+	m_bl.set_shader_parameter("surf_thick", .3)
 	for mi in f.find_children("*", "MeshInstance3D", true, false):
 		var mesh: Mesh = mi.mesh
 		for si in mesh.get_surface_count():
@@ -1330,6 +1336,7 @@ func _bloodfall(side: int, z: float) -> void:
 	stain(Vector3(side * 45.85, 21, z), Vector3(-side, 0, 0), 4.5, 20)
 	var f = quad(Vector3(side * 45.6, 15.4, z), Vector2(3.0, 30.4), bm(0, 5.0 + z * .01, 1.3, Vector2(1, 3)), Vector3(0, -side * PI / 2, 0))
 	f.rotation = Vector3(0, -side * PI / 2, 0)
+	falls.append(f)
 	pool(side * 42.0, z, 2.2, .04, .7)
 	# calha no chão
 	blk(side * 44.2, 0, z, 3.0, .8, 4.6, m_gold)

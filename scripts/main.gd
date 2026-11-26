@@ -537,15 +537,18 @@ func _autotest(m: String) -> void:
 		start_mode("deus")
 		var rtf = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
 		var tp = trono.global_position
-		var poses = [[Vector3(-13, 7, 31), Vector3(-24, 1.5, 20)], [Vector3(-24, 3.5, 29), Vector3(-24, 2.5, 20)], [Vector3(10, 9, 0), Vector3(24, 1, -18)]]
 		rtf.call(1.0, func(): trono.set_process(false); if G.boss: G.boss.visible = false)
+		var fc: Vector3 = trono.fontes[0].global_position
+		var wf: Vector3 = trono.falls[2].global_position
+		var poses = [[fc + Vector3(0, .5, 7), fc + Vector3(0, 1.2, 0)], [fc + Vector3(8, .5, 13), wf + Vector3(0, -6, 0)]]
 		for k in poses.size():
-			rtf.call(2.0 + k * .6, func():
-				trono.cam.fov = 60
-				trono.cam.global_position = tp + poses[k][0]
-				trono.cam.look_at(tp + poses[k][1], Vector3.UP)
-				trono.cam.make_current())
-			rtf.call(2.4 + k * .6, func(): get_viewport().get_texture().get_image().save_png("/tmp/fonte_%d.png" % k))
+			rtf.call(1.5 + k * 1.2, func():
+				player.global_position = poses[k][0]
+				player.velocity = Vector3.ZERO
+				var d = poses[k][1] - (player.global_position + Vector3(0, 1.6, 0))
+				player.yaw = atan2(-d.x, -d.z)
+				player.pitch = atan2(d.y, Vector2(d.x, d.z).length()))
+			rtf.call(2.3 + k * 1.2, func(): print("pose ", k, " pl=", player.global_position, " fc=", fc); get_viewport().get_texture().get_image().save_png("/tmp/fonte_%d.png" % k))
 		rtf.call(4.2, func(): print("FONTE OK"); get_tree().quit())
 		return
 	if m == "halo":
