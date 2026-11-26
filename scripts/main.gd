@@ -11,9 +11,8 @@ var player: CharacterBody3D
 var world_light: OmniLight3D
 const MUS := {"menu": "res://musica/menu.ogg", "coro": "res://musica/combate_coro.ogg", "furia": "res://musica/combate_furia.ogg",
 	"gabriel": "res://sfx/gabriel_theme.ogg", "deus": "res://musica/deus.ogg", "sangue": "res://musica/deus_sangue.ogg",
-	"final": "res://musica/final.ogg", "final_sangue": "res://musica/final_sangue.ogg"}
-const MUS_GROUP := {"coro": ["coro", "furia"], "furia": ["coro", "furia"], "deus": ["deus", "sangue"], "sangue": ["deus", "sangue"],
-	"final": ["final", "final_sangue"], "final_sangue": ["final", "final_sangue"]}
+	"final": "res://musica/throne_of_ash_and_gold.ogg"}
+const MUS_GROUP := {"coro": ["coro", "furia"], "furia": ["coro", "furia"], "deus": ["deus", "sangue"], "sangue": ["deus", "sangue"]}
 var mus = {}
 var mus_w = {}
 var _mus_us = 0
@@ -751,7 +750,9 @@ func _build_audio() -> void:
 	for k in MUS:
 		var mp = AudioStreamPlayer.new()
 		var ms = load(MUS[k]) if ResourceLoader.exists(MUS[k]) else null
-		if ms is AudioStreamOggVorbis: ms.loop = true
+		if ms is AudioStreamOggVorbis:
+			ms.loop = true
+			if k == "final": ms.loop_offset = 5.0  # ao repetir, pula a introdução silenciosa
 		mp.stream = ms
 		mp.volume_db = -80
 		add_child(mp)
@@ -1591,7 +1592,6 @@ func _upd_music() -> void:
 	elif started:
 		if boss_ok and G.boss.kind == "deus" and level == "trono" and mus.final.stream != null:
 			tgt.final = 1.0
-			tgt.final_sangue = 1.0 if G.boss.ph2 else 0.0
 		elif boss_ok and G.boss.kind == "deus":
 			tgt.deus = 1.0
 			tgt.sangue = 1.0 if G.boss.ph2 else 0.0
@@ -1609,7 +1609,7 @@ func _upd_music() -> void:
 		var p: AudioStreamPlayer = mus[k]
 		if p.stream == null: continue
 		var w: float = mus_w[k]
-		var up: float = 2.5 if k == "furia" else (2.0 if k == "final_sangue" else 1.2)
+		var up: float = 2.5 if k == "furia" else 1.2
 		var down: float = .35 if k == "furia" else 1.0
 		w = move_toward(w, tgt[k], (up if tgt[k] > w else down) * dt)
 		mus_w[k] = w

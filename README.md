@@ -106,6 +106,8 @@ Deicide/
 
 ## Créditos
 
+- **"Throne of Ash and Gold"** (batalha final contra Deus): composta por DanteSL.
+
 - Design, direção e modelos 3D de origem: **DanteSL**
 - Código, animações procedurais, rigging e sons: feitos em conjunto com **Claude** (Anthropic)
 - Inspiração: *ULTRAKILL* (New Blood Interactive)

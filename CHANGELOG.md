@@ -2,6 +2,8 @@
 
 ## Sala do Trono
 
+- Nova música da batalha final: **Throne of Ash and Gold**, de DanteSL.
+
 - O modo **Deus** agora começa numa antecâmara escura. O portão dourado se abre para a **Sala do Trono**: mármore branco
   e ouro, tapete e rios de sangue, quatro fontes e dez cachoeiras de sangue nas paredes, rosácea e o trono no alto do altar.
 - **Cutscene** de entrada (pula com Espaço): Deus fala na língua dele, o Eloráh, com uma voz de 24 pessoas, com legendas.
