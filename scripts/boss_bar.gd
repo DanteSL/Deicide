@@ -25,6 +25,13 @@ const THEMES := {
 		"ghost": Color("f0c0b0"), "orn": Color("0c040e"), "orn2": Color("d9a441"),
 		"name_col": Color("f2e6d6"), "name_edge": Color("5a0a12"), "sub_col": Color("c9a06a"),
 	},
+	"lilith": {
+		"name": "LILITH", "sub": "A RAINHA DO ABISMO",
+		"frame": Color("1a0606"), "edge": Color("040000"), "hi": Color("a02a1a"),
+		"cell": Color("0c0202"), "fill": Color("e0300a"), "fill_hi": Color("ffb040"),
+		"ghost": Color("ffd0a0"), "orn": Color("120404"), "orn2": Color("ff4a14"),
+		"name_col": Color("ffd8c8"), "name_edge": Color("6a0a02"), "sub_col": Color("ff8a5a"),
+	},
 	"miguel": {
 		"name": "MIGUEL", "sub": "O ARCANJO VELADO",
 		"frame": Color("1c1824"), "edge": Color("050407"), "hi": Color("8a7aa0"),
@@ -61,7 +68,7 @@ func _process(dt: float) -> void:
 	t += dt
 	hit = max(0.0, hit - dt * 3.0)
 	# sangue pingando da barra (Deus)
-	if kind == "deus" and randf() < dt * 6.0 and hp > 0:
+	if (kind == "deus" or kind == "lilith") and randf() < dt * 6.0 and hp > 0:
 		var x0 := (size.x - W) * .5 + 40
 		drops.append({"x": x0 + randf() * (W - 80) * hp, "y": BAR_Y + BAR_H * .5 + 6, "v": 0.0, "l": 1.0, "r": randf_range(1.5, 3.0)})
 	for d in drops:
@@ -154,6 +161,47 @@ func _orn_deus(c: Vector2, th: Dictionary) -> void:
 	draw_circle(c + Vector2(sin(t * .8) * 3, 2), 1.8, Color.BLACK)
 	# lágrima de sangue
 	draw_line(c + Vector2(0, 9), c + Vector2(0, 22 + sin(t * 3) * 2), Color(.7, .02, .05), 2.5)
+
+func _orn_lilith(c: Vector2, th: Dictionary) -> void:
+	var dark: Color = th.orn
+	var fire: Color = th.orn2
+	# asas de morcego com membrana e ossos
+	for s in [-1, 1]:
+		var tips: Array = []
+		for k in 4:
+			var a: float = -PI * .5 + s * (.5 + k * .32)
+			var ln: float = 58.0 - k * 7.0 + sin(t * 2.0 + k) * 2.0
+			tips.append(c + Vector2(cos(a) * ln * s * s, sin(a) * ln) + Vector2(s * 6, 4))
+		var mem := PackedVector2Array([c + Vector2(s * 6, 4)])
+		for k in tips.size():
+			mem.append(tips[k])
+			if k < tips.size() - 1:
+				var mid: Vector2 = (tips[k] + tips[k + 1]) * .5
+				mem.append(mid.lerp(c + Vector2(s * 6, 4), .35))
+		draw_colored_polygon(mem, Color(.45, .04, .03, .9))
+		for tp in tips: draw_line(c + Vector2(s * 6, 4), tp, dark, 2.5, true)
+		draw_line(c + Vector2(s * 6, 4), tips[0], Color(fire, .7), 1.0, true)
+	# chifres
+	for s in [-1, 1]:
+		var pts := PackedVector2Array()
+		for i in 9:
+			var u := i / 8.0
+			pts.append(c + Vector2(s * (5 + u * 12 + sin(u * 3.0) * 4), -8 - u * 26))
+		draw_polyline(pts, dark, 5.0 - 0.0, true)
+		draw_polyline(pts, Color(fire, .5), 1.5, true)
+	# cabeça e olhos em brasa
+	draw_circle(c + Vector2(0, -4), 9, dark)
+	var glow := .6 + .4 * sin(t * 6.0)
+	for s in [-1, 1]:
+		draw_circle(c + Vector2(s * 3.5, -5), 1.8, Color(1, .4, .1, glow))
+	# cruz invertida em brasa
+	draw_rect(Rect2(c + Vector2(-1.5, 8), Vector2(3, 22)), fire)
+	draw_rect(Rect2(c + Vector2(-6, 22), Vector2(12, 3)), fire)
+	# chamas lambendo a barra
+	for i in 7:
+		var x := (i - 3) * 10.0
+		var hgt: float = 6.0 + 5.0 * abs(sin(t * 5.0 + i * 1.3))
+		draw_colored_polygon(PackedVector2Array([c + Vector2(x - 4, 16), c + Vector2(x, 16 - hgt), c + Vector2(x + 4, 16)]), Color(1, .4 + .2 * sin(t * 7 + i), .05, .8))
 
 func _orn_miguel(c: Vector2, th: Dictionary) -> void:
 	var bone: Color = th.orn
@@ -265,6 +313,7 @@ func _draw() -> void:
 	var oc := Vector2(cx, BAR_Y - 8)
 	if kind == "gabriel": _orn_gabriel(oc, th)
 	elif kind == "miguel": _orn_miguel(oc, th)
+	elif kind == "lilith": _orn_lilith(oc, th)
 	else: _orn_deus(oc, th)
 	# título abaixo da barra
 	_spaced(f_sub, Vector2(cx, BAR_Y + BAR_H + 30), th.sub, 12, th.sub_col, 3.0, Color(0, 0, 0, .8), 3)

@@ -11,6 +11,7 @@ const MODES := {
 	"waves": ["ONDAS", "Hordas sem fim de anjos. A cada 5 ondas desce Gabriel; a cada 10, o próprio Deus.", 3],
 	"train": ["TREINO", "Alvos que sempre voltam, e aqui você não morre. Teste as armas, as melhorias e a Blasfêmia.", 0],
 	"boss": ["GABRIEL", "O Arauto de Muitos Olhos. Oito ataques e uma segunda fase de julgamento, no Átrio das Trombetas acima das nuvens.", 4],
+	"lilith": ["LILITH", "A Rainha do Abismo: asas de morcego, garras e fogo, numa ilha de rocha cercada por um lago de lava.", 4],
 	"miguel": ["MIGUEL", "O Arcanjo Velado: quatro braços, asas cheias de olhos e uma arena só dele sob o eclipse.", 4],
 	"deus": ["DEUS", "O Criador em pessoa, coroado de mãos decepadas. Quando ele sangra, a arena afoga.", 5],
 }
@@ -91,6 +92,7 @@ func _build() -> void:
 	_entry("TREINO", "", func(): main.start_mode("train"), "train")
 	_entry("GABRIEL", "", func(): main.start_mode("boss"), "boss")
 	_entry("MIGUEL", "", func(): main.start_mode("miguel"), "miguel")
+	_entry("LILITH", "", func(): main.start_mode("lilith"), "lilith")
 	_entry("DEUS", "", func(): main.start_mode("deus"), "deus")
 	var gap = Control.new(); gap.custom_minimum_size = Vector2(0, 14); list.add_child(gap)
 	_entry("CONFIGURAÇÕES", "", func(): _show_page("cfg"), "cfg", true)

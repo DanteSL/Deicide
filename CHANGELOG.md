@@ -1,5 +1,15 @@
 # Histórico de mudanças
 
+## Nova chefe: Lilith, a Rainha do Abismo
+
+- Modelo enviado pelo autor separado em partes (2 asas, 2 braços, cabeça) e animado por código: asas de morcego batendo,
+  garra que rasga, braço erguido que conjura, cabeça; flutua em zigue-zague e entra subindo do chão em chamas.
+- Visual mais demoníaco: coroa de fogo atrás da cabeça, olhos em brasa, brasas e fumaça, selo de fogo sob os pés.
+- 5 800 de vida, sete ataques próprios e a fase **Inferno**. Acertá-la rende um pouco de sangue.
+- **Arena própria** (`scripts/lilith_arena.gd`): o Trono do Abismo, ilha num lago de lava animado.
+- Entrada **LILITH** no menu e modelo próprio na barra dos chefes (asas de morcego, chifres, olhos e chamas).
+- Projéteis inimigos agora podem cair em arco (usado pela Chuva de Enxofre).
+
 ## Entrada do Gabriel: o Pórtico da Balança
 
 - No modo **Gabriel** o jogador começa nas ruínas de uma entrada inspirada na arte enviada pelo autor:

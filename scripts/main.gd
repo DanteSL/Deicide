@@ -24,6 +24,7 @@ var arena_root: Node3D
 var trono: Node3D
 var miguel_arena: Node3D
 var gabriel_arena: Node3D
+var lilith_arena: Node3D
 var _dawn_sky: Sky
 var _hall_sky: Sky
 var level := "arena"
@@ -31,6 +32,7 @@ const LEVEL_ENV := {
 	"arena": {"background_color": Color("2b0b0e"), "fog_light_color": Color("2b0b0e"), "ambient_light_color": Color("d0a088"), "ambient_light_energy": .75, "fog_depth_begin": 28.0, "fog_depth_end": 125.0, "sun": .8},
 	"gabriel_hall": {"background_color": Color("2a0608"), "fog_light_color": Color("6a0c10"), "ambient_light_color": Color("ff9a94"), "ambient_light_energy": .45, "fog_depth_begin": 40.0, "fog_depth_end": 140.0, "sun": .3},
 	"gabriel": {"background_color": Color("c86a4a"), "fog_light_color": Color("d88a5e"), "ambient_light_color": Color("ffc8a0"), "ambient_light_energy": .32, "fog_depth_begin": 90.0, "fog_depth_end": 330.0, "sun": .7},
+	"lilith": {"background_color": Color("0e0303"), "fog_light_color": Color("2a0804"), "ambient_light_color": Color("8a6a78"), "ambient_light_energy": .45, "fog_depth_begin": 45.0, "fog_depth_end": 200.0, "sun": .25},
 	"miguel": {"background_color": Color("0a0610"), "fog_light_color": Color("1a0c22"), "ambient_light_color": Color("b8a8d0"), "ambient_light_energy": .6, "fog_depth_begin": 40.0, "fog_depth_end": 230.0, "sun": .5},
 	"trono": {"background_color": Color("160205"), "fog_light_color": Color("2a0a0c"), "ambient_light_color": Color("e8d2c0"), "ambient_light_energy": .55, "fog_depth_begin": 50.0, "fog_depth_end": 190.0, "sun": .55},
 }
@@ -87,6 +89,10 @@ func _ready() -> void:
 	gabriel_arena.name = "ArenaDeGabriel"
 	gabriel_arena.set_script(preload("res://scripts/gabriel_arena.gd"))
 	gabriel_arena.build(self)
+	lilith_arena = Node3D.new()
+	lilith_arena.name = "ArenaDaLilith"
+	lilith_arena.set_script(preload("res://scripts/lilith_arena.gd"))
+	lilith_arena.build(self)
 	build_root = world
 	gibs = preload("res://scripts/gibs.gd").new()
 	add_child(gibs)
@@ -635,6 +641,41 @@ func _autotest(m: String) -> void:
 		rts.call(1.0, func(): wp.select_slot(0))
 		rts.call(2.0, func(): st.on = true; wp.start_spin(3, 2.4, "x"))
 		rts.call(9.0, func(): print("SPIN OK k=", st.k); get_tree().quit())
+		return
+	if m == "lilith":
+		start_mode("lilith")
+		var rtq = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+		var shq = func(n): get_viewport().get_texture().get_image().save_png("/tmp/lt_%s.png" % n)
+		for i in 300: rtq.call(i * .2, func():
+			player.hp = 100000.0; player.dead = false
+			if G.boss and G.state == "play":
+				var d = G.boss.center() - (player.global_position + Vector3(0, 1.6, 0))
+				player.yaw = atan2(-d.x, -d.z)
+				player.pitch = atan2(d.y, Vector2(d.x, d.z).length()))
+		var pc = Camera3D.new(); pc.fov = 70
+		rtq.call(.5, func(): world.add_child(pc))
+		rtq.call(1.0, func(): hud.visible = false; pc.global_position = Vector3(0, 26, 58); pc.look_at(Vector3(0, 0, -12), Vector3.UP); pc.make_current())
+		rtq.call(1.2, func(): pc.make_current())
+		rtq.call(1.6, shq.bind("arena"))
+		rtq.call(1.7, func(): pc.global_position = Vector3(-14, 4, 24); pc.look_at(Vector3(0, 8, -40), Vector3.UP))
+		rtq.call(2.2, shq.bind("arena2"))
+		rtq.call(2.3, func(): player.cam.make_current(); hud.visible = true)
+		rtq.call(2.8, shq.bind("intro"))
+		rtq.call(5.5, func(): if G.boss: G.boss.global_position = Vector3(0, G.boss.BASE_Y, -6); player.global_position = Vector3(0, 1.2, 14))
+		rtq.call(6.0, func(): hud.visible = false)
+		rtq.call(6.3, shq.bind("perto"))
+		rtq.call(6.4, func(): hud.visible = true)
+		var atks = ["claw", "crosses", "brimstone", "kiss", "dive", "rift", "souls"]
+		for i in atks.size():
+			var k = atks[i]
+			var t0 = 7.0 + i * 4.5
+			rtq.call(t0, func(): if G.boss: G.boss._end(false); G.boss._attack(k))
+			rtq.call(t0 + 1.0, shq.bind("%d%s_a" % [i, k]))
+			rtq.call(t0 + 2.0, shq.bind("%d%s_b" % [i, k]))
+		var te = 7.0 + atks.size() * 4.5
+		rtq.call(te, func(): if G.boss: G.boss._end(false); G.boss.hp = G.boss.max_hp * .45)
+		rtq.call(te + 3.5, shq.bind("inferno"))
+		rtq.call(te + 4.0, func(): print("LILITH OK hp=", G.boss.hp if G.boss else -1, " ph2=", G.boss.ph2 if G.boss else false, " level=", level); get_tree().quit())
 		return
 	if m == "miguel":
 		start_mode("miguel")
@@ -1383,7 +1424,7 @@ func _upd_hud(dt: float) -> void:
 	ui.rfill.size.x = 256.0 * fmod(G.style, 100.0) / 100.0
 	_upd_blas_hud()
 	ui.sty.modulate.a = 1.0 if (G.style > 0 or feed_box.get_child_count() > 0) else .35
-	if G.mode == "boss" or G.mode == "deus" or G.mode == "miguel": ui.wave.text = ""
+	if G.mode == "boss" or G.mode == "deus" or G.mode == "miguel" or G.mode == "lilith": ui.wave.text = ""
 	elif G.mode == "train": ui.wave.text = "TREINO · ESC PAUSA"
 	elif wave > 0: ui.wave.text = "ONDA %d · %d RESTANTES" % [wave, G.enemies.size() + queue.size()]
 	else: ui.wave.text = "PREPARE-SE"
@@ -1512,12 +1553,13 @@ func reset() -> void:
 	G.boss = null
 	for gb in get_tree().get_nodes_in_group("gabriel"): gb.queue_free()
 	for gb in get_tree().get_nodes_in_group("miguel"): gb.queue_free()
+	for gb in get_tree().get_nodes_in_group("lilith"): gb.queue_free()
 	for p in G.projs:
 		if is_instance_valid(p.m): p.m.queue_free()
 	G.projs.clear()
 	G.clear_timers()
-	_set_level({"deus": "trono", "miguel": "miguel", "boss": "gabriel"}.get(G.mode, "arena"))
-	player.reset_at({"trono": Vector3(0, 2.3, 104), "miguel": Vector3(0, 2.3, 30), "gabriel": gabriel_arena.HALL + Vector3(0, 2.3, 40)}.get(level, Vector3(0, 2.3, 26)))
+	_set_level({"deus": "trono", "miguel": "miguel", "boss": "gabriel", "lilith": "lilith"}.get(G.mode, "arena"))
+	player.reset_at({"trono": Vector3(0, 2.3, 104), "miguel": Vector3(0, 2.3, 30), "lilith": Vector3(0, 2.3, 32), "gabriel": gabriel_arena.HALL + Vector3(0, 2.3, 40)}.get(level, Vector3(0, 2.3, 26)))
 	if level == "gabriel":
 		gabriel_arena.start_hall()
 		apply_env("gabriel_hall")
@@ -1539,6 +1581,8 @@ func reset() -> void:
 		pass # Gabriel só aparece quando o jogador atravessa o portão da entrada (gabriel_enter)
 	elif G.mode == "miguel":
 		G.later(1.5, respawn_miguel)
+	elif G.mode == "lilith":
+		G.later(1.5, respawn_lilith)
 	elif G.mode == "deus":
 		spawn_deus_cine()
 	elif G.mode == "train":
@@ -1550,13 +1594,14 @@ func reset() -> void:
 func _set_level(l: String) -> void:
 	if trono == null: return
 	if l != level:
-		var roots = {"arena": arena_root, "trono": trono, "miguel": miguel_arena, "gabriel": gabriel_arena}
+		var roots = {"arena": arena_root, "trono": trono, "miguel": miguel_arena, "gabriel": gabriel_arena, "lilith": lilith_arena}
 		world.remove_child(roots[level])
 		world.add_child(roots[l])
 		level = l
 	if trono: trono.reset_state()
 	if miguel_arena: miguel_arena.reset_state()
 	if gabriel_arena: gabriel_arena.reset_state()
+	if lilith_arena: lilith_arena.reset_state()
 	apply_env(level)
 
 func apply_env(name: String) -> void:
@@ -1564,7 +1609,7 @@ func apply_env(name: String) -> void:
 	for k in E:
 		if k != "sun": world_env.set(k, E[k])
 	world_sun.light_energy = E.sun
-	world_sun.light_color = {"arena": Color("ffe2c4"), "miguel": Color("c8b8ff"), "gabriel": Color("ffd9a8"), "gabriel_hall": Color("ff7a70")}.get(name, Color("fff4e8"))
+	world_sun.light_color = {"arena": Color("ffe2c4"), "lilith": Color("ff5a2a"), "miguel": Color("c8b8ff"), "gabriel": Color("ffd9a8"), "gabriel_hall": Color("ff7a70")}.get(name, Color("fff4e8"))
 	# o Átrio das Trombetas tem céu de amanhecer de verdade (degradê), as outras arenas usam cor lisa
 	if name == "gabriel_hall":
 		if _hall_sky == null:
@@ -1628,6 +1673,17 @@ func spawn_deus_cine() -> void:
 func respawn_deus() -> void:
 	if G.mode == "deus" and G.boss == null: spawn_enemy("deus", Vector3(0, 0, -30))
 
+func respawn_lilith() -> void:
+	if G.mode == "lilith" and G.boss == null: spawn_enemy("lilith", Vector3(0, 0, -16))
+
+## segunda fase da Lilith: a caverna se acende
+func lilith_inferno() -> void:
+	if level != "lilith": return
+	var tw = create_tween().set_parallel(true)
+	tw.tween_property(world_env, "background_color", Color("2a0502"), 2.0)
+	tw.tween_property(world_env, "fog_light_color", Color("5a1004"), 2.0)
+	tw.tween_property(world_env, "ambient_light_color", Color("b07070"), 2.0)
+
 func respawn_miguel() -> void:
 	if G.mode == "miguel" and G.boss == null: spawn_enemy("miguel", Vector3(0, 0, -18))
 
@@ -1667,6 +1723,19 @@ func spawn_enemy(kind: String, at = null, dummy := false) -> void:
 		banner("DEUS", "AQUELE QUE TUDO VÊ")
 		G.snd("angel", -2, .45)
 		G.flash = .8
+		return
+	if kind == "lilith":
+		if not ResourceLoader.exists("res://lilith/lilith.glb"): return
+		var lg = Node3D.new()
+		lg.set_script(preload("res://scripts/lilith.gd"))
+		world.add_child(lg)
+		lg.setup(p)
+		G.boss = lg
+		G.enemies.append(lg)
+		if ui.has("boss"): ui.boss.set_boss("lilith")
+		banner("LILITH", "A RAINHA DO ABISMO")
+		G.snd("angel", -2, .3)
+		G.flash = .5
 		return
 	if kind == "miguel":
 		if not ResourceLoader.exists("res://miguel/miguel.glb"): return
@@ -1748,7 +1817,7 @@ func _upd_marks() -> void:
 	var normal = []
 	for e in G.enemies:
 		if not e.is_boss: normal.append(e)
-	var show: bool = G.mode != "train" and (G.mode == "boss" or G.mode == "deus" or G.mode == "miguel" or queue.is_empty()) and normal.size() <= 3
+	var show: bool = G.mode != "train" and (G.mode == "boss" or G.mode == "deus" or G.mode == "miguel" or G.mode == "lilith" or queue.is_empty()) and normal.size() <= 3
 	if _mark_mesh == null:
 		_mark_mesh = SphereMesh.new()
 		_mark_mesh.radius = .32; _mark_mesh.height = .64; _mark_mesh.radial_segments = 4; _mark_mesh.rings = 1
@@ -1818,6 +1887,7 @@ func _upd_projs(dt: float, t: float) -> void:
 		if p.life <= 0: continue
 		p.life -= dt
 		var m: MeshInstance3D = p.m
+		if p.has("grav") and p.owner == "enemy": p.vel.y -= p.grav * dt
 		m.global_position += p.vel * dt
 		if not p.get("feather", false):
 			m.scale = Vector3.ONE * (1.9 if p.big else 1.0) * (1 + sin(t * 30) * .15)

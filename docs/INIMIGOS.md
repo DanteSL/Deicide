@@ -60,6 +60,30 @@ Com 75%, 50% e 25% de vida chama reforços.
 
 ---
 
+## Lilith, a Rainha do Abismo
+
+![Lilith](img/lilith.jpg)
+
+Modo **Lilith** no menu. Luta no **Trono do Abismo**: uma ilha de rocha vulcânica rachada no meio de um lago de lava,
+dentro de uma caverna com cachoeiras de lava, correntes pendendo do teto, espinhos de obsidiana, ossos espalhados,
+um pentagrama invertido em brasa com velas pretas e um trono de chifres ao fundo.
+5 800 de vida, cerca de 13 metros. Ela flutua em zigue-zague, com coroa de fogo atrás da cabeça, olhos em brasa,
+brasas e fumaça saindo do corpo e um selo de fogo sob os pés. **A cabeça leva mais dano.**
+Acertá-la às vezes rende um pouco de sangue para o frasco.
+
+| Ataque | Como desviar |
+|---|---|
+| **Garras Rasgantes** — avança e rasga três vezes; cada garra solta uma onda de fogo rasteira | Pule as ondas |
+| **Cruzes Caídas** — cruzes invertidas aparecem no ar sobre você e caem cravando no chão | Saia dos círculos vermelhos |
+| **Chuva de Enxofre** — bolas de fogo sobem da mão erguida e caem em arco em volta de você | Fique em movimento |
+| **Beijo da Súcubo** — te puxa para perto enquanto um anel se fecha, depois explode | Dash para fora do anel |
+| **Mergulho Infernal** — sobe, mira e atravessa a arena, deixando fogo no chão | Desvie de lado e não pise no fogo |
+| **Fendas de Lava** — crava a garra no chão e fendas se abrem em leque na sua direção | Saia das linhas antes de explodirem |
+| **Almas Penadas** — caveiras de fogo verdes que perseguem você | Rebata com **F** ou destrua no tiro |
+
+**Inferno (abaixo de 50%):** a lava sobe até a beira da ilha, as rachaduras e o pentagrama brilham mais, a caverna
+se acende e ela fica mais rápida, com mais cruzes, mais fendas e mais almas. Morta, volta em 9 segundos.
+
 ## Miguel, o Arcanjo Velado
 
 ![Miguel](img/miguel_perto.jpg)

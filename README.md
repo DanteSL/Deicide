@@ -18,7 +18,7 @@
 
 *Deicide* é um jogo de tiro em primeira pessoa rápido e violento, feito inteiro em **Godot 4.7** com GDScript.
 Você corre, desliza, dá dash, pula nas paredes, gira as armas e devolve projéteis no soco enquanto enfrenta
-ondas de servas aladas, os arcanjos **Gabriel** e **Miguel** e, por fim, o próprio **Deus** no seu trono de mármore, ouro e sangue.
+ondas de servas aladas, os arcanjos **Gabriel** e **Miguel**, a rainha demônio **Lilith** e, por fim, o próprio **Deus** no seu trono de mármore, ouro e sangue.
 
 **Sangue é munição.** Todas as armas de fogo bebem de um único frasco de sangue; cada inimigo que estoura é
 arremessado longe, espirra sangue na tela e solta gotas que voam até você para encher o frasco.
@@ -33,6 +33,8 @@ Um ranking de heresia (de Devoto a Supremo Sacrilégio) recompensa variar as arm
 | **Miguel**, o Arcanjo Velado: quatro braços, asas cheias de olhos | Abaixo de 50% de vida vem o **Eclipse** e o céu sangra |
 | ![Miguel, olhar das asas](docs/img/miguel_olhos.jpg) | ![Miguel, cruz de sangue](docs/img/miguel_cruz.jpg) |
 | **Olhar das Asas**: rajadas dos seis olhos (dá para devolver no soco) | **Cruz de Sangue**: gêiseres em cruz sob seus pés |
+| ![Lilith](docs/img/lilith.jpg) | ![Lilith, Beijo da Súcubo](docs/img/lilith_beijo.jpg) |
+| **Lilith**, a Rainha do Abismo: asas de morcego, coroa de fogo e olhos em brasa | **Beijo da Súcubo**: ela te puxa e explode — dê dash para fora |
 | ![Deus no trono](docs/img/deus_trono.jpg) | ![Cutscene de Deus](docs/img/cutscene_deus.jpg) |
 | **Deus** espera no alto do altar da Sala do Trono | A cutscene de entrada, com a voz de Deus em língua estranha |
 | ![Gabriel](docs/img/gabriel_luta.jpg) | ![Deus, segunda fase](docs/img/deus_fase2.jpg) |
@@ -46,6 +48,8 @@ Um ranking de heresia (de Devoto a Supremo Sacrilégio) recompensa variar as arm
 | **Pórtico da Balança** — a entrada do Gabriel: mosaico rachado de sangue, a balança dourada e os anjos de espada | O portão dourado se abre quando você chega e leva ao Átrio |
 | ![Átrio das Trombetas](docs/img/gabriel_arena.jpg) | ![Átrio visto de cima](docs/img/gabriel_arena_cima.jpg) |
 | **Átrio das Trombetas** — a arena do Gabriel: praça de mármore acima das nuvens, ao amanhecer | Vista de cima: estrela de ouro no chão, 8 trombetas gigantes e plataformas suspensas |
+| ![Trono do Abismo](docs/img/lilith_arena.jpg) | ![Inferno](docs/img/lilith_inferno.jpg) |
+| **Trono do Abismo** — a arena da Lilith: ilha de rocha num lago de lava, pentagrama invertido e correntes | No **Inferno** (fase 2) a lava sobe e a caverna se acende |
 | ![Arena de Miguel](docs/img/miguel.jpg) | ![Sala do Trono](docs/img/sala_do_trono.jpg) |
 | **Santuário do Eclipse** — ruínas flutuando no vazio, selo de sangue no chão e um sol negro | **Sala do Trono** — mármore branco, ouro, cachoeiras e um córrego de sangue |
 | ![Fontes de sangue](docs/img/fontes_de_sangue.jpg) | ![Barras dos chefes](docs/img/barras_chefes.jpg) |
@@ -80,6 +84,7 @@ Um ranking de heresia (de Devoto a Supremo Sacrilégio) recompensa variar as arm
 | **Ondas** | Hordas crescentes. A cada 5 ondas aparece Gabriel; a cada 10, Deus. |
 | **Treino** | Alvos infinitos para testar armas e melhorias. |
 | **Gabriel** | Suba o Pórtico da Balança, atravesse o portão dourado e lute contra o arcanjo no Átrio das Trombetas (8 ataques, segunda fase). |
+| **Lilith** | Luta contra a Rainha do Abismo no Trono do Abismo, sobre um lago de lava (7 ataques + Inferno). |
 | **Miguel** | Luta contra o Arcanjo Velado na arena dele, o Santuário do Eclipse (7 ataques + Eclipse). |
 | **Deus** | Luta direta contra Deus (10 ataques, segunda fase com a arena inundada). |
 
@@ -128,6 +133,8 @@ Deicide/
 │   ├── enemy.gd           # inimigos comuns
 │   ├── ceifadora.gd       # esqueleto e animação procedural da Ceifadora
 │   ├── gabriel.gd         # chefe Gabriel
+│   ├── lilith.gd          # chefe Lilith (partes animadas por código, 7 ataques, Inferno)
+│   ├── lilith_arena.gd    # Trono do Abismo, a arena da Lilith
 │   ├── miguel.gd          # chefe Miguel (partes animadas por código, 7 ataques, Eclipse)
 │   ├── miguel_arena.gd    # Santuário do Eclipse, a arena do Miguel
 │   ├── gabriel_arena.gd   # Pórtico da Balança (entrada) e Átrio das Trombetas, a arena do Gabriel
@@ -143,6 +150,7 @@ Deicide/
 ├── gabriel_tex.jpg        # textura do Gabriel
 ├── ceifadora.glb          # modelo da Ceifadora com esqueleto de 24 ossos
 ├── deus/                  # modelo animado de Deus, mão decepada e texturas
+├── lilith/                # modelo e textura da Lilith
 ├── miguel/                # modelo e texturas do Arcanjo Miguel
 ├── maos/                  # braços animados em primeira pessoa
 ├── revolver/              # revólver de dois canos
@@ -157,6 +165,7 @@ Deicide/
 ## Créditos
 
 - Estátuas do corredor da Sala do Trono: modelo **"AngelStatue"**, de Zsky.
+- Lilith: modelo enviado pelo autor (`Lilith.zip`, gerado no Tripo).
 - Arcanjo Miguel: modelo enviado pelo autor (`Miguel.zip`, gerado no Tripo).
 - Fontes da Sala do Trono: modelo de fonte enviado pelo autor (`fonte.zip`).
 - Fontes de texto da barra dos chefes: Cinzel e Cinzel Decorative (SIL Open Font License, em `fontes_ui/OFL.txt`).
