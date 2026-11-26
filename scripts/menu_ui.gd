@@ -107,15 +107,15 @@ func _build() -> void:
 	sb.shadow_size = 18
 	panel.add_theme_stylebox_override("panel", sb)
 	panel.anchor_left = 1; panel.anchor_right = 1; panel.anchor_top = 1; panel.anchor_bottom = 1
-	panel.offset_left = -520; panel.offset_right = -70; panel.offset_top = -350; panel.offset_bottom = -70
+	panel.offset_left = -560; panel.offset_right = -70; panel.offset_top = -350; panel.offset_bottom = -70
+	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	add_child(panel)
-	var stack = Control.new()
+	var stack = VBoxContainer.new()
 	panel.add_child(stack)
 	pages.info = _page_info()
 	pages.cfg = _page_cfg()
 	pages.ctl = _page_ctl()
 	for k in pages:
-		pages[k].set_anchors_preset(Control.PRESET_FULL_RECT)
 		stack.add_child(pages[k])
 		pages[k].visible = k == "info"
 	# rodapé
@@ -273,48 +273,120 @@ func _slider_theme(sl: HSlider) -> void:
 	sl.add_theme_icon_override("grabber", tex)
 	sl.add_theme_icon_override("grabber_highlight", ImageTexture.create_from_image(img2))
 
+var cfg_tabs = {}
+var cfg_tab_btns = {}
+
 func _page_cfg() -> Control:
 	var v = VBoxContainer.new()
-	v.add_theme_constant_override("separation", 12)
-	v.add_child(_lbl("CONFIGURAÇÕES", 13, DIM, f_wide))
-	var rows = [["Sensibilidade", "sens_mult", .3, 3.0, .1, "%.1f×"], ["Campo de visão", "fov_base", 80.0, 120.0, 1.0, "%d°"],
-		["Volume geral", "vol", 0.0, 100.0, 1.0, "%d%%"], ["Música", "mvol", 0.0, 100.0, 1.0, "%d%%"]]
-	for r in rows:
-		var h = HBoxContainer.new()
-		h.add_theme_constant_override("separation", 14)
-		var l = _lbl(r[0], 17, PALE)
-		l.custom_minimum_size = Vector2(140, 0)
-		h.add_child(l)
-		var sl = HSlider.new()
-		sl.min_value = r[2]; sl.max_value = r[3]; sl.step = r[4]
-		var key: String = r[1]
-		var pctk = key == "vol" or key == "mvol"
-		sl.value = float(G.get(key)) * (100.0 if pctk else 1.0)
-		sl.custom_minimum_size = Vector2(170, 26)
-		sl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		_slider_theme(sl)
-		h.add_child(sl)
-		var fmt: String = r[5]
-		var val = _lbl(fmt % sl.value, 15, GOLD, f_wide)
-		val.custom_minimum_size = Vector2(56, 0)
-		h.add_child(val)
-		sl.value_changed.connect(func(x):
-			G.set(key, x / 100.0 if pctk else x)
-			val.text = fmt % x
-			if pctk: G.apply_volume()
-			G.save())
-		sl.drag_ended.connect(func(_c): if key == "vol": G.snd("click", -2))
-		v.add_child(h)
-	var retro = CheckBox.new()
-	retro.text = "  Visual retrô pixelado"
-	retro.add_theme_font_size_override("font_size", 17)
-	retro.add_theme_color_override("font_color", PALE)
-	retro.add_theme_color_override("font_hover_color", Color.WHITE)
-	retro.add_theme_color_override("font_pressed_color", GOLD)
-	retro.button_pressed = G.retro
-	retro.toggled.connect(func(on): G.retro = on; main._apply_settings(); G.save())
-	v.add_child(retro)
+	v.add_theme_constant_override("separation", 10)
+	var head = HBoxContainer.new()
+	head.add_theme_constant_override("separation", 18)
+	v.add_child(head)
+	for k in ["VÍDEO", "JOGO", "ÁUDIO"]:
+		var b = Button.new()
+		b.text = k
+		b.flat = true
+		b.add_theme_font_override("font", f_wide)
+		b.add_theme_font_size_override("font_size", 14)
+		b.add_theme_color_override("font_color", DIM)
+		b.add_theme_color_override("font_hover_color", Color.WHITE)
+		b.add_theme_color_override("font_focus_color", Color.WHITE)
+		b.pressed.connect(func(): _cfg_tab(k); G.snd("click", -10, 1.4))
+		head.add_child(b)
+		cfg_tab_btns[k] = b
+	var sep = ColorRect.new(); sep.color = Color(GOLD, .25); sep.custom_minimum_size = Vector2(0, 1)
+	v.add_child(sep)
+	# --- vídeo
+	var vid = VBoxContainer.new(); vid.add_theme_constant_override("separation", 7)
+	var res_names = []
+	for r in G.RES_LIST: res_names.append(r[0])
+	var ss = DisplayServer.screen_get_size()
+	res_names[0] = "Nativa (%d × %d)" % [ss.x, ss.y]
+	vid.add_child(_choice("Modo de tela", G.WIN_MODES, func(): return G.win_mode, func(i): G.win_mode = i; main.apply_video()))
+	vid.add_child(_choice("Resolução", res_names, func(): return G.res_i, func(i): G.res_i = i; main.apply_video()))
+	vid.add_child(_choice("VSync", ["Desligado", "Ligado"], func(): return 1 if G.vsync else 0, func(i): G.vsync = i == 1; main.apply_video()))
+	var fps_names = []
+	for f in G.FPS_LIST: fps_names.append("Sem limite" if f == 0 else str(f))
+	vid.add_child(_choice("Limite de FPS", fps_names, func(): return max(0, G.FPS_LIST.find(int(G.max_fps))), func(i): G.max_fps = G.FPS_LIST[i]; main.apply_video()))
+	vid.add_child(_choice("Antisserrilhado", G.MSAA_LIST, func(): return G.msaa_i, func(i): G.msaa_i = i; main._apply_render()))
+	var ui_names = ["Automático", "100%", "125%", "150%", "200%"]
+	vid.add_child(_choice("Interface", ui_names, func(): return G.ui_i, func(i): G.ui_i = i; main._apply_render()))
+	vid.add_child(_slider("Brilho", .6, 1.5, .05, "%d%%", func(): return G.bright, func(x): G.bright = x; main._apply_render(), 100.0))
+	vid.add_child(_choice("Visual retrô", ["Desligado", "Ligado"], func(): return 1 if G.retro else 0, func(i): G.retro = i == 1; main._apply_settings()))
+	vid.add_child(_choice("Mostrar FPS", ["Não", "Sim"], func(): return 1 if G.show_fps else 0, func(i): G.show_fps = i == 1; main._apply_render()))
+	v.add_child(vid); cfg_tabs["VÍDEO"] = vid
+	# --- jogo
+	var jg = VBoxContainer.new(); jg.add_theme_constant_override("separation", 7)
+	jg.add_child(_slider("Sensibilidade", .3, 3.0, .1, "%.1f×", func(): return G.sens_mult, func(x): G.sens_mult = x))
+	jg.add_child(_choice("Inverter mouse", ["Não", "Sim"], func(): return 1 if G.invert_y else 0, func(i): G.invert_y = i == 1))
+	jg.add_child(_slider("Campo de visão", 80, 130, 1, "%d°", func(): return G.fov_base, func(x): G.fov_base = x))
+	jg.add_child(_slider("Tremor de tela", 0, 1.0, .05, "%d%%", func(): return G.shake_k, func(x): G.shake_k = x, 100.0))
+	v.add_child(jg); cfg_tabs["JOGO"] = jg
+	# --- áudio
+	var au = VBoxContainer.new(); au.add_theme_constant_override("separation", 7)
+	au.add_child(_slider("Volume geral", 0, 1.0, .01, "%d%%", func(): return G.vol, func(x): G.vol = x; G.apply_volume(), 100.0))
+	au.add_child(_slider("Música", 0, 1.0, .01, "%d%%", func(): return G.mvol, func(x): G.mvol = x; G.apply_volume(), 100.0))
+	v.add_child(au); cfg_tabs["ÁUDIO"] = au
+	_cfg_tab("VÍDEO")
 	return v
+
+func _cfg_tab(k: String) -> void:
+	for t in cfg_tabs: cfg_tabs[t].visible = t == k
+	for t in cfg_tab_btns: cfg_tab_btns[t].add_theme_color_override("font_color", GOLD if t == k else DIM)
+
+func _row(label: String) -> HBoxContainer:
+	var h = HBoxContainer.new()
+	h.add_theme_constant_override("separation", 10)
+	var l = _lbl(label, 16, PALE)
+	l.custom_minimum_size = Vector2(150, 0)
+	h.add_child(l)
+	return h
+
+## seletor ◀ valor ▶ (clique nas setas ou no valor)
+func _choice(label: String, opts: Array, get_i: Callable, set_i: Callable) -> Control:
+	var h = _row(label)
+	var val = _lbl("", 16, GOLD)
+	val.custom_minimum_size = Vector2(210, 0)
+	val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var upd = func(): val.text = str(opts[clamp(int(get_i.call()), 0, opts.size() - 1)])
+	for d in [-1, 1]:
+		var b = Button.new()
+		b.text = "◀" if d < 0 else "▶"
+		b.flat = true
+		b.add_theme_font_size_override("font_size", 14)
+		b.add_theme_color_override("font_color", Color(GOLD, .7))
+		b.add_theme_color_override("font_hover_color", Color.WHITE)
+		b.pressed.connect(func():
+			var i = (int(get_i.call()) + d + opts.size()) % opts.size()
+			set_i.call(i)
+			upd.call()
+			G.save()
+			G.snd("click", -12, 1.5))
+		if d < 0:
+			h.add_child(b); h.add_child(val)
+		else:
+			h.add_child(b)
+	upd.call()
+	return h
+
+func _slider(label: String, lo: float, hi: float, step: float, fmt: String, get_v: Callable, set_v: Callable, mul := 1.0) -> Control:
+	var h = _row(label)
+	var sl = HSlider.new()
+	sl.min_value = lo; sl.max_value = hi; sl.step = step
+	sl.value = float(get_v.call())
+	sl.custom_minimum_size = Vector2(170, 26)
+	sl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_slider_theme(sl)
+	h.add_child(sl)
+	var val = _lbl(fmt % (sl.value * mul), 15, GOLD, f_wide)
+	val.custom_minimum_size = Vector2(60, 0)
+	h.add_child(val)
+	sl.value_changed.connect(func(x):
+		set_v.call(x)
+		val.text = fmt % (x * mul)
+		G.save())
+	sl.drag_ended.connect(func(_c): G.snd("click", -6))
+	return h
 
 func _page_ctl() -> Control:
 	var v = VBoxContainer.new()

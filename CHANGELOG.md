@@ -1,5 +1,12 @@
 # Histórico de mudanças
 
+## Configurações de vídeo
+
+- Nova tela de configurações com abas **Vídeo / Jogo / Áudio**: modo de tela (janela, janela sem borda, tela cheia),
+  resolução (nativa, 4K, 2K ultrawide, 2K, ultrawide, Full HD, HD…), VSync, limite de FPS, antisserrilhado,
+  tamanho da interface, brilho, visual retrô, contador de FPS, inverter mouse e intensidade do tremor de tela.
+- Suporte a ultrawide: a imagem abre para os lados (FOV horizontal maior) e a interface escala com a resolução.
+
 ## Sala do Trono
 
 - Nova música da batalha final: **Throne of Ash and Gold**, de DanteSL.

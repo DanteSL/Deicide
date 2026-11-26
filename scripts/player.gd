@@ -181,7 +181,7 @@ func _physics_process(dt: float) -> void:
 	var zs = 0.4 if weapons.zoom else 1.0
 	var sens = 0.0022 * G.sens_mult * zs
 	yaw -= mdx * sens
-	pitch = clamp(pitch - mdy * sens, -1.55, 1.55)
+	pitch = clamp(pitch - mdy * sens * (-1.0 if G.invert_y else 1.0), -1.55, 1.55)
 	look_dx = mdx
 	look_dy = mdy
 	mdx = 0
@@ -264,7 +264,7 @@ func _apply_cam(dt: float) -> void:
 	land *= exp(-8 * dt)
 	G.shake *= exp(-7 * dt)
 	roll += ((0.06 if sliding else 0.0) - strafe * 0.022 - roll) * (1.0 - exp(-10 * dt))
-	var s = G.shake * 0.12
+	var s = G.shake * 0.12 * G.shake_k
 	cam.position = Vector3(G.rnd(-1, 1) * s, eye_h - land * 0.25 + G.rnd(-1, 1) * s, G.rnd(-1, 1) * s)
 	rotation = Vector3(0, yaw, 0)
 	cam.rotation = Vector3(pitch, 0, roll)

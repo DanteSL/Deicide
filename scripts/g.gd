@@ -27,6 +27,24 @@ var stats = {"kills": 0, "t": 0.0}
 var sens_mult = 1.0
 var fov_base = 100.0
 var retro = true
+# vídeo e jogo
+const RES_LIST := [["Nativa", Vector2i.ZERO], ["3840 × 2160 (4K)", Vector2i(3840, 2160)], ["3440 × 1440 (2K ultrawide)", Vector2i(3440, 1440)],
+	["2560 × 1440 (2K)", Vector2i(2560, 1440)], ["2560 × 1080 (ultrawide)", Vector2i(2560, 1080)], ["1920 × 1080 (Full HD)", Vector2i(1920, 1080)],
+	["1600 × 900", Vector2i(1600, 900)], ["1366 × 768", Vector2i(1366, 768)], ["1280 × 720 (HD)", Vector2i(1280, 720)]]
+const WIN_MODES := ["Janela", "Janela sem borda", "Tela cheia"]
+const FPS_LIST := [0, 30, 60, 120, 144, 165, 240]
+const UI_SCALES := [0.0, 1.0, 1.25, 1.5, 2.0]
+const MSAA_LIST := ["Desligado", "2×", "4×"]
+var win_mode = 2
+var res_i = 0
+var vsync = true
+var max_fps = 0
+var bright = 1.0
+var show_fps = false
+var shake_k = 1.0
+var invert_y = false
+var ui_i = 0
+var msaa_i = 1
 var rng = RandomNumberGenerator.new()
 
 const RANKS := [
@@ -409,6 +427,10 @@ func load_save() -> void:
 		retro = bool(cf.get_value("cfg", "retro", retro))
 		vol = float(cf.get_value("cfg", "vol", vol))
 		mvol = float(cf.get_value("cfg", "mvol", mvol))
+		for k in ["win_mode", "res_i", "vsync", "max_fps", "bright", "show_fps", "shake_k", "invert_y", "ui_i", "msaa_i"]:
+			set(k, cf.get_value("video", k, get(k)))
+		res_i = clamp(int(res_i), 0, RES_LIST.size() - 1)
+		win_mode = clamp(int(win_mode), 0, 2)
 		var r = cf.get_value("rec", "all", {})
 		if r is Dictionary: rec = r
 	apply_volume()
@@ -427,5 +449,7 @@ func save() -> void:
 	cf.set_value("cfg", "retro", retro)
 	cf.set_value("cfg", "vol", vol)
 	cf.set_value("cfg", "mvol", mvol)
+	for k in ["win_mode", "res_i", "vsync", "max_fps", "bright", "show_fps", "shake_k", "invert_y", "ui_i", "msaa_i"]:
+		cf.set_value("video", k, get(k))
 	cf.set_value("rec", "all", rec)
 	cf.save(SAVE)

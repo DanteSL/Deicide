@@ -72,6 +72,7 @@ func _ready() -> void:
 	on_weapon_changed()
 	G.style_added.connect(_on_style)
 	get_viewport().size_changed.connect(_on_resize)
+	apply_video()
 	_apply_settings()
 	show_menu(false)
 	# teste automático (só quando chamado com: -- --autotest=modo)
@@ -381,6 +382,9 @@ func _gab_test() -> void:
 	rt.call(t1 + 7.5, func(): print("GABTEST OK boss=", G.boss, " groups=", get_tree().get_nodes_in_group("gabriel").size()); get_tree().quit())
 
 func _autotest(m: String) -> void:
+	G.msaa_i = 0  # renderizador por software dos testes é lento com MSAA
+	_apply_render()
+	get_tree().create_timer(6.0, true, false, true).timeout.connect(func(): print("FPS teste ", Engine.get_frames_per_second()))
 	if m == "gab":
 		_gab_test()
 		return
@@ -409,8 +413,11 @@ func _autotest(m: String) -> void:
 		rtm.call(1.5, func(): shm.call("a"); print("ts=", Engine.time_scale, " size=", menu.size, " mod=", menu.modulate))
 		rtm.call(1.6, func(): menu.buttons[4].grab_focus())
 		rtm.call(2.1, shm.bind("deus"))
-		rtm.call(2.2, func(): menu._show_page("cfg"); menu.buttons[6].grab_focus())
-		rtm.call(2.7, shm.bind("cfg"))
+		rtm.call(2.2, func(): menu._show_page("cfg"); menu.buttons[6].grab_focus(); print("tela ", DisplayServer.screen_get_size(), " janela ", get_window().size, " fator ", get_window().content_scale_factor, " escala3d ", vp.scaling_3d_scale))
+		rtm.call(2.45, shm.bind("cfg"))
+		rtm.call(2.5, func(): menu._cfg_tab("JOGO"))
+		rtm.call(2.75, shm.bind("cfg_jogo"))
+		rtm.call(2.76, func(): menu._cfg_tab("VÍDEO"))
 		rtm.call(2.8, func(): menu._show_page("ctl"))
 		rtm.call(3.2, shm.bind("ctl"))
 		rtm.call(3.3, func(): start_mode("waves"))
@@ -600,9 +607,55 @@ func _build_viewports() -> void:
 func _apply_settings() -> void:
 	vpc.stretch_shrink = 3 if G.retro else 1
 	vpc2.stretch_shrink = 3 if G.retro else 1
+	_apply_render()
+
+## modo de janela, resolução, vsync, limite de FPS e escala da interface
+func apply_video() -> void:
+	var w: Window = get_window()
+	var scr := DisplayServer.window_get_current_screen()
+	var ss: Vector2i = DisplayServer.screen_get_size(scr)
+	var target: Vector2i = ss if G.res_i == 0 else G.RES_LIST[G.res_i][1]
+	if not DisplayServer.get_name() == "headless" and not OS.has_feature("editor_hint"):
+		match int(G.win_mode):
+			0:
+				w.mode = Window.MODE_WINDOWED
+				w.borderless = false
+				var sz = Vector2i(min(target.x, ss.x - 40), min(target.y, ss.y - 90))
+				w.size = sz
+				w.position = DisplayServer.screen_get_position(scr) + (ss - sz) / 2
+			1:
+				w.mode = Window.MODE_WINDOWED
+				w.borderless = true
+				w.size = ss
+				w.position = DisplayServer.screen_get_position(scr)
+			2:
+				w.mode = Window.MODE_EXCLUSIVE_FULLSCREEN
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if G.vsync else DisplayServer.VSYNC_DISABLED)
+	Engine.max_fps = int(G.max_fps)
+	_apply_render.call_deferred()
+
+## escala da interface e resolução de renderização do 3D
+func _apply_render() -> void:
+	var w: Window = get_window()
+	var phys: Vector2i = w.size
+	var f: float = G.UI_SCALES[G.ui_i]
+	if f <= 0.0: f = clamp(phys.y / 1080.0, 1.0, 2.0)
+	w.content_scale_factor = f
+	var scr := DisplayServer.window_get_current_screen()
+	var target_h: float = float(phys.y)
+	if G.win_mode != 0 and G.res_i != 0: target_h = float(G.RES_LIST[G.res_i][1].y)
+	var logical_h: float = phys.y / f
+	var sc: float = 1.0 if G.retro else clamp(target_h / max(1.0, logical_h), .25, 2.0)
+	for v in [vp, vp2]:
+		v.scaling_3d_scale = sc
+		v.msaa_3d = [Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X][G.msaa_i]
+	if world_env:
+		world_env.adjustment_enabled = true
+		world_env.adjustment_brightness = G.bright
+	if ui.has("fps"): ui.fps.visible = G.show_fps
 
 func _on_resize() -> void:
-	pass
+	_apply_render()
 
 # ---------------- arena ----------------
 func _tex(draw: Callable) -> ImageTexture:
@@ -930,6 +983,10 @@ func _build_hud() -> void:
 	var kh = _lbl("Q troca · R girar/recarregar · F soco · E terminal", 13, Color("c9b2a6"), 2)
 	kh.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	brv.add_child(kh)
+	ui.fps = _lbl("", 14, Color(1, 1, 1, .7), 3)
+	ui.fps.position = Vector2(16, 10)
+	ui.fps.visible = G.show_fps
+	hud.add_child(ui.fps)
 	# estilo (canto superior direito)
 	var sty = VBoxContainer.new()
 	sty.set_anchors_preset(Control.PRESET_TOP_RIGHT)
@@ -1121,6 +1178,7 @@ func _upd_hud(dt: float) -> void:
 	ui.vig.modulate.a = max(G.hurt_v, (.35 + sin(Time.get_ticks_msec() / 180.0) * .15) if p.hp < 30 else 0.0)
 	ui.flash.modulate.a = G.flash
 	ui.hit.modulate = Color(1, .2, .1, G.hit_v) if G.hit_kill else Color(1, 1, 1, G.hit_v)
+	if G.show_fps: ui.fps.text = "%d FPS" % Engine.get_frames_per_second()
 	# estilo
 	var rk = G.rank()
 	if not G.blas_on: G.style = max(0.0, G.style - dt * (5 + rk * 4))
