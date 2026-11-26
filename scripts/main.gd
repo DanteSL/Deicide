@@ -16,6 +16,7 @@ const MUS_GROUP := {"coro": ["coro", "furia"], "furia": ["coro", "furia"], "deus
 var mus = {}
 var mus_w = {}
 var _mus_us = 0
+var _muffle = 0.0
 var world_env: Environment
 var build_root: Node3D
 var arena_root: Node3D
@@ -422,6 +423,7 @@ func _autotest(m: String) -> void:
 		rtm.call(3.2, shm.bind("ctl"))
 		rtm.call(3.3, func(): start_mode("waves"))
 		rtm.call(5.0, func(): show_menu(true))
+		rtm.call(5.5, func(): var i = AudioServer.get_bus_index("Musica"); print("ABAFADO cutoff=", AudioServer.get_bus_effect(i, 0).cutoff_hz, " on=", AudioServer.is_bus_effect_enabled(i, 0), " efeitos_db=", AudioServer.get_bus_volume_db(AudioServer.get_bus_index("Efeitos"))))
 		rtm.call(5.6, shm.bind("pause"))
 		rtm.call(5.8, func(): quit_to_menu())
 		rtm.call(6.5, func(): shm.call("volta"); print("MENU OK state=", G.state, " started=", started, " enemies=", G.enemies.size()); get_tree().quit())
@@ -807,6 +809,7 @@ func _build_audio() -> void:
 			ms.loop = true
 			if k == "final": ms.loop_offset = 5.0  # ao repetir, pula a introdução silenciosa
 		mp.stream = ms
+		mp.bus = "Musica"
 		mp.volume_db = -80
 		add_child(mp)
 		mus[k] = mp
@@ -818,6 +821,7 @@ func _build_audio() -> void:
 		ss.loop_begin = 0
 		ss.loop_end = int(ss.get_length() * ss.mix_rate) - 1
 	slide_snd.stream = ss
+	slide_snd.bus = "Efeitos"
 	slide_snd.volume_db = -80
 	add_child(slide_snd)
 	slide_snd.play()
@@ -1660,7 +1664,7 @@ func _upd_music() -> void:
 			tgt.coro = 1.0 if fighting else .5
 			tgt.furia = clamp((G.style - 100.0) / 250.0, 0.0, 1.0) if fighting else 0.0
 			if G.blas_on: tgt.furia = 1.0
-		var k2 = {"paused": .4, "term": .55, "dead": .3}.get(G.state, 1.0)
+		var k2 = {"paused": .55, "term": .6, "dead": .35}.get(G.state, 1.0)
 		if G.blas_on and Engine.time_scale < .5: k2 = .12
 		for k in tgt: tgt[k] *= k2
 	for k in MUS:
@@ -1675,13 +1679,17 @@ func _upd_music() -> void:
 		if tgt[k] > 0.0 and not p.playing:
 			for g in grp: mus[g].play()
 		var vol = w * G.mvol
-		p.volume_db = (-4.0 + linear_to_db(vol)) if vol > .0005 else -80.0
+		p.volume_db = (1.0 + linear_to_db(vol)) if vol > .0005 else -80.0
 	for k in MUS:
 		var grp: Array = MUS_GROUP.get(k, [k])
 		var silent = true
 		for g in grp:
 			if mus_w[g] > .0005 or tgt[g] > 0.0: silent = false
 		if silent and mus[k].playing: mus[k].stop()
+	# no menu de pausa / terminal a música fica abafada
+	var mt: float = 1.0 if (started and (G.state == "paused" or G.state == "term")) else 0.0
+	_muffle = move_toward(_muffle, mt, dt * (3.0 if mt > _muffle else 1.6))
+	G.set_music_muffle(_muffle)
 	mus.gabriel.pitch_scale = 1.06 if (boss_ok and G.boss.kind != "deus" and G.boss.ph2) else 1.0
 
 # ---------------- Blasfêmia ----------------

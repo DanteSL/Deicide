@@ -72,8 +72,10 @@ func _ready() -> void:
 	rng.randomize()
 	load_save()
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_setup_buses()
 	for i in 28:
 		var p = AudioStreamPlayer.new()
+		p.bus = "Efeitos"
 		add_child(p)
 		_players.append(p)
 
@@ -409,6 +411,7 @@ const UPG := {
 var UP := {}
 var vol = 0.8
 var mvol = 0.8
+var svol = 0.8
 var loadout: Array = [0, 1, 2, 3, 4, 5, 6, 7]
 const SAVE := "user://save.cfg"
 
@@ -427,6 +430,7 @@ func load_save() -> void:
 		retro = bool(cf.get_value("cfg", "retro", retro))
 		vol = float(cf.get_value("cfg", "vol", vol))
 		mvol = float(cf.get_value("cfg", "mvol", mvol))
+		svol = float(cf.get_value("cfg", "svol", svol))
 		for k in ["win_mode", "res_i", "vsync", "max_fps", "bright", "show_fps", "shake_k", "invert_y", "ui_i", "msaa_i"]:
 			set(k, cf.get_value("video", k, get(k)))
 		res_i = clamp(int(res_i), 0, RES_LIST.size() - 1)
@@ -435,9 +439,36 @@ func load_save() -> void:
 		if r is Dictionary: rec = r
 	apply_volume()
 
+## canais: Master ← Musica (com filtro para abafar no menu) e Master ← Efeitos (tiros, golpes, habilidades)
+const SFX_BASE_DB := -6.0
+func _setup_buses() -> void:
+	for nm in ["Musica", "Efeitos"]:
+		if AudioServer.get_bus_index(nm) >= 0: continue
+		AudioServer.add_bus()
+		var i = AudioServer.bus_count - 1
+		AudioServer.set_bus_name(i, nm)
+		AudioServer.set_bus_send(i, "Master")
+		if nm == "Musica":
+			var lpf = AudioEffectLowPassFilter.new()
+			lpf.cutoff_hz = 20000
+			lpf.resonance = .6
+			AudioServer.add_bus_effect(i, lpf)
+	apply_volume()
+
+func set_music_muffle(m: float) -> void:
+	var i = AudioServer.get_bus_index("Musica")
+	if i < 0: return
+	var lpf: AudioEffectLowPassFilter = AudioServer.get_bus_effect(i, 0)
+	lpf.cutoff_hz = 20000.0 * pow(700.0 / 20000.0, clamp(m, 0.0, 1.0))
+	AudioServer.set_bus_effect_enabled(i, 0, m > .01)
+
 func apply_volume() -> void:
 	AudioServer.set_bus_mute(0, vol <= 0.001)
 	AudioServer.set_bus_volume_db(0, linear_to_db(max(vol, 0.001)))
+	var e = AudioServer.get_bus_index("Efeitos")
+	if e >= 0:
+		AudioServer.set_bus_mute(e, svol <= 0.001)
+		AudioServer.set_bus_volume_db(e, SFX_BASE_DB + linear_to_db(max(svol, 0.001)))
 
 func save() -> void:
 	var cf = ConfigFile.new()
@@ -449,6 +480,7 @@ func save() -> void:
 	cf.set_value("cfg", "retro", retro)
 	cf.set_value("cfg", "vol", vol)
 	cf.set_value("cfg", "mvol", mvol)
+	cf.set_value("cfg", "svol", svol)
 	for k in ["win_mode", "res_i", "vsync", "max_fps", "bright", "show_fps", "shake_k", "invert_y", "ui_i", "msaa_i"]:
 		cf.set_value("video", k, get(k))
 	cf.set_value("rec", "all", rec)

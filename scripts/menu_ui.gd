@@ -326,6 +326,7 @@ func _page_cfg() -> Control:
 	var au = VBoxContainer.new(); au.add_theme_constant_override("separation", 7)
 	au.add_child(_slider("Volume geral", 0, 1.0, .01, "%d%%", func(): return G.vol, func(x): G.vol = x; G.apply_volume(), 100.0))
 	au.add_child(_slider("Música", 0, 1.0, .01, "%d%%", func(): return G.mvol, func(x): G.mvol = x; G.apply_volume(), 100.0))
+	au.add_child(_slider("Efeitos", 0, 1.0, .01, "%d%%", func(): return G.svol, func(x): G.svol = x; G.apply_volume(), 100.0))
 	v.add_child(au); cfg_tabs["ÁUDIO"] = au
 	_cfg_tab("VÍDEO")
 	return v
