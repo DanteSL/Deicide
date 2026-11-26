@@ -383,6 +383,30 @@ func _ceif_test() -> void:
 				_aim_e._start_atk(k))
 		for j in 6: rt.call(t0 + .1 + j * .17, shot.bind("%s%d" % [k, j]))
 	rt.call(12.5, func(): print("CEIFTEST OK alive=", is_instance_valid(_aim_e), " hp=", player.hp); get_tree().quit())
+func _caida_test() -> void:
+	start_mode("train")
+	for e in G.enemies: e.queue_free()
+	G.enemies.clear()
+	G.clear_timers()
+	player.global_position = Vector3(0, 1, 20)
+	spawn_enemy("caida", Vector3(0, 0.5, 2))
+	_aim_e = G.enemies.back()
+	G.fov_base = 50.0
+	var rt = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+	var shot = func(name):
+		var img = get_viewport().get_texture().get_image()
+		if img: img.save_png("/tmp/ca_%s.png" % name)
+	for j in 6: rt.call(4.2 + j * .25, shot.bind("walk%d" % j))
+	rt.call(6.0, func():
+		if is_instance_valid(_aim_e): _aim_e.cd = 99.0; _aim_e._caida_start("ataque"))
+	for j in 6: rt.call(6.1 + j * .22, shot.bind("ataque%d" % j))
+	rt.call(8.0, func(): player.global_position = Vector3(0, 1, 20); player.hp = player.max_hp if "max_hp" in player else 100)
+	rt.call(8.2, func():
+		if is_instance_valid(_aim_e): _aim_e.global_position = Vector3(0, .5, 9); _aim_e.cd = 99.0; _aim_e._caida_start("salto"))
+	for j in 7: rt.call(8.3 + j * .26, shot.bind("salto%d" % j))
+	rt.call(11.4, func(): if is_instance_valid(_aim_e): _aim_e.take_damage(9999, "punch", false))
+	rt.call(11.9, shot.bind("morte"))
+	rt.call(12.6, func(): print("CAIDATEST OK hp=", player.hp, " enemies=", G.enemies.size()); get_tree().quit())
 func _gab_test() -> void:
 	start_mode("boss")
 	_aim_boss = true
@@ -491,6 +515,9 @@ func _autotest(m: String) -> void:
 		return
 	if m == "ceif":
 		_ceif_test()
+		return
+	if m == "caida":
+		_caida_test()
 		return
 	if m == "arms":
 		start_mode("train")
@@ -1612,7 +1639,7 @@ func reset() -> void:
 	elif G.mode == "deus":
 		spawn_deus_cine()
 	elif G.mode == "train":
-		for d in [["husk", -8, 12], ["husk", 0, 8], ["husk", 8, 12], ["brute", 0, -8], ["drone", -14, 4], ["drone", 14, 4]]:
+		for d in [["husk", -8, 12], ["husk", 0, 8], ["husk", 8, 12], ["brute", 0, -8], ["caida", -6, -14], ["drone", -14, 4], ["drone", 14, 4]]:
 			spawn_enemy(d[0], Vector3(d[1], 0, d[2]), true)
 		banner("TREINO", "ALVOS INFINITOS")
 
@@ -1816,6 +1843,7 @@ func _start_wave() -> void:
 	for i in 2 + wave * 2: queue.append("husk")
 	for i in wave: queue.append("drone")
 	for i in (int((wave - 1) / 2.0) if wave >= 3 else 0): queue.append("brute")
+	for i in (1 + int((wave - 3) / 3.0) if wave >= 3 else 0): queue.append("caida")
 	queue.shuffle()
 	banner("ONDA %d" % wave, "%d INIMIGOS" % queue.size())
 	G.snd("wave", -6)

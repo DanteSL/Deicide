@@ -1,5 +1,14 @@
 # Histórico de mudanças
 
+## Nova inimiga: Anjo Caído
+
+- Inimiga de elite com modelo e esqueleto próprios (Mixamo) e três animações feitas no Blender:
+  desfile (caminhada de passarela apoiando o cajado no chão a cada passo), ataque com o cajado e salto.
+- Comportamento: anda até o jogador, golpeia de perto com o cajado e, de média distância,
+  salta até o jogador e crava o cajado no chão (dano em área, poeira, faíscas e tremor de tela).
+- 320 de vida; aparece nas ondas a partir da onda 3 (uma a mais a cada 3 ondas) e como alvo no treino.
+- Ao morrer, explode em sangue como os outros e rende mais munição de sangue.
+
 ## Título novo e menu de pausa transparente
 
 - Menu principal: o título virou só "DEICIDE", sem a descrição embaixo, em letras góticas douradas com brilho de brasa

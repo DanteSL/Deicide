@@ -32,7 +32,7 @@ func _ready() -> void:
 ## o inimigo 'e' estoura em sangue: o corpo inteiro é arremessado longe e fica no mapa,
 ## o sangue espirra na tela e gotas de sangue voam até o jogador (é a munição)
 const MAX_CORPSES := 28
-const BLOOD_GAIN := {"husk": 22.0, "brute": 55.0, "drone": 12.0}
+const BLOOD_GAIN := {"caida": 45.0, "husk": 22.0, "brute": 55.0, "drone": 12.0}
 var corpses: Array = []
 var globs: Array = []
 var _glob_mesh: SphereMesh

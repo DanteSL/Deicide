@@ -41,6 +41,11 @@ var cyc = 0.0
 var fl = 0.0
 var lunge_dir = Vector3.ZERO
 var last_atk = ""
+# Anjo Caído (modelo com animações do Blender)
+var caida: Node3D = null
+var cap_ap: AnimationPlayer = null
+var jump_to := Vector3.ZERO
+var jump_from := Vector3.ZERO
 
 func setup(k: String, pos: Vector3, is_dummy := false) -> void:
 	kind = k
@@ -61,6 +66,12 @@ func setup(k: String, pos: Vector3, is_dummy := false) -> void:
 			var sp = SphereShape3D.new()
 			sp.radius = 0.95
 			shape.shape = sp
+		"caida":
+			hp = 320; r = 0.6; h = 2.8; speed = 4.4
+			_build_caida()
+			cap.radius = 0.6; cap.height = 2.8
+			shape.shape = cap
+			shape.position.y = 1.4
 		"brute":
 			hp = 260; r = 0.85; h = 3.7; speed = 4.6; base_scale = 1.7
 			_build_husk(true)
@@ -93,6 +104,26 @@ func _box(sz: Vector3, mat: Material, p: Vector3, parent: Node3D) -> MeshInstanc
 	m.position = p
 	parent.add_child(m)
 	return m
+
+const CAIDA_SC := 2.75
+const CAIDA_SCN := preload("res://caida/anjo_caido.glb")
+func _build_caida() -> void:
+	caida = CAIDA_SCN.instantiate()
+	caida.scale = Vector3.ONE * CAIDA_SC
+	vis.add_child(caida)
+	for n in caida.find_children("*", "MeshInstance3D", true, false):
+		var mi: MeshInstance3D = n
+		for i in mi.mesh.get_surface_count():
+			var m = mi.mesh.surface_get_material(i)
+			if m == null: continue
+			m = m.duplicate()
+			# anjo caído: ouro sujo e pele acinzentada
+			m.albedo_color = Color(.78, .66, .62)
+			mi.set_surface_override_material(i, m)
+			mats.append(m)
+	cap_ap = caida.find_children("*", "AnimationPlayer", true, false)[0]
+	cap_ap.get_animation("desfile").loop_mode = Animation.LOOP_LINEAR
+	cap_ap.play("desfile")
 
 func _build_husk(brute: bool) -> void:
 	var skin = G.lit(Color("4b2440") if brute else Color("7a2b22"))
@@ -171,7 +202,7 @@ func take_damage(dmg: float, src: String, head: bool) -> bool:
 		return false
 	hp -= dmg
 	flash = 0.09
-	if ceif: fl = min(1.0, fl + .35 + dmg / 80.0)
+	if ceif or caida: fl = min(1.0, fl + .35 + dmg / 80.0)
 	if hp <= 0.0:
 		die(src, head)
 		return true
@@ -183,7 +214,7 @@ func die(src: String, head: bool) -> void:
 	if fly:
 		G.emit("metal", c, 12, 12, .22, 1.4)
 		G.emit("spark", c, 16, 14, .08, .5)
-	elif ceif:
+	elif ceif or caida:
 		G.emit("white", c + Vector3(0, .4, 0), 18, 10, .2, 1.4, Vector3(0, 3, 0), 6)
 	# explode em pedaços, voa sangue e o tempo congela por um instante
 	if G.main and G.main.gibs: G.main.gibs.explode(self, src)
@@ -231,6 +262,8 @@ func _physics_process(dt: float) -> void:
 		_upd_drone(dt, dx, dz, dist, nx, nz, p)
 	elif ceif:
 		_upd_ceif(dt, dx, dz, dist, nx, nz, p)
+	elif caida:
+		_upd_caida(dt, dx, dz, dist, nx, nz, p)
 	else:
 		_upd_husk(dt, dx, dz, dist, nx, nz, p)
 	# preso fora de vista: reaparece num ponto normal
@@ -461,3 +494,124 @@ func _upd_ceif(dt: float, dx: float, dz: float, dist: float, nx: float, nz: floa
 		C.wings(.25 * fl, .2 * fl)
 	C.R("head", Vector3.RIGHT, clamp(-(p.y - global_position.y) * .08, -.3, .3))
 	C.apply_all(params)
+
+# ---------------- Anjo Caído: desfila, golpeia com o cajado e salta cravando o cajado no chão ----------------
+const CAIDA_ATK := {"ataque": {"dur": 44.0 / 30.0, "hit": 23.0 / 30.0, "dmg": 20.0},
+	"salto": {"dur": 58.0 / 30.0, "up": 14.0 / 30.0, "hit": 36.0 / 30.0, "dmg": 26.0}}
+
+func _caida_front(d: float) -> Vector3:
+	return global_position + Vector3(sin(rotation.y), 0, cos(rotation.y)) * d
+
+func _upd_caida(dt: float, dx: float, dz: float, dist: float, nx: float, nz: float, p: Vector3) -> void:
+	var face = atan2(dx, dz)
+	fl *= exp(-6.0 * dt)
+	var want = 0.0
+	var track = 5.0
+	if dummy:
+		var k = 1.0 - exp(-6.0 * dt)
+		velocity.x -= velocity.x * k
+		velocity.z -= velocity.z * k
+	elif atk == "":
+		wind = 0.0
+		cd -= dt
+		if dist > 2.2: want = speed
+		if cd <= 0.0 and abs(p.y - global_position.y) < 3.0:
+			if dist < 3.4:
+				_caida_start("ataque")
+			elif dist > 5.0 and dist < 13.0 and G.rng.randf() < .6:
+				_caida_start("salto")
+			else:
+				cd = .4
+	if atk != "":
+		at += dt
+		var A = CAIDA_ATK[atk]
+		wind = 0.0
+		match atk:
+			"ataque":
+				track = 7.0 if at < A.hit - .2 else 0.0
+				if absf(at - (A.hit - .12)) < dt * .6: G.snd("whoosh", -2, .7)
+				if at > A.hit - .1 and at < A.hit + .1:
+					velocity.x += sin(rotation.y) * 16 * dt; velocity.z += cos(rotation.y) * 16 * dt
+				if not atk_hit and at >= A.hit:
+					atk_hit = true
+					var gp = _caida_front(2.3)
+					gp.y = global_position.y + .1
+					G.emit("dust", gp, 14, 6, .3, .7)
+					G.emit("spark", gp, 12, 8, .1, .4)
+					G.snd("slam", -8, 1.25)
+					_caida_hurt(p, 3.7, .35, A.dmg, 11.0)
+			"salto":
+				track = 6.0 if at < A.up else 0.0
+				if at < A.up:
+					jump_from = global_position
+					var to = Vector3(p.x, global_position.y, p.z)
+					var off = to - global_position
+					# cai um pouco antes do jogador, com o cajado na frente
+					var L = clamp(off.length() - 1.6, 0.0, 11.0)
+					jump_to = global_position + off.normalized() * L if off.length() > .1 else global_position
+				elif at < A.hit:
+					var u = (at - A.up) / (A.hit - A.up)
+					var tgt = jump_from.lerp(jump_to, u * u * (3 - 2 * u))
+					velocity.x = (tgt.x - global_position.x) / max(dt, .001)
+					velocity.z = (tgt.z - global_position.z) / max(dt, .001)
+					if absf(at - A.up) < dt * .6:
+						G.snd("whoosh", -4, .55)
+						G.emit("dust", global_position + Vector3(0, .1, 0), 12, 5, .3, .6)
+				else:
+					velocity.x = 0; velocity.z = 0
+				if not atk_hit and at >= A.hit:
+					atk_hit = true
+					var gp = _caida_front(1.4)
+					gp.y = global_position.y + .1
+					G.emit("dust", gp, 30, 11, .4, 1.0)
+					G.emit("spark", gp, 22, 14, .12, .5)
+					G.emit("white", gp + Vector3(0, .3, 0), 14, 9, .2, .5)
+					G.snd("slam", -2, .9)
+					G.snd("porrada", -8, .8)
+					var pd = global_position.distance_to(G.player.global_position)
+					if pd < 12: G.shake = max(G.shake, .55 - pd * .03)
+					_caida_hurt(p, 4.6, -1.0, A.dmg, 14.0, gp)
+		if at >= A.dur:
+			atk = ""
+			wind = 0.0
+			cd = G.rnd(.6, 1.4)
+			cap_ap.play("desfile", .25)
+	if not dummy and not (atk == "salto" and at >= CAIDA_ATK.salto.up and at < CAIDA_ATK.salto.hit):
+		if atk == "salto": want = 0.0
+		var kk = 1.0 - exp(-(8.0 if is_on_floor() else 0.8) * dt)
+		velocity.x += (nx * want - velocity.x) * kk
+		velocity.z += (nz * want - velocity.z) * kk
+	velocity.y -= 40.0 * dt
+	move_and_slide()
+	if not dummy and is_on_wall() and is_on_floor() and atk == "":
+		velocity.y = 11.0
+	if track > 0: rotation.y = lerp_angle(rotation.y, face, 1.0 - exp(-track * dt))
+	# animação de andar acompanha a velocidade
+	if atk == "":
+		var hs = Vector2(velocity.x, velocity.z).length()
+		if cap_ap.current_animation != "desfile": cap_ap.play("desfile", .25)
+		cap_ap.speed_scale = clamp(hs / 3.2, .12, 1.6)
+	else:
+		cap_ap.speed_scale = 1.0
+	# levou tiro: dá um tranco para trás
+	vis.rotation.x = -.18 * fl
+
+func _caida_start(k: String) -> void:
+	atk = k
+	at = 0.0
+	atk_hit = false
+	last_atk = k
+	cap_ap.play(k, .12)
+	cap_ap.speed_scale = 1.0
+	G.snd("whoosh", -14, .55)
+
+func _caida_hurt(p: Vector3, reach: float, cosmin: float, dmg: float, kb: float, from = null) -> void:
+	var o: Vector3 = from if from != null else global_position
+	var to = Vector3(p.x - o.x, 0, p.z - o.z)
+	var f = Vector3(sin(rotation.y), 0, cos(rotation.y))
+	if to.length() > reach or abs(p.y - global_position.y) > 2.6: return
+	if from == null and to.length() > .9 and to.normalized().dot(f) < cosmin: return
+	if G.hurt_player(dmg):
+		var d = to.normalized() if to.length() > .1 else f
+		G.player.velocity += d * kb + Vector3(0, 5, 0)
+		G.snd("hit", -4, .7)
