@@ -1,5 +1,12 @@
 # Histórico de mudanças
 
+## Anjo Caído: braço direito separado de vez
+
+- Na caminhada o cotovelo ficava colado na cintura e o antebraço saía do quadril, parecendo grudado na coxa.
+  Agora o braço sai do ombro, com o cotovelo afastado do corpo e a mão segurando o cajado na altura do peito.
+- Os pontos da junção braço/quadril não misturam mais peso (ou são braço ou são corpo) e as faces que
+  fundiam os dois foram cortadas, então não sobra nenhuma "tira" esticada.
+
 ## Anjo Caído: braço solto da coxa
 
 - A pele da coxa e a placa do quadril estavam presas ao braço direito (a mão encostava na coxa na pose original)
