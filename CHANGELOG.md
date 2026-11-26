@@ -1,5 +1,18 @@
 # Histórico de mudanças
 
+## HUD nova e recargas com as mãos
+
+- **HUD nova** (`scripts/hud2.gd`): emblema de vida com hexagrama e anel, barra de sangue com rastro de dano,
+  estamina contínua com os 3 dashes marcados, losangos de dash, saltos de parede; painel do arsenal com o
+  **modelo 3D da arma** girando devagar, munição grande com ícones por tipo, barra de carga/calor, barra de recarga
+  e os slots das armas.
+- **Pistola** mais baixa e com o cabo dentro das duas mãos.
+- **Recarga da pistola**: a mão esquerda solta o pente, busca outro, encaixa por baixo e puxa o ferrolho
+  (a arma deita para a esquerda para isso). Sem o giro no fim.
+- **Recarga da escopeta**: a arma deita para a direita, a mão esquerda busca cada cartucho e empurra na janela;
+  no fim, bombeia (sem o giro no ar).
+- Cotovelos sempre para baixo e para fora, e o ombro avança quando a arma está longe.
+
 ## Braços animados
 
 - Saiu a mão branca com rachaduras. No lugar entram os braços do arquivo `fps_test` (modelo + animação enviados pelo autor).

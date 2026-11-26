@@ -7,7 +7,12 @@ var rig: Node3D # raiz do modelo dos braços
 var bones = {}
 var aim_r: Node3D = null # alvos (Node3D) da mão direita/esquerda; null = pose da animação
 var aim_l: Node3D = null
-var mode_l := "" # "pistol" (envolve a mão direita), "barrel" (segura o cano), "hand", "punch"
+var mode_l := ""
+var free_l: Node3D = null # alvo livre da mão esquerda (recargas): palma = +Y do nó, dedos = -Z
+var free_w := 0.0
+var GRIP_FWD := .075
+var GRIP_PALM := .03
+var GRIP_UP := .0 # "pistol" (envolve a mão direita), "barrel" (segura o cano), "hand", "punch"
 
 func setup() -> void:
 	var sk := get_skeleton()
@@ -23,7 +28,9 @@ func _process_modification_with_delta(_dt: float) -> void:
 	var hr: Transform3D = skg * sk.get_bone_global_pose(bones.r[2])
 	var hl: Transform3D = skg * sk.get_bone_global_pose(bones.l[2])
 	# referencial da "arma" da animação: na mão direita, olhando para a frente do personagem
-	var f0 := Transform3D(rig.global_transform.basis.orthonormalized() * Basis(Vector3.UP, PI), hr.origin)
+	# o centro do cabo fica dentro da mão direita (à frente do pulso, do lado da palma)
+	var gc: Vector3 = hr.origin + hr.basis.y.normalized() * GRIP_FWD - hr.basis.x.normalized() * GRIP_PALM + hr.basis.z.normalized() * GRIP_UP
+	var f0 := Transform3D(rig.global_transform.basis.orthonormalized() * Basis(Vector3.UP, PI), gc)
 	var c_r := f0.affine_inverse() * hr
 	var c_l := f0.affine_inverse() * hl
 	var tr = null
@@ -47,8 +54,17 @@ func _process_modification_with_delta(_dt: float) -> void:
 			"punch":
 				var fwd := -g.basis.z
 				tl = Transform3D(Basis(-g.basis.y, fwd, g.basis.x), g.origin)
-	if tr != null: _solve(sk, bones.r, inv * tr)
-	if tl != null: _solve(sk, bones.l, inv * tl)
+	if free_l and free_w > 0.0:
+		var g2: Transform3D = free_l.global_transform.orthonormalized()
+		var fy := -g2.basis.z
+		var fx := g2.basis.y
+		fx = (fx - fy * fx.dot(fy)).normalized()
+		var ft := Transform3D(Basis(fx, fy, fx.cross(fy)), g2.origin - fy * .07)
+		tl = ft if tl == null else (tl as Transform3D).interpolate_with(ft, clamp(free_w, 0.0, 1.0))
+	# cotovelos sempre para baixo e para fora (nunca subindo na frente da câmera)
+	var ib := skg.basis.inverse()
+	if tr != null: _solve(sk, bones.r, inv * tr, ib * Vector3(.8, -1, .25))
+	if tl != null: _solve(sk, bones.l, inv * tl, ib * Vector3(-.8, -1, .25))
 
 # espelha uma pegada da mão direita para a esquerda (eixos do esqueleto espelhados em X)
 func _mirror(b: Basis) -> Basis:
@@ -58,7 +74,7 @@ func _mirror(b: Basis) -> Basis:
 	var z := m * b.z
 	return Basis(-x, y, z)
 
-func _solve(sk: Skeleton3D, ch: Array, t: Transform3D) -> void:
+func _solve(sk: Skeleton3D, ch: Array, t: Transform3D, hint: Vector3) -> void:
 	var ua: int = ch[0]; var la: int = ch[1]; var hd: int = ch[2]
 	var A := sk.get_bone_global_pose(ua)
 	var B := sk.get_bone_global_pose(la)
@@ -76,8 +92,8 @@ func _solve(sk: Skeleton3D, ch: Array, t: Transform3D) -> void:
 		to = t.origin - a
 	var d: float = clamp(to.length(), abs(l1 - l2) + .001, (l1 + l2) * .999)
 	var dir := to.normalized()
-	var pole := (b - a) - dir * (b - a).dot(dir)
-	if pole.length() < .0001: pole = Vector3.DOWN
+	var pole := hint - dir * hint.dot(dir)
+	if pole.length() < .0001: pole = (b - a) - dir * (b - a).dot(dir)
 	pole = pole.normalized()
 	var ca: float = clamp((l1 * l1 + d * d - l2 * l2) / (2.0 * l1 * d), -1.0, 1.0)
 	var b2 := a + dir * (l1 * ca) + pole * (l1 * sqrt(1.0 - ca * ca))

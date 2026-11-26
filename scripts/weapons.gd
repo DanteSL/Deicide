@@ -101,6 +101,9 @@ var arms: Node3D
 var arms_ik: SkeletonModifier3D
 var grips = {} # id da arma -> {"r": Node3D, "l": Node3D, "lmode": String}
 var fist_grip: Node3D
+var rl_marker: Node3D # mão esquerda na recarga da pistola
+var rl_w := 0.0
+var rack := 0.0
 var load_grip: Node3D
 
 func _hex_of(m: Material) -> String:
@@ -156,6 +159,7 @@ func _setup_arms() -> void:
 		var md = model(IDS.find(k))
 		if grips.has(k) and md.has("body"):
 			grips[k].l = _marker(md.body, SUPPORT[k])
+	rl_marker = _marker(rev.root, Vector3.ZERO)
 	arms = load("res://maos/maos.glb").instantiate()
 	arms.rotation = Vector3(0, PI, 0)
 	arms.position = ARMS_POS
@@ -183,15 +187,17 @@ func fp_targets(ik) -> void:
 	ik.aim_r = g.get("r") if shown else null
 	ik.aim_l = g.get("l") if shown else null
 	ik.mode_l = g.get("lmode", "")
-	if cur == 1 and ik.aim_l and not sg.left.visible: ik.aim_l = null
-	if load_grip and sg.load_hand.visible:
-		ik.aim_l = load_grip; ik.mode_l = "hand"
+	ik.free_l = null; ik.free_w = 0.0
+	if shown and cur == 0 and rl_marker:
+		ik.free_l = rl_marker; ik.free_w = rl_w
+	elif shown and cur == 1:
+		ik.free_l = sg.load_hand; ik.free_w = sb
 	if fist_grip and fist.visible:
 		ik.aim_l = fist_grip; ik.mode_l = "punch"
 	arms.visible = ik.aim_r != null or ik.aim_l != null
 
 # ponto da mão direita na pistola (ajuste fino sobre a luva antiga)
-const PISTOL_HAND_OFS := Vector3(-.005, .04, -.02)
+const PISTOL_HAND_OFS := Vector3(-.005, .055, -.035)
 # onde a mão esquerda segura o cano das armas de duas mãos (no corpo da arma)
 const SUPPORT := {
 	"rocket": Vector3(0, -.05, -.12),
@@ -376,7 +382,7 @@ func _build() -> void:
 	mk(Vector3(.075, .07, .09), glove, Vector3(.005, -.092, .078), rev.root, Vector3(-.3, 0, 0))
 	mk(Vector3(.08, .08, .42), sleeve, Vector3(.025, -.183, .285), rev.root, Vector3(.45, 0, 0))
 	mk(Vector3(.084, .03, .05), gold, Vector3(.025, -.133, .115), rev.root, Vector3(.45, 0, 0))
-	rev.rest = Vector3(.2, -.105, -.5)
+	rev.rest = Vector3(.17, -.15, -.5)
 	rev.kz = .09; rev.kr = .5; rev.lr = .25
 	# ---- escopeta ----
 	sg = rig(Vector3(0, 0, -.12))
@@ -817,7 +823,8 @@ func _upd_rev_reload(dt: float) -> void:
 		start_spin(2, .5, "x")
 		cd = .15
 
-## recarga da pistola: solta o pente, ele cai, entra um novo e o ferrolho é puxado
+## recarga da pistola: a mão esquerda solta o pente, busca outro, encaixa e puxa o ferrolho
+const PR_END := 1.15
 func _upd_pistol_reload(dt: float) -> void:
 	rv_t += dt
 	var t = rv_t
@@ -829,19 +836,48 @@ func _upd_pistol_reload(dt: float) -> void:
 		root.add_child(mag)
 		mag.global_transform = rev.drum.global_transform
 		vparts.append({"m": mag, "v": Vector3(G.rnd(-.05, .05), -.4, .1), "life": .8, "spin": G.rnd(-6, 6)})
-	if rv_ev == 1 and t >= .62:
+	if rv_ev == 1 and t >= .7:
 		rv_ev = 2
 		G.snd("latch", -4, 1.15)
 		rv_ammo = rv_max
-	if rv_ev == 2 and t >= .78:
+	if rv_ev == 2 and t >= .8:
 		rv_ev = 3
+		G.snd("click", -10, .8)
+	if rv_ev == 3 and t >= .9:
+		rv_ev = 4
 		hammer = 1.0
 		G.snd("pump", -8, 1.5)
-	if t >= .95:
+	if t >= PR_END:
 		rv_reloading = false
 		rv_ammo = rv_max
-		start_spin(2, .5, "x")
-		cd = .15
+		cd = .1
+
+func _sm(x: float) -> float:
+	x = clamp(x, 0.0, 1.0)
+	return x * x * (3.0 - 2.0 * x)
+
+# pose da mão esquerda na recarga da pistola (no espaço da raiz da pistola)
+func _pistol_reload_pose(t: float) -> Array:
+	var grip := Vector3(-.03, -.06, .05)
+	var drum: Vector3 = rev.root.to_local(rev.drum.global_position)
+	var up := Vector3.UP
+	var keys = [
+		[0.0, grip, Vector3(1, .3, 0), Vector3(0, -.2, -1)],
+		[.2, Vector3(-.05, -.17, .1), Vector3(.3, 1, 0), Vector3(0, -.3, -1)],
+		[.34, Vector3(-.1, -.3, .14), up, Vector3(.2, 0, -1)],
+		[.46, drum + Vector3(0, -.075, .0), up, Vector3(0, .1, -1)],
+		[.7, drum + Vector3(0, -.075, .0), up, Vector3(0, .1, -1)],
+		[.8, Vector3(-.01, .105, -.02), Vector3(-.3, -1, 0), Vector3(1, 0, -.5)],
+		[.88, Vector3(-.01, .105, .045), Vector3(-.3, -1, 0), Vector3(1, 0, -.5)],
+		[.95, Vector3(-.05, .12, .06), Vector3(-.3, -1, 0), Vector3(1, .2, -.5)],
+		[PR_END, grip, Vector3(1, .3, 0), Vector3(0, -.2, -1)],
+	]
+	var i = 0
+	while i < keys.size() - 2 and t > keys[i + 1][0]: i += 1
+	var k0 = keys[i]; var k1 = keys[i + 1]
+	var u = _sm((t - k0[0]) / max(.001, k1[0] - k0[0]))
+	# entre .46 e .7 a mão acompanha o pente subindo
+	return [k0[1].lerp(k1[1], u), k0[2].lerp(k1[2], u).normalized(), k0[3].lerp(k1[3], u).normalized()]
 
 func start_sg_reload() -> void:
 	if cur != 1 or sg_reloading or sg_ammo >= sg_max or draw_t < 1: return
@@ -864,10 +900,8 @@ func _upd_sg_reload(dt: float) -> void:
 			sg_t = 0; sg_ins = false
 			if sg_ammo >= sg_max:
 				sg_reloading = false; sg_phase = ""
-				start_spin(1, .75, "x", 0, 1)
-				cock_after = true
+				pump_t = -.12
 				cd = .45
-				G.snd("whoosh", -8)
 
 # ---------------- soco / aparar ----------------
 func punch() -> void:
@@ -977,23 +1011,43 @@ func _process(dt: float) -> void:
 		if rv_reloading and rev.has("pistol"):
 			# pente some para baixo (já caiu) e um novo sobe até encaixar
 			if rv_t < .18: open = 0.0
-			elif rv_t < .4: open = 1.0
-			elif rv_t < .62: open = 1.0 - ease_out((rv_t - .4) / .22)
+			elif rv_t < .46: open = 1.0
+			elif rv_t < .7: open = 1.0 - _sm((rv_t - .46) / .24)
 			else: open = 0.0
 		elif rv_reloading:
 			if rv_t < .3: open = ease_out(min(1.0, rv_t / .28))
 			elif rv_t < tcl: open = 1.0
 			else: open = 1.0 - clamp((rv_t - tcl) / .12, 0.0, 1.0)
-		rot += Vector3(rb * .4, rb * .25, rb * .95)
-		w.root.position += Vector3(-rb * .06, rb * .05, 0)
+		var pr = rev.has("pistol")
+		if pr:
+			# fase do ferrolho: a arma desce e deita para a esquerda, perto da mão de apoio
+			var rkw = 0.0
+			if rv_reloading: rkw = _sm((rv_t - .72) / .1) * (1.0 - _sm((rv_t - .93) / .18))
+			rot += Vector3(rb * .42 - rkw * .3, rb * .3 + rkw * .15, -rb * .28 + rkw * .55)
+			w.root.position += Vector3(-rb * .07 - rkw * .03, rb * .13 - rkw * .14, rb * .02 - rkw * .02)
+		else:
+			rot += Vector3(rb * .4, rb * .25, rb * .95)
+			w.root.position += Vector3(-rb * .06, rb * .05, 0)
 		rev.drum.position = rev.drum_base + rev.drum_open * open
 		rev.steel.emission = Color(.25, .9, 1.0) * (charge * 1.2 if charging else 0.0)
 		rev.pivot.rotation = Vector3(c_ang if charging else ang, 0, 0)
 		rev.hammer.rotation.x = .6 * (1 - hammer)
 		drum_a += (drum_t - drum_a) * (1.0 - exp(-25 * dt))
 		if rev.has("pistol"):
-			rev.drum.visible = rv_reloading and rv_t >= .18
-			if rev.has("slide"): rev.slide.position = rev.slide_base + Vector3(0, 0, .05 * hammer)
+			rev.drum.visible = rv_reloading and rv_t >= .42
+			rack = 0.0
+			if rv_reloading:
+				if rv_t >= .8 and rv_t < .88: rack = _sm((rv_t - .8) / .08)
+				elif rv_t >= .88 and rv_t < .9: rack = 1.0
+			if rev.has("slide"): rev.slide.position = rev.slide_base + Vector3(0, 0, .055 * max(hammer, rack))
+			var tw: float = 0.0
+			if rv_reloading: tw = _sm(rv_t / .14) * (1.0 - _sm((rv_t - .95) / .2))
+			rl_w = tw
+			if rl_marker and rv_reloading:
+				var ps = _pistol_reload_pose(rv_t)
+				var fwd: Vector3 = ps[2]
+				var palm: Vector3 = (ps[1] - fwd * ps[1].dot(fwd)).normalized()
+				rl_marker.transform = Transform3D(Basis(fwd.cross(palm).normalized(), palm, -fwd).orthonormalized(), ps[0])
 		else:
 			rev.drum.rotation.z = drum_a
 		glow_mat.albedo_color.a = charge if charging else 0.0
@@ -1005,19 +1059,21 @@ func _process(dt: float) -> void:
 		sg.pump.position.z = -.3 + pm * .13
 		rot += Vector3(pm * .08, 0, pm * .22)
 		sb += ((1.0 if sg_reloading else 0.0) - sb) * (1.0 - exp(-11 * dt))
-		w.root.position += Vector3(-sb * .12, sb * .03, sb * .06)
-		rot += Vector3(sb * .38, sb * .55, -sb * .15)
-		sg.pivot.rotation = Vector3(ang if spin_axis == "x" else 0.0, 0, (ang if spin_axis == "z" else 0.0) - (1 - de) * TAU + sb * PI)
+		# recarga: a escopeta deita para a direita, mostrando a janela de carga para a mão esquerda
+		w.root.position += Vector3(-sb * .07, sb * .1, sb * .07)
+		rot += Vector3(sb * .3, sb * .32, -sb * .6)
+		sg.pivot.rotation = Vector3(ang if spin_axis == "x" else 0.0, 0, (ang if spin_axis == "z" else 0.0) - (1 - de) * TAU)
 		sg.left.visible = s >= 1 and de > .85 and sb < .3
 		var LH: Node3D = sg.load_hand
-		LH.visible = sg_reloading and sg_phase == "load"
+		LH.visible = sg_reloading
 		if LH.visible:
-			var v = sg_t / sg_lt()
-			var k = ease_out(v / .45) if v < .45 else (1.0 if v < .6 else 1.0 - ease_out((v - .6) / .4))
-			var push = 0.0 if v < .45 else ((v - .45) / .15 if v < .6 else 1.0)
-			LH.position = Vector3(.05 * (1 - k), -.21 + .12 * k, .14 - .07 * push * k)
-			LH.rotation = Vector3(-.25 * (1 - k), 0, .3 * (1 - k))
-			sg.shell.visible = v < .55 or v > .85
+			var v = sg_t / sg_lt() if sg_phase == "load" else 0.0
+			# busca o cartucho embaixo, leva até a janela e empurra para dentro
+			var k = _sm(v / .4) if v < .4 else (1.0 if v < .62 else 1.0 - _sm((v - .62) / .38))
+			var push = 0.0 if v < .4 else (_sm((v - .4) / .2) if v < .6 else 1.0)
+			LH.position = Vector3(-.07 + .07 * k, -.24 + .15 * k + .015 * push, .15 - .02 * k - .075 * push * k)
+			LH.rotation = Vector3(-.35 * (1 - k), .25 * (1 - k), .2 * (1 - k))
+			sg.shell.visible = sg_phase == "load" and (v < .58 or v > .8)
 	rot = X.pose(IDS[cur], w, dt, rot, Time.get_ticks_msec() / 1000.0)
 	w.root.basis = Basis.from_euler(rot, EULER_ORDER_XYZ)
 	var pu = punch_t

@@ -39,6 +39,7 @@ var started = false
 
 # HUD
 var hud: Control
+var hud2: Control
 var ui = {}
 var feed_box: VBoxContainer
 var menu: Control
@@ -467,7 +468,7 @@ func _autotest(m: String) -> void:
 	if m == "arms":
 		start_mode("train")
 		var rta = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
-		hud.visible = false
+		hud.visible = OS.get_cmdline_user_args().has("--hud")
 		for k in 8:
 			rta.call(1.2 + k * .9, func(): player.weapons.select_slot(k))
 			rta.call(2.05 + k * .9, func(): get_viewport().get_texture().get_image().save_png("/tmp/arm_%d.png" % k))
@@ -475,6 +476,29 @@ func _autotest(m: String) -> void:
 		for j in 5:
 			rta.call(8.62 + j * .14, func(): get_viewport().get_texture().get_image().save_png("/tmp/arm_soco%d.png" % j))
 		rta.call(9.6, func(): print("ARMS OK"); get_tree().quit())
+		return
+	if m == "reload":
+		start_mode("train")
+		var rta = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+		hud.visible = OS.get_cmdline_user_args().has("--hud")
+		var wp = player.weapons
+		var st = {"k": 0, "phase": ""}
+		# fotografa por tempo de jogo (o teste roda a poucos FPS)
+		get_tree().process_frame.connect(func():
+			if st.phase == "p" and wp.rv_reloading and wp.rv_t >= st.k * .13:
+				get_viewport().get_texture().get_image().save_png("/tmp/rl_p%d.png" % st.k); st.k += 1
+			if st.phase == "s" and wp.sg_reloading:
+				var tt = (wp.sg_t if wp.sg_phase == "load" else 0.0) + (.3 if wp.sg_phase == "load" else wp.sg_t) + st.get("n", 0) * wp.sg_lt()
+				if wp.sg_phase == "load" and wp.sg_t < .02 and not st.get("cnt", false): st.n = st.get("n", 0) + 1; st.cnt = true
+				if wp.sg_t > .05: st.cnt = false
+				if tt >= st.k * .14:
+					get_viewport().get_texture().get_image().save_png("/tmp/rl_s%d.png" % st.k); st.k += 1)
+		rta.call(1.0, func(): wp.select_slot(0))
+		rta.call(1.8, func(): wp.rv_ammo = 0; st.phase = "p"; st.k = 0; wp.start_rev_reload())
+		rta.call(6.0, func(): wp.select_slot(1))
+		rta.call(7.0, func(): wp.sg_ammo = 4; st.phase = "s"; st.k = 0; wp.start_sg_reload())
+		rta.call(14.0, func(): get_viewport().get_texture().get_image().save_png("/tmp/rl_s_end.png"))
+		rta.call(14.2, func(): print("RELOAD OK k=", st.k); get_tree().quit())
 		return
 	if m == "gibs":
 		start_mode("train")
@@ -982,73 +1006,17 @@ func _build_hud() -> void:
 		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		hit.add_child(c)
 	ui.hit = hit
-	# vida e dash (canto inferior esquerdo)
-	var bl = _panel()
-	bl.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	bl.position = Vector2(24, -150)
-	bl.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	hud.add_child(bl)
-	var blv = VBoxContainer.new()
-	blv.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bl.add_child(blv)
-	var row = HBoxContainer.new()
-	row.add_child(_lbl("VIDA", 14, Color("c9b2a6"), 2))
-	var sp = Control.new()
-	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(sp)
-	ui.hp_txt = _lbl("100", 24)
-	row.add_child(ui.hp_txt)
-	blv.add_child(row)
-	var hb = _bar(270, 18, Color("3a0c0c"), Color("e0261a"))
-	blv.add_child(hb[0])
-	ui.hp_fill = hb[1]
-	blv.add_child(_lbl("DASH", 14, Color("c9b2a6"), 2))
-	var dr = HBoxContainer.new()
-	dr.add_theme_constant_override("separation", 6)
-	blv.add_child(dr)
-	ui.pips = []
-	for i in 3:
-		var pb = _bar(86, 9, Color("1d2a30"), Color("40e8ff"))
-		dr.add_child(pb[0])
-		ui.pips.append(pb[1])
-	# arma (canto inferior direito)
-	var br = _panel()
-	hud.add_child(br)
-	br.anchor_left = 1; br.anchor_right = 1; br.anchor_top = 1; br.anchor_bottom = 1
-	br.offset_right = -24; br.offset_bottom = -24; br.offset_left = -24; br.offset_top = -24
-	br.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	br.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	var brv = VBoxContainer.new()
-	brv.alignment = BoxContainer.ALIGNMENT_END
-	brv.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	brv.custom_minimum_size = Vector2(250, 0)
-	br.add_child(brv)
-	ui.wname = _lbl("REVÓLVER", 28, Color("e0a83a"))
-	ui.wname.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	brv.add_child(ui.wname)
-	var cb = _bar(250, 6, Color("0b2228"), Color("40e8ff"))
-	brv.add_child(cb[0])
-	ui.chg = cb[1]
-	ui.rico = _lbl("", 20, Color("40e8ff"))
-	ui.rico.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	brv.add_child(ui.rico)
-	var ar = HBoxContainer.new()
-	ar.alignment = BoxContainer.ALIGNMENT_END
-	ar.add_theme_constant_override("separation", 5)
-	brv.add_child(ar)
-	ui.ammo = []
-	for i in 10:
-		var a = ColorRect.new()
-		a.custom_minimum_size = Vector2(9, 22)
-		a.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		ar.add_child(a)
-		ui.ammo.append(a)
-	ui.slots = _lbl("", 15, Color(1, 1, 1, .6), 2)
-	ui.slots.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	brv.add_child(ui.slots)
-	var kh = _lbl("Q troca · R girar/recarregar · F soco · E terminal", 13, Color("c9b2a6"), 2)
+	# vitais e arsenal (HUD nova, desenhada em scripts/hud2.gd)
+	hud2 = preload("res://scripts/hud2.gd").new()
+	hud2.set_anchors_preset(Control.PRESET_FULL_RECT)
+	hud2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(hud2)
+	var kh = _lbl("Q troca · R recarregar · F soco · E terminal", 12, Color(1, 1, 1, .4), 2)
+	kh.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	kh.position = Vector2(-436, -186)
+	kh.custom_minimum_size = Vector2(420, 0)
 	kh.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	brv.add_child(kh)
+	hud.add_child(kh)
 	ui.fps = _lbl("", 14, Color(1, 1, 1, .7), 3)
 	ui.fps.position = Vector2(16, 10)
 	ui.fps.visible = G.show_fps
@@ -1185,54 +1153,53 @@ func _on_style(label: String) -> void:
 	tw.tween_callback(l.queue_free)
 
 func on_weapon_changed() -> void:
-	if ui.is_empty() or not ui.has("slots"): return
+	if hud2 == null or player == null: return
 	var w = player.weapons
-	ui.wname.text = G.WEAP[w.cur].name
-	var parts = []
+	var slots = []
 	for n in G.loadout.size():
 		var k = G.loadout[n]
-		var t = "%d %s" % [n + 1, G.WEAP[k].short]
-		parts.append("[" + t + "]" if k == w.cur else t)
-	ui.slots.text = "  ".join(parts)
+		slots.append({"short": G.WEAP[k].short, "cur": k == w.cur})
+	hud2.push({"wname": G.WEAP[w.cur].name, "slots": slots})
+	var md = w.W()
+	var src = md.get("root")
+	if w.id() == "sword" and w.X.sw.size() > 0: src = w.X.sw[0].vm
+	hud2.set_preview(w.id(), src)
 
 func _upd_hud(dt: float) -> void:
 	var p = player
 	var w = p.weapons
-	ui.hp_txt.text = str(int(ceil(max(0.0, p.hp))))
-	ui.hp_fill.size.x = 270.0 * clamp(p.hp / 100.0, 0.0, 1.0)
-	for i in 3:
-		ui.pips[i].size.x = 86.0 * clamp(p.stamina - i, 0.0, 1.0)
 	var id: String = w.id()
 	var X = w.X
-	var cc = Color("40e8ff")
-	var cv = w.charge if w.charging else 0.0
-	ui.rico.text = ("RICOCHETE ×%d" % w.bounces(w.charge)) if w.charging and w.charge > .1 else ""
-	if id == "nail":
-		cv = X.heat if X.over <= 0 else 1.0
-		cc = Color("ff3a1a") if X.over > 0 else Color("ff9a30")
-		if X.over > 0: ui.rico.text = "SUPERAQUECIDA"
-	elif id == "rail":
-		cv = 1.0 - w.cd / X.rail_max if w.cd > 0 else 1.0
-	ui.chg.size.x = 250.0 * cv
-	ui.chg.color = cc
-	var mx = 0
-	var a = 0
-	var col = Color.WHITE
-	var rs = Vector2(9, 22)
+	var d = {"hp": p.hp, "stam": p.stamina, "walls": p.wall_jumps, "status": "", "reload": 0.0, "inf": false, "bar": 0.0, "bar_col": Color("40e8ff")}
 	match id:
-		"rev": mx = w.rv_max; a = w.rv_ammo; col = Color("e8c060"); rs = Vector2(8, 18)
-		"sg": mx = w.sg_max; a = w.sg_ammo; col = Color("d82020")
+		"rev":
+			d.ammo = w.rv_ammo; d.max = w.rv_max; d.kind = "bullet"
+			if w.charging:
+				d.bar = w.charge
+				if w.charge > .1: d.status = "RICOCHETE ×%d" % w.bounces(w.charge)
+			if w.rv_reloading: d.reload = clamp(w.rv_t / w.PR_END, 0.0, 1.0)
+		"sg":
+			d.ammo = w.sg_ammo; d.max = w.sg_max; d.kind = "shell"
+			if w.sg_reloading: d.reload = clamp(float(w.sg_ammo) / w.sg_max, 0.0, 1.0)
 		"rocket":
 			var ai = X.ammo_info(id)
-			mx = 1; a = ai[0]; col = Color("e8261a"); rs = Vector2(16, 26)
+			d.ammo = ai[0]; d.max = 1; d.kind = "rocket"
 		"sword":
 			var ai = X.ammo_info(id)
-			mx = 4; a = ai[0]; col = Color("e8f4ff"); rs = Vector2(7, 28)
-	for i in 10:
-		var r: ColorRect = ui.ammo[i]
-		r.visible = i < mx
-		r.custom_minimum_size = rs
-		r.color = col if i < a else Color(1, 1, 1, .13)
+			d.ammo = ai[0]; d.max = 4; d.kind = "sword"
+		"nail":
+			d.inf = true
+			d.bar = X.heat if X.over <= 0 else 1.0
+			d.bar_col = Color("ff3a1a") if X.over > 0 else Color("ff9a30")
+			if X.over > 0: d.status = "SUPERAQUECIDA"
+		"rail":
+			d.inf = true
+			d.bar = 1.0 - w.cd / X.rail_max if w.cd > 0 else 1.0
+			if w.cd <= 0: d.status = "PRONTO"
+		_:
+			d.inf = true
+	if not d.has("ammo"): d.ammo = 0; d.max = 0; d.kind = ""
+	hud2.push(d)
 	var scoped: bool = id == "rail" and w.zoom and X.zb > .7 and G.state == "play"
 	ui.scope.visible = scoped
 	vpc2.visible = not scoped and not player.frozen
