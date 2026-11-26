@@ -114,7 +114,7 @@ func setup(pos: Vector3) -> void:
 	halo.mesh = tm
 	halo_mat = _addm(Color(1, .8, .45), .65)
 	halo.material_override = halo_mat
-	halo.position = HALO_P - hn.position + Vector3(0, 0, -.01)
+	halo.position = HALO_P - hn.position + Vector3(0, 0, -.03) # parada, logo atrás da cabeça
 	halo.rotation = Vector3(PI / 2, 0, 0)
 	hn.add_child(halo)
 	halo2 = MeshInstance3D.new()
@@ -123,7 +123,7 @@ func setup(pos: Vector3) -> void:
 	var hm = _addm(Color(1, .7, .4), .45)
 	hm.albedo_texture = _soft_tex()
 	halo2.material_override = hm
-	halo2.position = HALO_P - hn.position + Vector3(0, 0, -.03)
+	halo2.position = HALO_P - hn.position + Vector3(0, 0, -.05)
 	hn.add_child(halo2)
 	light = OmniLight3D.new()
 	light.light_color = Color(1, .75, .5)
@@ -286,7 +286,6 @@ func _anim(dt: float) -> void:
 	for e in eyes:
 		e.m.albedo_color.a = A.eyes * (.75 + .25 * sin(ph * 9 + e.o.position.x * 40))
 		e.o.scale = Vector3.ONE * (1.0 + A.eyes * 1.6)
-	halo.rotation.z += dt * (.3 + A.glow * 2.5)
 	var hc = Color(1, .8, .45) if not ph2 else Color(1, .2, .15)
 	halo_mat.albedo_color = Color(hc.r, hc.g, hc.b, .45 + A.glow * .5)
 	(halo2.material_override as StandardMaterial3D).albedo_color = Color(hc.r, hc.g, hc.b, .25 + A.glow * .5)
