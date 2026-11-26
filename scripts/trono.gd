@@ -353,13 +353,6 @@ func _hall() -> void:
 	for z in range(-74, 42, 9):
 		for sx in [-1, 1]:
 			if randf() < .55: pool(sx * 44.6, z + randf() * 4, G.rnd(1.2, 2.6), .036, .5)
-	# manchas e escorridos nas paredes
-	for i in 22:
-		var sx = -1 if i % 2 == 0 else 1
-		var z = G.rnd(-80, 42)
-		stain(Vector3(sx * 45.85, G.rnd(5, 18), z), Vector3(-sx, 0, 0), G.rnd(4.0, 7.5), G.rnd(6, 11))
-	for i in 6:
-		stain(Vector3(G.rnd(-40, 40), G.rnd(5, 16), -83.85), Vector3(0, 0, 1), G.rnd(4, 7.5), G.rnd(6, 11))
 	# rosácea no alto da parede norte
 	var rz = -83.8
 	var win_c = Vector3(0, 33, rz)
@@ -408,9 +401,6 @@ func _corridor() -> void:
 		var f = flat(Vector3(sx * 8.2, .1, 80), Vector2(1.3, 64), bm(0, 4.0 + sx, .25, Vector2(1, 30)))
 		f.rotation.y = PI
 	seed(11)
-	for i in 10:
-		var sx = -1 if i % 2 == 0 else 1
-		stain(Vector3(sx * 8.95, G.rnd(4, 13), G.rnd(52, 110)), Vector3(-sx, 0, 0), G.rnd(3.0, 5.0), G.rnd(5, 8))
 	for i in 5: pool(G.rnd(-6, 6), G.rnd(54, 108), G.rnd(.8, 1.8), .07)
 	blk(0, 0, 80, 7, .06, 65, m_carpet, false)
 	for sx in [-1, 1]:
@@ -568,9 +558,9 @@ func _altar() -> void:
 	hr.inner_radius = 14.2; hr.outer_radius = 15.6; hr.rings = 64
 	halo.mesh = hr
 	halo.material_override = glow(Color(1, .78, .35))
-	# parada, inclinada como o jogador escolheu
-	halo.rotation = Vector3(PI / 2, 0, deg_to_rad(157.5))
-	halo.position = sun_c
+	# de pé, parada, atrás do encosto do trono (sem atravessá-lo)
+	halo.rotation = Vector3(PI / 2, 0, 0)
+	halo.position = sun_c + Vector3(0, 0, -2.4)
 	add_child(halo)
 	# braseiros nos cantos do topo
 	for sx in [-1, 1]:
@@ -619,7 +609,7 @@ func _bloodfall(side: int, z: float) -> void:
 	var wx = side * 45.85
 	# boca dourada de onde jorra
 	blk(side * 45.2, 30.5, z, 1.6, 1.8, 3.0, m_gold, false)
-	stain(Vector3(side * 45.85, 21, z), Vector3(-side, 0, 0), 7.0, 20)
+	stain(Vector3(side * 45.85, 21, z), Vector3(-side, 0, 0), 4.5, 20)
 	var f = quad(Vector3(side * 45.6, 15.4, z), Vector2(3.0, 30.4), bm(0, 5.0 + z * .01, 1.3, Vector2(1, 3)), Vector3(0, -side * PI / 2, 0))
 	f.rotation = Vector3(0, -side * PI / 2, 0)
 	pool(side * 42.0, z, 2.2, .04, .7)
