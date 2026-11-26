@@ -214,7 +214,7 @@ func setup(pos: Vector3) -> void:
 	drip.initial_velocity_min = .5; drip.initial_velocity_max = 2
 	drip.gravity = Vector3(0, -14, 0)
 	var dm = SphereMesh.new(); dm.radius = .12; dm.height = .35; dm.radial_segments = 5; dm.rings = 3
-	var dmm = StandardMaterial3D.new(); dmm.albedo_color = Color(.5, 0, .03); dmm.roughness = .1
+	var dmm: StandardMaterial3D = preload("res://scripts/ceu_mats.gd").blood()
 	dm.material = dmm; drip.mesh = dm
 	add_child(drip)
 	light = OmniLight3D.new()

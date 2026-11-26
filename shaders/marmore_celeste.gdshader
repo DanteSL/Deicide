@@ -5,6 +5,8 @@ shader_type spatial;
 
 uniform sampler2D albedo_tex : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D normal_tex : hint_normal, filter_linear_mipmap, repeat_enable;
+uniform sampler2D rough_tex : hint_roughness_gray, filter_linear_mipmap, repeat_enable;
+uniform bool use_rough_tex = false;
 uniform vec3 tint = vec3(1.0);
 uniform float scale = 0.08;
 uniform float rough = 0.22;
@@ -57,14 +59,15 @@ void fragment() {
 	vec4 cx, cy, cz; vec3 w; vec2 a, b, c;
 	vec3 nrm = vec3(.5, .5, 1.0);
 	vec3 col = vec3(0.0);
-	if (bw.x > .01) { hexs(albedo_tex, wp.zy * scale, cx, w, a, b, c); col += cx.rgb * bw.x; nrm = mix(nrm, hexn(normal_tex, wp.zy * scale, w, a, b, c).rgb, bw.x); }
-	if (bw.y > .01) { hexs(albedo_tex, wp.xz * scale, cy, w, a, b, c); col += cy.rgb * bw.y; nrm = mix(nrm, hexn(normal_tex, wp.xz * scale, w, a, b, c).rgb, bw.y); }
-	if (bw.z > .01) { hexs(albedo_tex, wp.xy * scale, cz, w, a, b, c); col += cz.rgb * bw.z; nrm = mix(nrm, hexn(normal_tex, wp.xy * scale, w, a, b, c).rgb, bw.z); }
+	float rtex = 0.0;
+	if (bw.y > .01) { hexs(albedo_tex, wp.xz * scale, cy, w, a, b, c); col += cy.rgb * bw.y; nrm = mix(nrm, hexn(normal_tex, wp.xz * scale, w, a, b, c).rgb, bw.y); rtex += hexn(rough_tex, wp.xz * scale, w, a, b, c).r * bw.y; }
+	if (bw.x > .01) { hexs(albedo_tex, wp.zy * scale, cx, w, a, b, c); col += cx.rgb * bw.x; nrm = mix(nrm, hexn(normal_tex, wp.zy * scale, w, a, b, c).rgb, bw.x); rtex += hexn(rough_tex, wp.zy * scale, w, a, b, c).r * bw.x; }
+	if (bw.z > .01) { hexs(albedo_tex, wp.xy * scale, cz, w, a, b, c); col += cz.rgb * bw.z; nrm = mix(nrm, hexn(normal_tex, wp.xy * scale, w, a, b, c).rgb, bw.z); rtex += hexn(rough_tex, wp.xy * scale, w, a, b, c).r * bw.z; }
 	// quanto do pixel é veio de ouro (amarelo saturado)
 	float gold = clamp((col.r - col.b) * 3.0 - .15, 0.0, 1.0) * gold_shine;
 	col *= tint;
 	float met = gold * .85;
-	float rgh = mix(rough, .18, gold);
+	float rgh = mix(use_rough_tex ? rtex : rough, .18, gold);
 
 	// --- corrupção: pintura fluida vermelha, preta e dourada ---
 	if (corrupt > 0.0) {

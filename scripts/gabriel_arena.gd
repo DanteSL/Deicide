@@ -615,7 +615,7 @@ func _spawn_gore() -> void:
 		var ring: Node3D = p.ring
 		var fall = MeshInstance3D.new(); var qm = QuadMesh.new(); qm.size = Vector2(1.2, p.y0 + 1.6)
 		fall.mesh = qm
-		var fm = StandardMaterial3D.new(); fm.albedo_color = Color(.45, 0, .02); fm.roughness = .1; fm.emission_enabled = true; fm.emission = Color(.15, 0, 0)
+		var fm: StandardMaterial3D = CM.blood().duplicate(); fm.emission = Color(.15, 0, 0)
 		fm.cull_mode = BaseMaterial3D.CULL_DISABLED; fm.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
 		fall.material_override = fm
 		fall.position = Vector3(ring.position.x * 1.18, (p.y0 + 1.6) * .5, ring.position.z * 1.18)
@@ -627,7 +627,7 @@ func _spawn_gore() -> void:
 	blood_rain.direction = Vector3(0, -1, 0); blood_rain.spread = 3; blood_rain.initial_velocity_min = 26; blood_rain.initial_velocity_max = 32
 	blood_rain.gravity = Vector3(0, -10, 0)
 	var dm = BoxMesh.new(); dm.size = Vector3(.04, .7, .04)
-	var drm = StandardMaterial3D.new(); drm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; drm.albedo_color = Color(.55, 0, .03)
+	var drm = StandardMaterial3D.new(); drm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; drm.albedo_color = Color(.54, .016, .016)
 	dm.material = drm; blood_rain.mesh = dm
 	blood_rain.position = Vector3(0, 40, 0)
 	gore.add_child(blood_rain)
@@ -852,33 +852,26 @@ func _hall_statue(p: Vector3, sx: int) -> void:
 		# anjo de pé com as asas abertas (modelo novo)
 		var st: Node3D = load("res://estatua/anjo_estatua.glb").instantiate()
 		st.position = p + Vector3(0, -.25, 0)
-		st.scale = Vector3.ONE * 7.6
+		st.scale = Vector3.ONE * 10.5
 		st.rotation.y = -PI / 2 - sx * .3   # de frente para quem sobe a escada
 		add_child(st)
-		# mármore fosco (sem o brilho metálico que deixava a estátua granulada)
+		# gesso pintado branco (mesma textura das paredes e colunas)
+		var gm = CM.marble(Color(1, 1, 1), .14)
 		for mi in st.find_children("*", "MeshInstance3D", true, false):
-			for si in mi.mesh.get_surface_count():
-				var m0 = mi.mesh.surface_get_material(si)
-				if m0 is StandardMaterial3D:
-					var m: StandardMaterial3D = m0.duplicate()
-					m.metallic = 0.0; m.metallic_texture = null
-					m.roughness = .75; m.roughness_texture = null
-					m.normal_scale = .6
-					m.albedo_color = Color(1.0, .96, .92)
-					mi.set_surface_override_material(si, m)
+			for si in mi.mesh.get_surface_count(): mi.set_surface_override_material(si, gm)
+		hall_marbles.append(gm)
 		_blood_tears(st)
 		var sb = StaticBody3D.new(); sb.collision_layer = 1; sb.collision_mask = 0
-		var cs = CollisionShape3D.new(); var cy = CylinderShape3D.new(); cy.radius = 1.9; cy.height = 7.0; cs.shape = cy
-		sb.add_child(cs); sb.position = p + Vector3(0, 3.3, 0)
+		var cs = CollisionShape3D.new(); var cy = CylinderShape3D.new(); cy.radius = 2.6; cy.height = 9.6; cs.shape = cy
+		sb.add_child(cs); sb.position = p + Vector3(0, 4.6, 0)
 		add_child(sb)
 		return
 	_hall_statue_old(p, sx)
 
 ## a estátua chora sangue: escorre dos olhos pelo rosto e pelo peito e pinga no pedestal
 func _blood_tears(st: Node3D) -> void:
-	var bmat = StandardMaterial3D.new()
-	bmat.albedo_color = Color(.55, 0, .03); bmat.roughness = .1; bmat.metallic = .1
-	bmat.emission_enabled = true; bmat.emission = Color(.25, 0, .02)
+	var bmat: StandardMaterial3D = CM.blood().duplicate()
+	bmat.uv1_triplanar = false; bmat.emission = Color(.25, 0, .02)
 	# coordenadas do modelo (rosto virado para +X, altura 1)
 	for side in [-1.0, 1.0]:
 		var zc = .063 + side * .0075   # olhos (o rosto fica um pouco de lado no modelo)
@@ -1064,14 +1057,9 @@ func _mini_angel(at, sc: float, ry: float) -> void:
 	var st: Node3D = load("res://estatua/anjo_estatua.glb").instantiate()
 	st.scale = Vector3.ONE * sc
 	st.rotation.y = ry
+	var gm = CM.marble(Color(1.1, 1.1, 1.1), .3)
 	for mi in st.find_children("*", "MeshInstance3D", true, false):
-		for si in mi.mesh.get_surface_count():
-			var m0 = mi.mesh.surface_get_material(si)
-			if m0 is StandardMaterial3D:
-				var m: StandardMaterial3D = m0.duplicate()
-				m.metallic = 0.0; m.metallic_texture = null; m.roughness = .7; m.roughness_texture = null
-				m.emission_enabled = true; m.emission = Color(.3, .28, .25)
-				mi.set_surface_override_material(si, m)
+		for si in mi.mesh.get_surface_count(): mi.set_surface_override_material(si, gm)
 	if at is Node3D: at.add_child(st)
 	else:
 		st.position = at; add_child(st)

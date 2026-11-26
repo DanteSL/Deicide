@@ -936,12 +936,8 @@ func _gfx(dt: float) -> void:
 var _bm: StandardMaterial3D
 func _blood_mat() -> StandardMaterial3D:
 	if _bm == null:
-		_bm = StandardMaterial3D.new()
-		_bm.albedo_color = Color(.5, 0, .03)
-		_bm.roughness = .08
-		_bm.metallic = .3
-		_bm.emission_enabled = true
-		_bm.emission = Color(.3, 0, .01)
+		_bm = preload("res://scripts/ceu_mats.gd").blood().duplicate()
+		_bm.emission = Color(.2, 0, .01)
 	return _bm
 
 func _start_blood() -> void:

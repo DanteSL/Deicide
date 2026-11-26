@@ -912,7 +912,10 @@ func _autotest(m: String) -> void:
 			var d = at - (pos + Vector3(0, 1.6, 0)); player.yaw = atan2(-d.x, -d.z); player.pitch = atan2(d.y, Vector2(d.x, d.z).length())
 		rte.call(5.3, func(): look.call(H + Vector3(0, 1.3, 15), H + Vector3(0, 8, -4)))
 		rte.call(5.9, she.bind("anjos"))
-		rte.call(6.0, func(): player.frozen = true; look.call(H + Vector3(-12.3, 9.6, -.6), H + Vector3(-13.2, 10.6, -2.5)))
+		var pc2 = Camera3D.new(); pc2.fov = 60
+		rte.call(6.0, func():
+			world.add_child(pc2); pc2.global_position = H + Vector3(-10.0, 11.0, 5.0); pc2.look_at(H + Vector3(-12.6, 11.6, -2.2), Vector3.UP); pc2.make_current())
+		rte.call(6.7, func(): player.cam.make_current(); pc2.queue_free())
 		rte.call(6.6, she.bind("anjo_perto"))
 		rte.call(6.65, func(): look.call(H + Vector3(0, .4, 31), H + Vector3(0, 1.0, 20)); player.frozen = false; Input.action_press("fwd"))
 		rte.call(7.2, func(): print("PRACA y=", snapped(player.global_position.y - H.y, .01), " z=", snapped(player.global_position.z - H.z, .01)))

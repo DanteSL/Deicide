@@ -1,5 +1,16 @@
 # Histórico de mudanças
 
+## Gesso branco, estátuas maiores e sangue novo
+
+- Paredes, pisos e colunas do Gabriel e do trono de Deus agora usam gesso pintado branco (Poliigon PlasterPainted 7664:
+  cor, relevo e rugosidade), no lugar do mármore com veios de ouro. A corrupção do Gabriel continua espalhando por cima.
+- As estátuas de anjo da entrada do Gabriel ficaram ~40% maiores e em gesso (os anjinhos do portão também);
+  continuam chorando sangue.
+- Sangue novo em todos os mapas, recriado a partir do material "Blood" do .blend enviado: vermelho escuro quase
+  espelhado (rugosidade ~0,02), verniz por cima, relevo fino ondulado e brilho frio azulado nas bordas. Vale para poças,
+  filetes, cachoeiras e fontes do trono, a inundação de Deus, o sangue do Gabriel corrompido, as lágrimas das estátuas
+  e o sangue do Azazel.
+
 ## Texturas novas: mármore com veios de ouro, folha de ouro e colunas jônicas
 
 - Texturas enviadas pelo jogador: mármore branco com veios de ouro (paredes, piso, colunas) e folha de ouro

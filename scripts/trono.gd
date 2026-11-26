@@ -82,9 +82,12 @@ uniform float seed = 0.0;
 uniform float flow = 0.0;
 uniform vec2 stretch = vec2(1.0, 1.0);
 uniform float surf_thick = 1.0; // espessura do modo 3 (menor = vermelho mais vivo)
-uniform vec4 fresh : source_color = vec4(.50, .015, .025, 1.0);
-uniform vec4 deep : source_color = vec4(.13, .0, .008, 1.0);
-uniform vec4 dried : source_color = vec4(.20, .025, .02, 1.0);
+// cores do material "Blood" (.blend do jogador): vermelho escuro, quase espelhado, brilho frio na borda
+uniform vec4 fresh : source_color = vec4(.54, .016, .016, 1.0);
+uniform vec4 deep : source_color = vec4(.22, .0, .004, 1.0);
+uniform vec4 dried : source_color = vec4(.24, .02, .018, 1.0);
+uniform vec4 rim_col : source_color = vec4(.68, .68, .93, 1.0);
+uniform vec4 refl_col : source_color = vec4(.12, .24, .35, 1.0);
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float noise(vec2 p) {
 	vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
@@ -131,17 +134,25 @@ void fragment() {
 	vec2 fuv = uv * stretch + vec2(0.0, -TIME * flow);
 	float n = fbm(fuv * 4.0 + seed);
 	float n2 = fbm(fuv * 13.0 - seed);
-	vec3 col = mix(fresh.rgb, deep.rgb, clamp(thick * .75 + n * .45 - .15, 0.0, 1.0));
-	if (mode == 2) col = mix(fresh.rgb * .85, dried.rgb, clamp(.25 + n * .55, 0.0, 1.0));
-	ALBEDO = col;
-	ROUGHNESS = mode == 2 ? .3 : .06 + n2 * .12;
-	SPECULAR = mode == 2 ? .5 : .85;
-	float e = .02;
-	float hx = fbm(fuv * 8.0 + vec2(e, 0.0)) - fbm(fuv * 8.0 - vec2(e, 0.0));
-	float hy = fbm(fuv * 8.0 + vec2(0.0, e)) - fbm(fuv * 8.0 - vec2(0.0, e));
-	NORMAL_MAP = normalize(vec3(-hx * 5.0, -hy * 5.0, 1.0)) * .5 + .5;
-	NORMAL_MAP_DEPTH = mode == 2 ? .2 : .8;
-	EMISSION = fresh.rgb * (mode == 2 ? .0 : .06);
+	vec3 col = mix(fresh.rgb, deep.rgb, clamp(thick * .6 + n * .35 - .1, 0.0, 1.0));
+	if (mode == 2) col = mix(fresh.rgb * .8, dried.rgb, clamp(.25 + n * .55, 0.0, 1.0));
+	// relevo fino e ondulado (ruído escala 8, como no material do Blender)
+	float e = .015;
+	vec2 bp = fuv * 8.0 * .75;
+	float hx = fbm(bp + vec2(e, 0.0)) - fbm(bp - vec2(e, 0.0));
+	float hy = fbm(bp + vec2(0.0, e)) - fbm(bp - vec2(0.0, e));
+	NORMAL_MAP = normalize(vec3(-hx * 3.0, -hy * 3.0, 1.0)) * .5 + .5;
+	NORMAL_MAP_DEPTH = mode == 2 ? .25 : .55;
+	// camada de "verniz": de frente vermelho escuro, rasante puxa para o brilho frio azulado
+	float facing = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
+	float rim = smoothstep(.85, .985, facing) * (mode == 2 ? .3 : 1.0);
+	ALBEDO = mix(col, rim_col.rgb * .35, rim * .5);
+	ROUGHNESS = mode == 2 ? .28 : .02 + n2 * .05;
+	METALLIC = 0.0;
+	SPECULAR = mode == 2 ? .5 : 1.0;
+	CLEARCOAT = mode == 2 ? 0.0 : 1.0;
+	CLEARCOAT_ROUGHNESS = .02;
+	EMISSION = refl_col.rgb * pow(facing, 3.0) * (mode == 2 ? .0 : .35) + fresh.rgb * (mode == 2 ? .0 : .03);
 }
 """
 
@@ -163,7 +174,6 @@ func _mats() -> void:
 	# mármore branco com veios de ouro e folha de ouro (mesmas texturas do céu do Gabriel)
 	m_marble = CM.marble(Color(1, 1, 1), .06)
 	m_marble2 = CM.marble(Color(.9, .87, .85), .07)
-	for mm in [m_marble, m_marble2]: mm.set_shader_parameter("gold_shine", .35); mm.set_shader_parameter("scale", .045)
 	m_gold = CM.gold(Color(1, .95, .85))
 	m_gold.rim_enabled = true; m_gold.rim = .4; m_gold.rim_tint = .8
 	m_gold_dark = CM.gold(Color(.72, .6, .45))

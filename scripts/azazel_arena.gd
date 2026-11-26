@@ -440,7 +440,7 @@ func bleed() -> void:
 		pt.direction = Vector3(0, -1, 0); pt.spread = 4; pt.initial_velocity_min = .5; pt.initial_velocity_max = 1.5
 		pt.gravity = Vector3(0, -12, 0)
 		var dm = SphereMesh.new(); dm.radius = .09; dm.height = .3; dm.radial_segments = 5; dm.rings = 3
-		var mm = StandardMaterial3D.new(); mm.albedo_color = Color(.5, 0, .03); mm.roughness = .1
+		var mm: StandardMaterial3D = preload("res://scripts/ceu_mats.gd").blood()
 		dm.material = mm; pt.mesh = dm
 		pt.position = s.eyep + Vector3(0, -1.1, 0) - Vector3(s.eyep.x, 0, s.eyep.z).normalized() * .9
 		add_child(pt)

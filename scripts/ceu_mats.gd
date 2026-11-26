@@ -16,10 +16,15 @@ static func marble(tint := Color(1, 1, 1), scale := .07) -> ShaderMaterial:
 	if _msh == null: _msh = load("res://shaders/marmore_celeste.gdshader")
 	var m = ShaderMaterial.new()
 	m.shader = _msh
-	m.set_shader_parameter("albedo_tex", _t("res://texturas/marmore_ouro.jpg"))
-	m.set_shader_parameter("normal_tex", _t("res://texturas/marmore_ouro_n.jpg"))
-	m.set_shader_parameter("tint", Vector3(tint.r, tint.g, tint.b))
-	m.set_shader_parameter("scale", scale)
+	# gesso pintado branco (Poliigon PlasterPainted 7664): cor, relevo e rugosidade
+	m.set_shader_parameter("albedo_tex", _t("res://texturas/gesso.jpg"))
+	m.set_shader_parameter("normal_tex", _t("res://texturas/gesso_n.jpg"))
+	m.set_shader_parameter("rough_tex", _t("res://texturas/gesso_r.jpg"))
+	m.set_shader_parameter("use_rough_tex", true)
+	m.set_shader_parameter("gold_shine", 0.0)
+	m.set_shader_parameter("normal_k", 1.0)
+	m.set_shader_parameter("tint", Vector3(tint.r, tint.g, tint.b) * 1.08)
+	m.set_shader_parameter("scale", scale * 3.5)
 	return m
 
 ## folha de ouro (textura do jogador) projetada no mundo, metálica e com relevo
@@ -58,3 +63,22 @@ static func column(parent: Node3D, pos: Vector3, height: float, marble_m: Materi
 		sb.add_child(cs); sb.position = pos
 		parent.add_child(sb)
 	return c
+
+static var _blood: StandardMaterial3D
+## sangue (material "Blood" do .blend do jogador): vermelho escuro quase espelhado, relevo fino e brilho frio na borda
+static func blood() -> StandardMaterial3D:
+	if _blood == null:
+		var m = StandardMaterial3D.new()
+		m.albedo_color = Color(.54, .016, .016)
+		m.roughness = .03
+		m.metallic = 0.0
+		m.metallic_specular = 1.0
+		m.clearcoat_enabled = true; m.clearcoat = 1.0; m.clearcoat_roughness = .02
+		m.rim_enabled = true; m.rim = .35; m.rim_tint = .2
+		var nt = NoiseTexture2D.new(); var nz = FastNoiseLite.new(); nz.frequency = .03; nz.fractal_octaves = 2
+		nt.noise = nz; nt.seamless = true; nt.as_normal_map = true; nt.bump_strength = 3.0
+		m.normal_enabled = true; m.normal_texture = nt; m.normal_scale = .5
+		m.uv1_triplanar = true; m.uv1_scale = Vector3.ONE * .6
+		m.emission_enabled = true; m.emission = Color(.08, 0, .004)
+		_blood = m
+	return _blood
