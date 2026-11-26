@@ -1,5 +1,17 @@
 # Histórico de mudanças
 
+## Novo chefe: Miguel, o Arcanjo Velado
+
+- Modelo enviado pelo autor, reduzido para ~48 mil triângulos e separado em partes (2 asas, 4 braços, cabeça) para animar por código:
+  asas batendo e recolhendo, braços com garras se mexendo, cabeça, olhos das asas que acendem, auréola de luz girando.
+- 5200 de vida, entrada descendo do céu e um selo de sangue no chão.
+- Sete ataques próprios: **Ceifa dos Quatro Braços** (pule), **Olhar das Asas** (rajadas dos olhos, dá para devolver no soco),
+  **Cruz de Sangue** (gêiseres em cruz no jogador; na fase 2 também em X), **Corrente de Penitência** (mira, trava e puxa),
+  **Passo do Eclipse** (some e esmaga atrás de você), **Rosário de Sangue** (espiral de contas) e **Coroa de Espinhos** (anel que se fecha).
+- Abaixo de 50%: **Eclipse** — o céu escurece, a auréola fica vermelha e ele acelera.
+- **Arena própria** (`scripts/miguel_arena.gd`): santuário em ruínas no vazio, colunas quebradas, arcos góticos, rochas flutuando e um sol negro.
+- Entrada **MIGUEL** no menu e um modelo próprio na barra dos chefes.
+
 ## Barra dos chefes e fontes novas
 
 - **Barra dos chefes** redesenhada (`scripts/boss_bar.gd`), com moldura em cápsula, 10 segmentos, pontas curvas,

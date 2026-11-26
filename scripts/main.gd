@@ -22,9 +22,11 @@ var build_root: Node3D
 var gibs: Node
 var arena_root: Node3D
 var trono: Node3D
+var miguel_arena: Node3D
 var level := "arena"
 const LEVEL_ENV := {
 	"arena": {"background_color": Color("2b0b0e"), "fog_light_color": Color("2b0b0e"), "ambient_light_color": Color("d0a088"), "ambient_light_energy": .75, "fog_depth_begin": 28.0, "fog_depth_end": 125.0, "sun": .8},
+	"miguel": {"background_color": Color("0a0610"), "fog_light_color": Color("1a0c22"), "ambient_light_color": Color("b8a8d0"), "ambient_light_energy": .6, "fog_depth_begin": 40.0, "fog_depth_end": 230.0, "sun": .5},
 	"trono": {"background_color": Color("160205"), "fog_light_color": Color("2a0a0c"), "ambient_light_color": Color("e8d2c0"), "ambient_light_energy": .55, "fog_depth_begin": 50.0, "fog_depth_end": 190.0, "sun": .55},
 }
 var world_sun: DirectionalLight3D
@@ -68,6 +70,10 @@ func _ready() -> void:
 	trono.name = "SalaDoTrono"
 	trono.set_script(preload("res://scripts/trono.gd"))
 	trono.build(self)
+	miguel_arena = Node3D.new()
+	miguel_arena.name = "ArenaDeMiguel"
+	miguel_arena.set_script(preload("res://scripts/miguel_arena.gd"))
+	miguel_arena.build(self)
 	build_root = world
 	gibs = preload("res://scripts/gibs.gd").new()
 	add_child(gibs)
@@ -521,6 +527,30 @@ func _autotest(m: String) -> void:
 		rtg.call(3.3, shg.bind("2_varios"))
 		rtg.call(4.6, shg.bind("3_chao"))
 		rtg.call(5.0, func(): print("GIBS OK pedaços=", gibs.gibs.size(), " manchas=", gibs.splats.size(), " ts=", Engine.time_scale); get_tree().quit())
+		return
+	if m == "miguel":
+		start_mode("miguel")
+		var rtq = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+		var shq = func(n): get_viewport().get_texture().get_image().save_png("/tmp/mg_%s.png" % n)
+		for i in 300: rtq.call(i * .2, func(): player.hp = 100000.0; player.dead = false)
+		rtq.call(2.5, shq.bind("intro"))
+		rtq.call(6.0, shq.bind("idle"))
+		for i in 200: rtq.call(5.0 + i * .25, func():
+			if G.boss and G.state == "play":
+				var d = G.boss.center() - (player.global_position + Vector3(0, 1.6, 0))
+				player.yaw = atan2(-d.x, -d.z)
+				player.pitch = atan2(d.y, Vector2(d.x, d.z).length()))
+		var atks = ["sweep", "eyes", "cross", "chain", "blink", "rosary", "crown"]
+		for i in atks.size():
+			var k = atks[i]
+			var t0 = 7.0 + i * 5.0
+			rtq.call(t0, func(): if G.boss: G.boss._end(false); G.boss._attack(k))
+			rtq.call(t0 + 1.0, shq.bind("%d%s_a" % [i, k]))
+			rtq.call(t0 + 2.0, shq.bind("%d%s_b" % [i, k]))
+		var te = 7.0 + atks.size() * 5.0
+		rtq.call(te, func(): if G.boss: G.boss._end(false); G.boss.hp = G.boss.max_hp * .45)
+		rtq.call(te + 2.5, shq.bind("eclipse"))
+		rtq.call(te + 5.0, func(): print("MIGUEL OK hp=", G.boss.hp if G.boss else -1, " ph2=", G.boss.ph2 if G.boss else false, " level=", level); get_tree().quit())
 		return
 	if m == "bossbar":
 		start_mode("boss")
@@ -1240,7 +1270,7 @@ func _upd_hud(dt: float) -> void:
 	ui.rfill.size.x = 256.0 * fmod(G.style, 100.0) / 100.0
 	_upd_blas_hud()
 	ui.sty.modulate.a = 1.0 if (G.style > 0 or feed_box.get_child_count() > 0) else .35
-	if G.mode == "boss" or G.mode == "deus": ui.wave.text = ""
+	if G.mode == "boss" or G.mode == "deus" or G.mode == "miguel": ui.wave.text = ""
 	elif G.mode == "train": ui.wave.text = "TREINO · ESC PAUSA"
 	elif wave > 0: ui.wave.text = "ONDA %d · %d RESTANTES" % [wave, G.enemies.size() + queue.size()]
 	else: ui.wave.text = "PREPARE-SE"
@@ -1368,12 +1398,13 @@ func reset() -> void:
 	if G.boss and is_instance_valid(G.boss): G.boss.queue_free()
 	G.boss = null
 	for gb in get_tree().get_nodes_in_group("gabriel"): gb.queue_free()
+	for gb in get_tree().get_nodes_in_group("miguel"): gb.queue_free()
 	for p in G.projs:
 		if is_instance_valid(p.m): p.m.queue_free()
 	G.projs.clear()
 	G.clear_timers()
-	_set_level("trono" if G.mode == "deus" else "arena")
-	player.reset_at(Vector3(0, 2.3, 104) if level == "trono" else Vector3(0, 2.3, 26))
+	_set_level("trono" if G.mode == "deus" else ("miguel" if G.mode == "miguel" else "arena"))
+	player.reset_at(Vector3(0, 2.3, 104) if level == "trono" else (Vector3(0, 2.3, 30) if level == "miguel" else Vector3(0, 2.3, 26)))
 	player.weapons.reset_ammo()
 	player.weapons.switch_to(G.loadout[0], true)
 	wave = 0
@@ -1388,6 +1419,8 @@ func reset() -> void:
 	for c in feed_box.get_children(): c.queue_free()
 	if G.mode == "boss":
 		G.later(1.2, respawn_gabriel)
+	elif G.mode == "miguel":
+		G.later(1.5, respawn_miguel)
 	elif G.mode == "deus":
 		spawn_deus_cine()
 	elif G.mode == "train":
@@ -1399,19 +1432,17 @@ func reset() -> void:
 func _set_level(l: String) -> void:
 	if trono == null: return
 	if l != level:
-		if l == "trono":
-			world.remove_child(arena_root)
-			world.add_child(trono)
-		else:
-			world.remove_child(trono)
-			world.add_child(arena_root)
+		var roots = {"arena": arena_root, "trono": trono, "miguel": miguel_arena}
+		world.remove_child(roots[level])
+		world.add_child(roots[l])
 		level = l
 	if trono: trono.reset_state()
+	if miguel_arena: miguel_arena.reset_state()
 	var E: Dictionary = LEVEL_ENV[level]
 	for k in E:
 		if k != "sun": world_env.set(k, E[k])
 	world_sun.light_energy = E.sun
-	world_sun.light_color = Color("ffe2c4") if level == "arena" else Color("fff4e8")
+	world_sun.light_color = Color("ffe2c4") if level == "arena" else (Color("c8b8ff") if level == "miguel" else Color("fff4e8"))
 
 ## Deus já espera no alto do altar; a luta só começa depois da cutscene.
 func spawn_deus_cine() -> void:
@@ -1432,6 +1463,18 @@ func spawn_deus_cine() -> void:
 
 func respawn_deus() -> void:
 	if G.mode == "deus" and G.boss == null: spawn_enemy("deus", Vector3(0, 0, -30))
+
+func respawn_miguel() -> void:
+	if G.mode == "miguel" and G.boss == null: spawn_enemy("miguel", Vector3(0, 0, -18))
+
+## segunda fase de Miguel: o céu da arena escurece
+func miguel_eclipse() -> void:
+	if level != "miguel": return
+	var tw = create_tween().set_parallel(true)
+	tw.tween_property(world_env, "background_color", Color("050003"), 2.0)
+	tw.tween_property(world_env, "fog_light_color", Color("2a0408"), 2.0)
+	tw.tween_property(world_env, "ambient_light_color", Color("d08080"), 2.0)
+	tw.tween_property(world_sun, "light_color", Color("ff6a5a"), 2.0)
 
 func respawn_gabriel() -> void:
 	if G.mode == "boss" and G.boss == null: spawn_enemy("gabriel", Vector3(0, 0, -30))
@@ -1460,6 +1503,19 @@ func spawn_enemy(kind: String, at = null, dummy := false) -> void:
 		banner("DEUS", "AQUELE QUE TUDO VÊ")
 		G.snd("angel", -2, .45)
 		G.flash = .8
+		return
+	if kind == "miguel":
+		if not ResourceLoader.exists("res://miguel/miguel.glb"): return
+		var mg = Node3D.new()
+		mg.set_script(preload("res://scripts/miguel.gd"))
+		world.add_child(mg)
+		mg.setup(p)
+		G.boss = mg
+		G.enemies.append(mg)
+		if ui.has("boss"): ui.boss.set_boss("miguel")
+		banner("MIGUEL", "O ARCANJO VELADO")
+		G.snd("angel", -2, .5)
+		G.flash = .5
 		return
 	if kind == "gabriel":
 		if not ResourceLoader.exists("res://gabriel.glb"): return
@@ -1528,7 +1584,7 @@ func _upd_marks() -> void:
 	var normal = []
 	for e in G.enemies:
 		if not e.is_boss: normal.append(e)
-	var show: bool = G.mode != "train" and (G.mode == "boss" or G.mode == "deus" or queue.is_empty()) and normal.size() <= 3
+	var show: bool = G.mode != "train" and (G.mode == "boss" or G.mode == "deus" or G.mode == "miguel" or queue.is_empty()) and normal.size() <= 3
 	if _mark_mesh == null:
 		_mark_mesh = SphereMesh.new()
 		_mark_mesh.radius = .32; _mark_mesh.height = .64; _mark_mesh.radial_segments = 4; _mark_mesh.rings = 1

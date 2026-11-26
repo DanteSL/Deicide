@@ -25,6 +25,13 @@ const THEMES := {
 		"ghost": Color("f0c0b0"), "orn": Color("0c040e"), "orn2": Color("d9a441"),
 		"name_col": Color("f2e6d6"), "name_edge": Color("5a0a12"), "sub_col": Color("c9a06a"),
 	},
+	"miguel": {
+		"name": "MIGUEL", "sub": "O ARCANJO VELADO",
+		"frame": Color("1c1824"), "edge": Color("050407"), "hi": Color("8a7aa0"),
+		"cell": Color("0b0910"), "fill": Color("a8101c"), "fill_hi": Color("ff6050"),
+		"ghost": Color("c8b8e8"), "orn": Color("d8cfc4"), "orn2": Color("c89a3a"),
+		"name_col": Color("e8e0f0"), "name_edge": Color("2a0610"), "sub_col": Color("a898c8"),
+	},
 	"gabriel": {
 		"name": "GABRIEL", "sub": "ARCANJO DA IRA DIVINA",
 		"frame": Color("e6dccb"), "edge": Color("3a2a1a"), "hi": Color("ffffff"),
@@ -148,6 +155,42 @@ func _orn_deus(c: Vector2, th: Dictionary) -> void:
 	# lágrima de sangue
 	draw_line(c + Vector2(0, 9), c + Vector2(0, 22 + sin(t * 3) * 2), Color(.7, .02, .05), 2.5)
 
+func _orn_miguel(c: Vector2, th: Dictionary) -> void:
+	var bone: Color = th.orn
+	var gold: Color = th.orn2
+	# asas de penas pálidas com olhos
+	for s in [-1, 1]:
+		for i in 6:
+			var a: float = (PI if s < 0 else 0.0) + s * (-.75 + i * .2)
+			_feather(c + Vector2(s * 8, 2), a, 44.0 - i * 3.0 + sin(t * 1.2 + i) * 1.2, 6.5, Color(bone, .92), Color(.25, .1, .1))
+		for k in 2:
+			var ep: Vector2 = c + Vector2(s * (26 + k * 13), -6 + k * 6)
+			var blink: float = clampf(abs(sin(t * .9 + k * 1.7 + s)) * 3.0, 0.0, 1.0)
+			var eye := PackedVector2Array()
+			for j in 16:
+				var a2 := j / 16.0 * TAU
+				eye.append(ep + Vector2(cos(a2) * 5.0, sin(a2) * 2.8 * blink))
+			draw_colored_polygon(eye, Color(.1, .02, .02))
+			draw_circle(ep, 1.6 * blink, Color(1, .25, .15))
+		# quatro braços com garras
+		for k in 2:
+			var b0: Vector2 = c + Vector2(s * 10, 14 + k * 9)
+			var b1: Vector2 = b0 + Vector2(s * (30 + k * 6), 6 + k * 8)
+			draw_line(b0, b1, Color(.75, .68, .62), 3.0, true)
+			for f in 3:
+				draw_line(b1, b1 + Vector2(s * (6 + f * 2), 3 + f * 3), Color(.75, .68, .62), 1.5, true)
+	# auréola de raios
+	var hc := c + Vector2(0, -12)
+	for i in 12:
+		var a3 := i / 12.0 * TAU + t * .2
+		var ln := 22.0 if i % 2 == 0 else 15.0
+		var d := Vector2(cos(a3), sin(a3))
+		draw_colored_polygon(PackedVector2Array([hc + d * 11 + Vector2(-d.y, d.x) * 2.2, hc + d * ln, hc + d * 11 - Vector2(-d.y, d.x) * 2.2]), gold)
+	draw_arc(hc, 11, 0, TAU, 32, gold, 2.5, true)
+	# capuz/véu escuro com fenda vermelha
+	draw_colored_polygon(PackedVector2Array([hc + Vector2(0, -12), hc + Vector2(9, -2), hc + Vector2(8, 16), hc + Vector2(-8, 16), hc + Vector2(-9, -2)]), Color(.06, .04, .08))
+	draw_line(hc + Vector2(-4, 2), hc + Vector2(4, 2), Color(1, .2, .15, .6 + .4 * sin(t * 4)), 2.0)
+
 func _orn_gabriel(c: Vector2, th: Dictionary) -> void:
 	var col: Color = th.orn
 	var edge: Color = th.orn2
@@ -221,6 +264,7 @@ func _draw() -> void:
 	# ornamento central
 	var oc := Vector2(cx, BAR_Y - 8)
 	if kind == "gabriel": _orn_gabriel(oc, th)
+	elif kind == "miguel": _orn_miguel(oc, th)
 	else: _orn_deus(oc, th)
 	# título abaixo da barra
 	_spaced(f_sub, Vector2(cx, BAR_Y + BAR_H + 30), th.sub, 12, th.sub_col, 3.0, Color(0, 0, 0, .8), 3)
