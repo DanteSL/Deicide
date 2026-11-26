@@ -113,7 +113,7 @@ func build(_m: Node) -> void:
 			var a: Vector3 = pts[i]; var b: Vector3 = pts[(i + 1) % 3]
 			var ln = a.distance_to(b)
 			var bx = _box(Vector3(.45, .05, ln), m_sigil, (a + b) * .5 + Vector3(0, .03, 0), false)
-			bx.look_at(b + Vector3(0, .03, 0), Vector3.UP)
+			_aim(bx, b + Vector3(0, .03, 0), Vector3.UP)
 	# colunas quebradas em anel
 	var rng = RandomNumberGenerator.new()
 	rng.seed = 4711
@@ -241,3 +241,7 @@ func _process(dt: float) -> void:
 	var pulse = .55 + .45 * sin(t * 1.6)
 	for m in sigil_mats:
 		m.albedo_color = Color(.45 + .4 * pulse + eclipse * .3, .02, .05)
+
+## look_at sem precisar estar na árvore (a arena é montada antes de entrar no mundo)
+func _aim(n: Node3D, target: Vector3, up: Vector3) -> void:
+	n.basis = Basis.looking_at(target - n.position, up)

@@ -23,9 +23,12 @@ var gibs: Node
 var arena_root: Node3D
 var trono: Node3D
 var miguel_arena: Node3D
+var gabriel_arena: Node3D
+var _dawn_sky: Sky
 var level := "arena"
 const LEVEL_ENV := {
 	"arena": {"background_color": Color("2b0b0e"), "fog_light_color": Color("2b0b0e"), "ambient_light_color": Color("d0a088"), "ambient_light_energy": .75, "fog_depth_begin": 28.0, "fog_depth_end": 125.0, "sun": .8},
+	"gabriel": {"background_color": Color("c86a4a"), "fog_light_color": Color("d88a5e"), "ambient_light_color": Color("ffc8a0"), "ambient_light_energy": .32, "fog_depth_begin": 90.0, "fog_depth_end": 330.0, "sun": .7},
 	"miguel": {"background_color": Color("0a0610"), "fog_light_color": Color("1a0c22"), "ambient_light_color": Color("b8a8d0"), "ambient_light_energy": .6, "fog_depth_begin": 40.0, "fog_depth_end": 230.0, "sun": .5},
 	"trono": {"background_color": Color("160205"), "fog_light_color": Color("2a0a0c"), "ambient_light_color": Color("e8d2c0"), "ambient_light_energy": .55, "fog_depth_begin": 50.0, "fog_depth_end": 190.0, "sun": .55},
 }
@@ -78,6 +81,10 @@ func _ready() -> void:
 	miguel_arena.name = "ArenaDeMiguel"
 	miguel_arena.set_script(preload("res://scripts/miguel_arena.gd"))
 	miguel_arena.build(self)
+	gabriel_arena = Node3D.new()
+	gabriel_arena.name = "ArenaDeGabriel"
+	gabriel_arena.set_script(preload("res://scripts/gabriel_arena.gd"))
+	gabriel_arena.build(self)
 	build_root = world
 	gibs = preload("res://scripts/gibs.gd").new()
 	add_child(gibs)
@@ -556,6 +563,21 @@ func _autotest(m: String) -> void:
 				player.yaw = atan2(-d.x, -d.z)
 				player.pitch = atan2(d.y, Vector2(d.x, d.z).length()) + (.05 if gab else .0))
 		if gab:
+			var pc = Camera3D.new()
+			pc.fov = 70
+			world.add_child(pc)
+			var view = func(pos, at):
+				pc.global_position = pos; pc.look_at(at, Vector3.UP); pc.make_current()
+			rtf.call(1.0, func(): if G.boss: G.boss.visible = false)
+			rtf.call(1.2, func(): hud.visible = false; view.call(Vector3(-8, 9, 52), Vector3(0, 4, 0)))
+			rtf.call(1.8, shf.bind("ga_arena"))
+			rtf.call(1.9, func(): view.call(Vector3(14, 3, 14), Vector3(32, 12, -32)))
+			rtf.call(2.5, shf.bind("ga_trombetas"))
+			rtf.call(2.6, func(): view.call(Vector3(6, 2, 8), Vector3(-18, 6, -18)))
+			rtf.call(3.2, shf.bind("ga_plataforma"))
+			rtf.call(3.3, func(): view.call(Vector3(0, 60, 75), Vector3(0, 0, 0)))
+			rtf.call(3.9, shf.bind("ga_cima"))
+			rtf.call(4.0, func(): player.cam.make_current(); hud.visible = true; if G.boss: G.boss.visible = true)
 			rtf.call(6.0, func(): player.global_position = Vector3(0, 1.2, 30))
 			rtf.call(7.0, func(): if G.boss: G.boss._attack("beam"))
 			rtf.call(8.2, shf.bind("gabriel"))
@@ -1483,8 +1505,8 @@ func reset() -> void:
 		if is_instance_valid(p.m): p.m.queue_free()
 	G.projs.clear()
 	G.clear_timers()
-	_set_level("trono" if G.mode == "deus" else ("miguel" if G.mode == "miguel" else "arena"))
-	player.reset_at(Vector3(0, 2.3, 104) if level == "trono" else (Vector3(0, 2.3, 30) if level == "miguel" else Vector3(0, 2.3, 26)))
+	_set_level({"deus": "trono", "miguel": "miguel", "boss": "gabriel"}.get(G.mode, "arena"))
+	player.reset_at({"trono": Vector3(0, 2.3, 104), "miguel": Vector3(0, 2.3, 30), "gabriel": Vector3(0, 2.3, 30)}.get(level, Vector3(0, 2.3, 26)))
 	player.weapons.reset_ammo()
 	player.weapons.switch_to(G.loadout[0], true)
 	wave = 0
@@ -1514,17 +1536,36 @@ func reset() -> void:
 func _set_level(l: String) -> void:
 	if trono == null: return
 	if l != level:
-		var roots = {"arena": arena_root, "trono": trono, "miguel": miguel_arena}
+		var roots = {"arena": arena_root, "trono": trono, "miguel": miguel_arena, "gabriel": gabriel_arena}
 		world.remove_child(roots[level])
 		world.add_child(roots[l])
 		level = l
 	if trono: trono.reset_state()
 	if miguel_arena: miguel_arena.reset_state()
+	if gabriel_arena: gabriel_arena.reset_state()
 	var E: Dictionary = LEVEL_ENV[level]
 	for k in E:
 		if k != "sun": world_env.set(k, E[k])
 	world_sun.light_energy = E.sun
-	world_sun.light_color = Color("ffe2c4") if level == "arena" else (Color("c8b8ff") if level == "miguel" else Color("fff4e8"))
+	world_sun.light_color = {"arena": Color("ffe2c4"), "miguel": Color("c8b8ff"), "gabriel": Color("ffd9a8")}.get(level, Color("fff4e8"))
+	# o Átrio das Trombetas tem céu de amanhecer de verdade (degradê), as outras arenas usam cor lisa
+	if level == "gabriel":
+		if _dawn_sky == null:
+			var sm = ProceduralSkyMaterial.new()
+			sm.sky_top_color = Color("2c2f6e")
+			sm.sky_horizon_color = Color("f2a46c")
+			sm.sky_curve = .12
+			sm.ground_horizon_color = Color("e89a6a")
+			sm.ground_bottom_color = Color("a05a58")
+			sm.sun_angle_max = 8.0
+			_dawn_sky = Sky.new()
+			_dawn_sky.sky_material = sm
+		world_env.sky = _dawn_sky
+		world_env.background_mode = Environment.BG_SKY
+		world_env.fog_sky_affect = .25
+	else:
+		world_env.background_mode = Environment.BG_COLOR
+		world_env.fog_sky_affect = 1.0
 
 ## Deus já espera no alto do altar; a luta só começa depois da cutscene.
 func spawn_deus_cine() -> void:

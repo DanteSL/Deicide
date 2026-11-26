@@ -35,13 +35,15 @@ Um ranking de heresia (de Devoto a Supremo Sacrilégio) recompensa variar as arm
 | **Olhar das Asas**: rajadas dos seis olhos (dá para devolver no soco) | **Cruz de Sangue**: gêiseres em cruz sob seus pés |
 | ![Deus no trono](docs/img/deus_trono.jpg) | ![Cutscene de Deus](docs/img/cutscene_deus.jpg) |
 | **Deus** espera no alto do altar da Sala do Trono | A cutscene de entrada, com a voz de Deus em língua estranha |
-| ![Gabriel](docs/img/gabriel.jpg) | ![Deus, segunda fase](docs/img/deus_fase2.jpg) |
-| **Gabriel**, o Arauto de Muitos Olhos | **Deus** na segunda fase: a arena inundada de sangue |
+| ![Gabriel](docs/img/gabriel_luta.jpg) | ![Deus, segunda fase](docs/img/deus_fase2.jpg) |
+| **Gabriel**, o Arauto de Muitos Olhos, no Átrio das Trombetas | **Deus** na segunda fase: a arena inundada de sangue |
 
 ### As arenas
 
 | | |
 |---|---|
+| ![Átrio das Trombetas](docs/img/gabriel_arena.jpg) | ![Átrio visto de cima](docs/img/gabriel_arena_cima.jpg) |
+| **Átrio das Trombetas** — a arena do Gabriel: praça de mármore acima das nuvens, ao amanhecer | Vista de cima: estrela de ouro no chão, 8 trombetas gigantes e plataformas suspensas |
 | ![Arena de Miguel](docs/img/miguel.jpg) | ![Sala do Trono](docs/img/sala_do_trono.jpg) |
 | **Santuário do Eclipse** — ruínas flutuando no vazio, selo de sangue no chão e um sol negro | **Sala do Trono** — mármore branco, ouro, cachoeiras e um córrego de sangue |
 | ![Fontes de sangue](docs/img/fontes_de_sangue.jpg) | ![Barras dos chefes](docs/img/barras_chefes.jpg) |
@@ -75,7 +77,7 @@ Um ranking de heresia (de Devoto a Supremo Sacrilégio) recompensa variar as arm
 |---|---|
 | **Ondas** | Hordas crescentes. A cada 5 ondas aparece Gabriel; a cada 10, Deus. |
 | **Treino** | Alvos infinitos para testar armas e melhorias. |
-| **Gabriel** | Luta direta contra o arcanjo (8 ataques, segunda fase). |
+| **Gabriel** | Luta contra o arcanjo na arena dele, o Átrio das Trombetas (8 ataques, segunda fase). |
 | **Miguel** | Luta contra o Arcanjo Velado na arena dele, o Santuário do Eclipse (7 ataques + Eclipse). |
 | **Deus** | Luta direta contra Deus (10 ataques, segunda fase com a arena inundada). |
 
@@ -126,6 +128,7 @@ Deicide/
 │   ├── gabriel.gd         # chefe Gabriel
 │   ├── miguel.gd          # chefe Miguel (partes animadas por código, 7 ataques, Eclipse)
 │   ├── miguel_arena.gd    # Santuário do Eclipse, a arena do Miguel
+│   ├── gabriel_arena.gd   # Átrio das Trombetas, a arena do Gabriel
 │   ├── deus.gd            # chefe Deus
 │   ├── trono.gd           # Sala do Trono e cutscene de Deus
 │   ├── hud2.gd            # HUD: vida, estamina, dash, arma em 3D, munição e frasco de sangue

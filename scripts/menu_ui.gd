@@ -10,7 +10,7 @@ const DIM := Color("7d6a63")
 const MODES := {
 	"waves": ["ONDAS", "Hordas sem fim de anjos. A cada 5 ondas desce Gabriel; a cada 10, o próprio Deus.", 3],
 	"train": ["TREINO", "Alvos que sempre voltam, e aqui você não morre. Teste as armas, as melhorias e a Blasfêmia.", 0],
-	"boss": ["GABRIEL", "O Arauto de Muitos Olhos. Oito ataques, asas articuladas e uma segunda fase de julgamento.", 4],
+	"boss": ["GABRIEL", "O Arauto de Muitos Olhos. Oito ataques e uma segunda fase de julgamento, no Átrio das Trombetas acima das nuvens.", 4],
 	"miguel": ["MIGUEL", "O Arcanjo Velado: quatro braços, asas cheias de olhos e uma arena só dele sob o eclipse.", 4],
 	"deus": ["DEUS", "O Criador em pessoa, coroado de mãos decepadas. Quando ele sangra, a arena afoga.", 5],
 }

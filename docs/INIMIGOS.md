@@ -26,6 +26,13 @@ os braços seguram o cajado com as duas mãos (cinemática inversa).
 
 ![Gabriel](img/gabriel_orbes.jpg)
 
+No modo **Gabriel** a luta acontece no **Átrio das Trombetas**: uma praça octogonal de mármore flutuando acima de um
+mar de nuvens ao amanhecer, com uma estrela de ouro embutida no chão, oito trombetas gigantes de ouro apontando
+para o céu (brilham mais na segunda fase), quatro plataformas suspensas com escadas para pegar altura contra
+o arcanjo no ar, penas caindo e um olho gigante no céu que acompanha você e pisca.
+
+![Átrio das Trombetas](img/gabriel_arena.jpg)
+
 Aparece a cada 5 ondas ou no modo **Gabriel**. 4 200 de vida. As asas são articuladas (raiz e ponta),
 dobram, se fecham e batem com o som real de asas.
 

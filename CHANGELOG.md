@@ -1,5 +1,15 @@
 # Histórico de mudanças
 
+## Arena do Gabriel: o Átrio das Trombetas
+
+- Nova arena só do Gabriel (`scripts/gabriel_arena.gd`), usada no modo **Gabriel**: praça octogonal de mármore acima das
+  nuvens, céu de amanhecer em degradê, sol nascente com raios, mar de nuvens animado e nuvens fofas girando em volta.
+- Estrela de 8 pontas e anéis de ouro no chão, estrado central com um sol dourado, balaustrada na borda.
+- Oito trombetas gigantes de ouro inclinadas para o céu, com luz dentro da campana (mais forte na segunda fase do Gabriel).
+- Quatro plataformas suspensas (5 m e 7 m) com escadas flutuantes, para lutar contra o arcanjo no alto.
+- Penas caindo e um olho gigante no céu que segue o jogador e pisca.
+- Correção: a arena do Miguel montava as linhas do selo antes de entrar no mundo; agora ficam na direção certa.
+
 ## Munição de sangue, cadáveres e jab
 
 - **Revólver de dois canos** (modelo enviado pelo autor) no lugar da pistola.
