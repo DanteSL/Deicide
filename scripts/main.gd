@@ -461,6 +461,22 @@ func _autotest(m: String) -> void:
 	if m == "ceif":
 		_ceif_test()
 		return
+	if m == "halo":
+		start_mode("deus")
+		G.fov_base = 100.0
+		var rth = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+		rth.call(1.0, func():
+			trono.set_process(false)
+			if G.boss: G.boss.visible = false
+			player.global_position = Vector3(-8.5, 9.6, -54.5)
+			var d = Vector3(-2.0, 30.0, -72.0) - Vector3(-8.5, 11.2, -54.5)
+			player.yaw = atan2(-d.x, -d.z)
+			player.pitch = atan2(d.y, Vector2(d.x, d.z).length()))
+		rth.call(1.8, func(): get_viewport().get_texture().get_image().save_png("/tmp/halo_perto.png"))
+		rth.call(2.0, func(): player.global_position = Vector3(0, 1.2, 10); player.yaw = 0.0; player.pitch = .18)
+		rth.call(2.6, func(): get_viewport().get_texture().get_image().save_png("/tmp/halo_longe.png"))
+		rth.call(3.0, func(): get_tree().quit())
+		return
 	if m == "trono":
 		start_mode("deus")
 		var rtt = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)

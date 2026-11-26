@@ -476,7 +476,8 @@ func _altar() -> void:
 	hr.inner_radius = 14.2; hr.outer_radius = 15.6; hr.rings = 64
 	halo.mesh = hr
 	halo.material_override = glow(Color(1, .78, .35))
-	halo.rotation.x = PI / 2
+	# parada, inclinada como o jogador escolheu
+	halo.rotation = Vector3(PI / 2, 0, deg_to_rad(157.5))
 	halo.position = sun_c
 	add_child(halo)
 	# braseiros nos cantos do topo
@@ -594,7 +595,6 @@ func _process(dt: float) -> void:
 	var tt = Time.get_ticks_msec() / 1000.0
 	for f in flames:
 		f[0].scale = Vector3.ONE * (1.0 + .12 * sin(tt * 13 + f[1]) + .08 * sin(tt * 23 + f[1] * 2))
-	if halo: halo.rotation.z += dt * .15
 	surge = max(0.0, surge - dt * .4)
 	for s in spouts:
 		s.initial_velocity_min = 5.0 + surge * 6
