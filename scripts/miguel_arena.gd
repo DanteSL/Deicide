@@ -226,8 +226,14 @@ func _corona_tex() -> ImageTexture:
 			img.set_pixel(x, y, Color(1, 1, 1, v))
 	return ImageTexture.create_from_image(img)
 
+var rain: CPUParticles3D
+func M_level() -> String:
+	var mm = G.main
+	return mm.level if mm else ""
+
 func reset_state() -> void:
 	eclipse = 0.0
+	if rain: rain.emitting = false
 
 func _process(dt: float) -> void:
 	t += dt
@@ -238,6 +244,23 @@ func _process(dt: float) -> void:
 		var cm: StandardMaterial3D = corona.material_override
 		cm.albedo_color = Color(1, .35 - eclipse * .2, .25 - eclipse * .15, .75 + .15 * sin(t * .8) + eclipse * .25)
 		corona.scale = Vector3.ONE * (1.0 + eclipse * .35 + sin(t * .5) * .02)
+	# eclipse: relâmpagos vermelhos no céu e chuva de sangue
+	if eclipse > .5 and G.fx and M_level() == "miguel" and randf() < dt * .9:
+		var a = randf() * TAU; var d = randf_range(80, 200)
+		var b = Vector3(cos(a) * d, -30, sin(a) * d)
+		G.fx.bolt(b + Vector3(randf_range(-30, 30), 160, randf_range(-30, 30)), b, Color(1, .1, .1), 3.0, .3, 3)
+	if rain:
+		rain.emitting = eclipse > .5 and M_level() == "miguel"
+	elif eclipse > .5:
+		rain = CPUParticles3D.new()
+		rain.amount = 600; rain.lifetime = 1.2
+		rain.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX; rain.emission_box_extents = Vector3(46, 1, 46)
+		rain.direction = Vector3(0, -1, 0); rain.spread = 2; rain.initial_velocity_min = 30; rain.initial_velocity_max = 36
+		var dm = BoxMesh.new(); dm.size = Vector3(.04, .8, .04)
+		var rm = StandardMaterial3D.new(); rm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; rm.albedo_color = Color(.55, 0, .03)
+		dm.material = rm; rain.mesh = dm
+		rain.position = Vector3(0, 36, 0)
+		add_child(rain)
 	var pulse = .55 + .45 * sin(t * 1.6)
 	for m in sigil_mats:
 		m.albedo_color = Color(.45 + .4 * pulse + eclipse * .3, .02, .05)

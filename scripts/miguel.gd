@@ -9,6 +9,8 @@ extends Node3D
 const MSC := 15.0
 const BASE_Y := 0.25
 const ATTACKS := ["sweep", "eyes", "cross", "chain", "blink", "rosary", "crown"]
+## só no eclipse
+const ATTACKS2 := ["blacksun", "reaping"]
 # olhos das asas (coordenadas do modelo no Godot, antes da escala) e a asa a que pertencem
 const EYES := [["wingR", Vector3(-.21, .85, -.03)], ["wingR", Vector3(-.2, .79, -.03)], ["wingR", Vector3(-.3, .70, -.05)],
 	["wingL", Vector3(.24, .845, -.03)], ["wingL", Vector3(.21, .77, -.03)], ["wingL", Vector3(.32, .68, -.05)]]
@@ -345,6 +347,10 @@ func _physics_process(dt: float) -> void:
 			fired.clear(); _relax()
 		return
 	flash -= dt
+	if ph2 and G.rng.randf() < dt * 6.0:
+		G.fx.smoke(center() + Vector3(G.rnd(-4, 4), G.rnd(-4, 3), G.rnd(-2, 2)), Color(.1, 0, .02, .6), 1, 5.0, 2.0, 3.0)
+	if ph2 and G.rng.randf() < dt * 10.0:
+		G.emit("blood2", center() + Vector3(G.rnd(-6, 6), G.rnd(-2, 4), G.rnd(-1, 1)), 1, 1, .18, 1.0, Vector3.ZERO, 14)
 	if not ph2 and hp < max_hp * .5 and att != "eclipse":
 		_attack("eclipse")
 	_anim(dt)
@@ -364,7 +370,7 @@ func _pick() -> String:
 	if d < 14: w.sweep += 1.4; w.crown += .4
 	else: w.chain += .8; w.eyes += .6; w.blink += .5
 	if p.y > 4: w.eyes += .8; w.chain += .5
-	if ph2: w.rosary += .5; w.blink += .4
+	if ph2: w.rosary += .5; w.blink += .4; w.blacksun = 1.3; w.reaping = 1.3
 	w.erase(last_att)
 	var tot = 0.0
 	for k in w: tot += w[k]
@@ -424,6 +430,14 @@ func _attack(k: String) -> void:
 		"crown":
 			mv = "hold"; T.slam = 1.0; T.lean = .3; T.nod = .4
 			G.snd("charge", -6, .5)
+		"blacksun":
+			mv = "hold"; hover = 6.0; T.raise = 1.0; T.spread = 1.0; T.glow = 1.0; T.eyes = 1.0; T.nod = -.5
+			G.main.banner("SOL NEGRO", "")
+			G.snd("angel", -2, .3); G.snd("charge", -4, .3)
+		"reaping":
+			mv = "hold"; T.wind = 1.0; T.glow = 1.0; T.lean = .2
+			G.main.banner("CEIFA CARMESIM", "")
+			G.snd("whoosh", -4, .5)
 
 func _end(set_cd := true) -> void:
 	last_att = att
@@ -478,6 +492,10 @@ func _run_attack(dt: float) -> void:
 				var push = (p - global_position); push.y = 0
 				G.player.velocity += push.normalized() * 20 + Vector3(0, 7, 0)
 				_wave(Color(1, .15, .2))
+				G.fx.flash(center(), Color(1, .1, .15), 28, .9)
+				G.fx.ring_v(center(), (p - global_position).normalized(), Color(1, .12, .18), 22, 1.0)
+				G.fx.shock(Vector3(global_position.x, 0, global_position.z), Color(1, .08, .12), 36, 1.2)
+				G.fx.smoke(center(), Color(.12, 0, .02, .7), 14, 10, 2.4, 3.0)
 				if G.main.has_method("miguel_eclipse"): G.main.miguel_eclipse()
 			if at > 3.0: _end()
 		"sweep":
@@ -506,6 +524,9 @@ func _run_attack(dt: float) -> void:
 						var d1 = dir.rotated(Vector3.UP, a1 * side)
 						G.tracer(o + d0 * 13.5, o + d1 * 13.5, .45, Color(1, .15, .2), .25 + k * .01)
 						G.tracer(o + d0 * 10.5, o + d1 * 10.5, .25, Color(1, .6, .5), .2)
+					G.fx.slash(o + dir * 6.0 + Vector3(0, .4, 0), dir.rotated(Vector3.UP, 0.0), 26, Color(1, .12, .16, 1), .35, "slash_04")
+					G.fx.slash(o + dir * 6.0 + Vector3(0, .5, 0), dir, 20, Color(1, .8, .7, .8), .25, "slash_03")
+					G.fx.burst(o + dir * 8, Color(.7, 0, .05), 18, 14, .9, .6, "circle_05", 20.0, true)
 					var rel = Vector3(p.x - global_position.x, 0, p.z - global_position.z)
 					if rel.length() < 14.5 and rel.normalized().dot(dir) > -.2 and p.y - global_position.y < 2.0:
 						if G.hurt_player(26.0 if ph2 else 22.0):
@@ -565,6 +586,8 @@ func _run_attack(dt: float) -> void:
 					var a = hand.lerp(end, k / 24.0)
 					var b = hand.lerp(end, (k + .7) / 24.0)
 					G.tracer(a, b, .22, Color(.8, .7, .6), .35)
+				G.fx.beam(hand, end, .7, Color(1, .2, .2), .35)
+				G.fx.flash(hand, Color(1, .3, .3), 4, .3)
 				if _seg_dist(pc, hand, end) < 1.6:
 					ad.grab = true
 					ad.gt = at
@@ -591,6 +614,8 @@ func _run_attack(dt: float) -> void:
 			# some em sombra, reaparece no alto atrás do jogador e esmaga com os quatro braços
 			if _once("vanish", .45):
 				G.emit("blood2", center(), 50, 14, .35, .8)
+				G.fx.smoke(center(), Color(.08, 0, .02, .8), 10, 8, 1.4, 2.0)
+				G.fx.flash(center(), Color(1, .1, .15), 12, .4)
 				G.snd("whoosh", 0, .3)
 				model.visible = false
 				inv = true
@@ -600,6 +625,7 @@ func _run_attack(dt: float) -> void:
 				ad.ring = _ring_mesh(Color(1, .15, .2), .8)
 				ad.ring.position = Vector3(ad.dest.x, .08, ad.dest.z)
 				ad.ring.scale = Vector3(8, 1, 8)
+				G.fx.sigil(Vector3(ad.dest.x, _ground_y(ad.dest.x, ad.dest.z), ad.dest.z), 8.0, Color(1, .1, .15), 1.0, 0)
 			if at > .45 and at < 1.15 and ad.has("ring"):
 				ad.ring.material_override.albedo_color.a = .4 + .4 * sin(at * 40)
 			if _once("appear", 1.15):
@@ -622,6 +648,8 @@ func _run_attack(dt: float) -> void:
 					var gp = Vector3(global_position.x, .4, global_position.z)
 					G.emit("dust", gp, 60, 22, .5, 1.3)
 					G.emit("blood2", gp, 40, 18, .25, .9)
+					G.fx.shock(gp, Color(1, .1, .15), 16, .7)
+					G.fx.flash(gp + Vector3(0, 2, 0), Color(1, .2, .2), 14, .45)
 					G.main.world_flash(gp, 16)
 					_wave(Color(1, .2, .25))
 					var dd = Vector2(p.x - gp.x, p.z - gp.z).length()
@@ -645,12 +673,64 @@ func _run_attack(dt: float) -> void:
 						_orb(o, dir * (15.0 if ph2 else 12.0) + Vector3(0, -.6, 0), Color(.75, .05, .12))
 					G.snd("ping", -18, 1.4)
 			if at > 3.4: _end()
+		"blacksun":
+			# SOL NEGRO: o sol do eclipse persegue você com um selo; quando trava, um raio desce do céu
+			var sun: Vector3 = Vector3(0, 95, -210)
+			var arena = G.main.get("miguel_arena")
+			if arena and arena.get("sun"): sun = arena.sun.global_position
+			for k in 5:
+				var t0 = .6 + k * .75
+				if at > t0 - .7 and at < t0:
+					ad["c%d" % k] = ad.get("c%d" % k, Vector3(p.x, 0, p.z)).lerp(Vector3(p.x, 0, p.z), 1.0 - exp(-5.0 * dt))
+					if G.rng.randf() < dt * 20: G.tracer(sun, ad["c%d" % k], .12, Color(1, .1, .12, .5), .05)
+				if _once("s%d" % k, t0 - .7):
+					ad["c%d" % k] = Vector3(p.x, 0, p.z)
+					var cc: Vector3 = ad["c%d" % k]
+					ad["sg%d" % k] = G.fx.sigil(Vector3(cc.x, _ground_y(cc.x, cc.z), cc.z), 3.5, Color(1, .05, .1), .9, 0)
+				if ad.has("sg%d" % k) and is_instance_valid(ad["sg%d" % k]) and at < t0:
+					var cc2: Vector3 = ad["c%d" % k]
+					ad["sg%d" % k].global_position = Vector3(cc2.x, _ground_y(cc2.x, cc2.z) + .09, cc2.z)
+				if _once("hit%d" % k, t0):
+					var c: Vector3 = ad["c%d" % k]
+					var gy = _ground_y(c.x, c.z)
+					var gq = Vector3(c.x, gy, c.z)
+					G.fx.beam(sun, gq, 4.0, Color(1, .06, .1), .5)
+					G.fx.pillar(gq, 3.0, 60, Color(1, .1, .12), .5)
+					G.fx.flash(gq + Vector3(0, 1, 0), Color(1, .15, .15), 14, .5)
+					G.fx.shock(gq, Color(1, .1, .12), 10, .6)
+					G.emit("blood2", gq + Vector3(0, .5, 0), 24, 14, .25, .8)
+					G.snd("beam", -2, .6); G.snd("boom", -6, .8); G.shake = max(G.shake, .6)
+					if Vector2(p.x - c.x, p.z - c.z).length() < 3.6 and p.y - gy < 6.0:
+						if G.hurt_player(24.0): G.player.velocity += Vector3(p.x - c.x, 0, p.z - c.z).normalized() * 12 + Vector3(0, 9, 0)
+			if at > 4.6: _end()
+		"reaping":
+			# CEIFA CARMESIM: três ondas de corte em arco correm pelo chão; a alta você desliza, a baixa você pula
+			for k in 3:
+				var t0 = .7 + k * .7
+				if _once("r%d" % k, t0):
+					var dir = Vector3(p.x - global_position.x, 0, p.z - global_position.z).normalized()
+					var high = k == 1
+					var m = MeshInstance3D.new(); var q = QuadMesh.new(); q.size = Vector2(16, 8); m.mesh = q
+					m.material_override = G.fx.mat("slash_04", Color(1, .1, .15, 1), true, 0)
+					G.world.add_child(m)
+					var y0 = _ground_y(global_position.x, global_position.z) + (2.6 if high else .9)
+					m.global_position = Vector3(global_position.x, y0, global_position.z) + dir * 3.0
+					m.basis = Basis.looking_at(dir, Vector3.UP)
+					var core = MeshInstance3D.new(); core.mesh = q
+					core.material_override = G.fx.mat("slash_03", Color(1, .85, .8, .9), true, 0)
+					core.scale = Vector3(.7, .5, 1); m.add_child(core)
+					gfx.append({"kind": "reap", "m": m, "dir": dir, "t": 0.0, "hit": false, "high": high, "y": y0})
+					G.snd("whoosh", 0, .7 + k * .1); G.snd("clang", -12, .5)
+					T.wind = -1.0 if k % 2 else 1.0
+					swing = 1.0 if k % 2 else -1.0
+			if at > 3.4: _end()
 		"crown":
 			# coroa de espinhos: anel de espinhos se fecha no jogador (pule por cima)
 			if _once("ring", .55):
 				G.snd("slam", -4, .7)
 				G.shake = max(G.shake, .35)
 				gfx.append({"kind": "crown", "c": Vector3(p.x, 0, p.z), "r": 13.0, "spikes": [], "hit": false, "t": 0.0})
+				G.fx.sigil(Vector3(p.x, _ground_y(p.x, p.z), p.z), 13.0, Color(1, .1, .15, .7), 1.8, 1)
 			if at > 2.4: _end()
 
 # ---------------- efeitos ----------------
@@ -677,13 +757,16 @@ func _geyser_mark(q: Vector3, delay: float) -> void:
 	mk.position = Vector3(q.x, y + .06, q.z)
 	mk.scale = Vector3(1.3, 1, 1.3)
 	gfx.append({"kind": "gmark", "m": mk, "x": q.x, "y": y, "z": q.z, "t": delay})
+	G.fx.sigil(Vector3(q.x, y, q.z), 1.5, Color(1, .08, .12), delay + .15, 1)
 
 func _geyser(x: float, y: float, z: float) -> void:
 	var sp = MeshInstance3D.new()
 	var cm = CylinderMesh.new()
 	cm.top_radius = .25; cm.bottom_radius = .7; cm.height = 6.0; cm.radial_segments = 7
 	sp.mesh = cm
-	sp.material_override = G.unshaded(Color(.6, .02, .05))
+	sp.material_override = preload("res://scripts/ceu_mats.gd").blood()
+	G.fx.pillar(Vector3(x, y, z), .9, 9, Color(.9, .06, .08), .5)
+	G.fx.burst(Vector3(x, y + 1, z), Color(.55, 0, .02), 10, 10, .8, .8, "circle_05", 22.0, true)
 	G.world.add_child(sp)
 	sp.position = Vector3(x, y - 3.0, z)
 	gfx.append({"kind": "geyser", "m": sp, "y": y, "t": 0.0})
@@ -702,6 +785,23 @@ func _gfx(dt: float) -> void:
 					g.hit = true
 					if G.hurt_player(20): G.player.velocity.y += 8
 				if g.r > 50: g.dead = true
+			"reap":
+				g.t += dt
+				g.m.global_position += g.dir * 30.0 * dt
+				g.m.scale = Vector3.ONE * (1.0 + g.t * .6)
+				g.m.material_override.albedo_color.a = 1.0 - clamp((g.t - 1.2) / .4, 0.0, 1.0)
+				if G.rng.randf() < dt * 30: G.emit("blood2", g.m.global_position + Vector3(G.rnd(-4, 4), -.5, 0), 2, 4, .2, .4)
+				var rel = p - g.m.global_position
+				var side = g.dir.cross(Vector3.UP)
+				if not g.hit and abs(rel.dot(g.dir)) < 1.2 and abs(rel.dot(side)) < 8.0 * g.m.scale.x:
+					var py = p.y - (g.y - (2.6 if g.high else .9))
+					# alta: acerta quem está em pé (deslize por baixo); baixa: acerta quem está no chão (pule)
+					var hit = (py > .8) if g.high else (py < 1.4)
+					if g.high and G.player.get("sliding") == true: hit = false
+					if hit:
+						g.hit = true
+						if G.hurt_player(20.0): G.player.velocity += g.dir * 12 + Vector3(0, 6, 0)
+				if g.t > 1.6: g.dead = true
 			"gmark":
 				g.t -= dt
 				g.m.material_override.albedo_color.a = .45 + .4 * sin(g.t * 30)

@@ -1,0 +1,2 @@
+Texturas de partículas: Kenney Particle Pack (www.kenney.nl), licença CC0.
+Convertidas para branco com transparência; beam_soft/beam_core foram gerados no projeto.

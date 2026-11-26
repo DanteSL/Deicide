@@ -9,6 +9,7 @@ var main: Node
 var player: Node
 var cam: Camera3D
 var world: Node3D
+var fx: Node3D   # biblioteca de efeitos (scripts/fx.gd)
 var enemies: Array = []
 var projs: Array = []
 var boss: Node = null
@@ -179,6 +180,10 @@ func lit(c: Color, rough := 0.8, metal := 0.0) -> StandardMaterial3D:
 const PCOL := {"blood": Color("8e0a0a"), "blood2": Color("c4161a"), "spark": Color("ffd27a"), "cyan": Color("40e8ff"),
 	"white": Color("ffffff"), "dust": Color("6a5a52"), "gib": Color("6a2620"), "metal": Color("5c606c"), "fire": Color("ff7a20"), "pink": Color("ff40c8")}
 
+## textura e modo de cada tipo de partícula (Kenney Particle Pack)
+const PTEX := {"spark": ["star_04", true], "cyan": ["star_06", true], "white": ["star_07", true], "pink": ["star_06", true],
+	"fire": ["flame_02", true], "dust": ["smoke_04", false], "blood": ["circle_05", false], "blood2": ["circle_05", false]}
+
 func emit(kind: String, pos: Vector3, n: int, speed: float, size: float, life: float, bias := Vector3.ZERO, grav := 30.0) -> void:
 	if world == null or n <= 0:
 		return
@@ -191,10 +196,23 @@ func emit(kind: String, pos: Vector3, n: int, speed: float, size: float, life: f
 	p.local_coords = false
 	var key = kind + str(snappedf(size, 0.01))
 	if not _mesh_cache.has(key):
-		var bm = BoxMesh.new()
-		bm.size = Vector3.ONE * size
-		bm.material = unshaded(PCOL.get(kind, Color.WHITE))
-		_mesh_cache[key] = bm
+		if PTEX.has(kind) and fx:
+			# sprite texturizado: maior que o cubo antigo porque a textura tem borda suave
+			var q = QuadMesh.new()
+			var k = 2.6 if PTEX[kind][1] else 2.0
+			if kind == "fire": k = 3.4
+			if kind == "dust": k = 4.0
+			q.size = Vector2.ONE * size * k
+			var c: Color = PCOL.get(kind, Color.WHITE)
+			if kind == "blood" or kind == "blood2": c = Color(.5, .0, .02, 1) if kind == "blood" else Color(.72, .03, .04, 1)
+			if kind == "dust": c = Color(.42, .36, .32, .55)
+			q.material = fx.mat(PTEX[kind][0], c, PTEX[kind][1], 2, true)
+			_mesh_cache[key] = q
+		else:
+			var bm = BoxMesh.new()
+			bm.size = Vector3.ONE * size
+			bm.material = unshaded(PCOL.get(kind, Color.WHITE))
+			_mesh_cache[key] = bm
 	p.mesh = _mesh_cache[key]
 	if bias != Vector3.ZERO:
 		p.direction = bias.normalized()
@@ -205,8 +223,11 @@ func emit(kind: String, pos: Vector3, n: int, speed: float, size: float, life: f
 	p.initial_velocity_min = speed * 0.35
 	p.initial_velocity_max = speed
 	p.gravity = Vector3(0, -grav, 0)
-	p.angular_velocity_min = -400
-	p.angular_velocity_max = 400
+	if PTEX.has(kind):
+		p.angle_min = 0; p.angle_max = 360
+	else:
+		p.angular_velocity_min = -400
+		p.angular_velocity_max = 400
 	var cv = Curve.new()
 	cv.add_point(Vector2(0, 1))
 	cv.add_point(Vector2(0.65, 1))
@@ -226,13 +247,18 @@ func tracer(a: Vector3, b: Vector3, w: float, color: Color, life := 0.1) -> void
 		_tr_mesh = BoxMesh.new()
 		_tr_mesh.size = Vector3.ONE
 	var m = MeshInstance3D.new()
-	m.mesh = _tr_mesh
+	m.mesh = fx.cross_mesh() if fx else _tr_mesh
 	var mat = StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	mat.albedo_color = color
 	mat.disable_fog = true
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	if fx:
+		# feixe com borda suave (núcleo claro), 3x mais largo para compensar a borda transparente
+		mat.albedo_texture = fx.tex("beam_soft")
+		w *= 2.2
 	m.material_override = mat
 	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	world.add_child(m)

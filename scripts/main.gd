@@ -418,6 +418,52 @@ func _caida_test() -> void:
 	rt.call(11.4, func(): if is_instance_valid(_aim_e): _aim_e.take_damage(9999, "punch", false))
 	rt.call(11.9, shot.bind("morte"))
 	rt.call(12.6, func(): print("CAIDATEST OK hp=", player.hp, " enemies=", G.enemies.size()); get_tree().quit())
+## teste genérico de chefe: cada ataque com fotos, depois a segunda fase e os ataques novos
+## uso: --autotest=bfx_<modo>   (ex.: bfx_boss, bfx_miguel, bfx_lilith, bfx_azazel, bfx_deus)
+func _bfx_test(mode: String) -> void:
+	var cfg = {"boss": [["beam", "spears", "quake", "sword", "orbs", "halo"], ["trumpets", "bloodfall", "beam", "spears"]],
+		"miguel": [[], []], "lilith": [[], []], "azazel": [[], []], "deus": [[], []]}
+	var atks: Array = cfg[mode][0]
+	var atks2: Array = cfg[mode][1]
+	if mode == "miguel" or mode == "lilith" or mode == "azazel" or mode == "deus":
+		var b = load("res://scripts/%s.gd" % ("deus" if mode == "deus" else mode))
+		var all: Array = b.get_script_constant_map().get("ATTACKS", []) if b else []
+		atks = all.duplicate(); atks2 = all.duplicate()
+		for k in b.get_script_constant_map().get("ATTACKS2", []): atks2.push_front(k)
+	start_mode(mode)
+	_aim_boss = true
+	G.fov_base = 60.0
+	var rt = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+	var shot = func(name):
+		var img = get_viewport().get_texture().get_image()
+		if img: img.save_png("/tmp/bfx_%s_%s.png" % [mode, name])
+	var keep = func():
+		player.hp = 100000.0
+		if G.boss and G.boss.get("cine") == true: G.boss.cine = false; G.boss.inv = false
+	for k in 200: rt.call(k * .5, keep)
+	if mode == "boss": rt.call(1.0, func(): gabriel_enter())
+	if mode == "deus":
+		for k in 120: rt.call(5.0 + k * .5, func():
+			player.global_position = Vector3(0, 1.2, -4); player.velocity = Vector3.ZERO
+			if G.boss: var d = G.boss.head_pos() - (player.global_position + Vector3(0, 1.6, 0)); player.yaw = atan2(-d.x, -d.z); player.pitch = atan2(d.y, Vector2(d.x, d.z).length()) - .25)
+	var t0 = 7.0 if mode == "deus" else 5.5
+	var step = 3.6
+	for i in atks.size():
+		var k = atks[i]
+		rt.call(t0 + i * step, func():
+			if G.boss: G.boss.att = ""; G.boss.cd = 99.0; G.boss._attack(k))
+		for j in 2: rt.call(t0 + i * step + .7 + j * 1.1, shot.bind("1_%02d%s_%d" % [i, k, j]))
+	var t1 = t0 + atks.size() * step
+	rt.call(t1, func(): if G.boss: G.boss.att = ""; G.boss.hp = G.boss.max_hp * .49; G.boss.cd = 0.0)
+	for j in 4: rt.call(t1 + .8 + j * 1.0, shot.bind("2_fase_%d" % j))
+	var t2 = t1 + 7.0
+	for i in atks2.size():
+		var k = atks2[i]
+		rt.call(t2 + i * step, func():
+			if G.boss: G.boss.att = ""; G.boss.cd = 99.0; G.boss._attack(k))
+		for j in 2: rt.call(t2 + i * step + .7 + j * 1.1, shot.bind("3_%02d%s_%d" % [i, k, j]))
+	rt.call(t2 + atks2.size() * step + .5, func(): print("BFX OK ", mode, " ph2=", G.boss.get("ph2") if G.boss else "morto"); get_tree().quit())
+
 func _gab_test() -> void:
 	start_mode("boss")
 	_aim_boss = true
@@ -819,6 +865,9 @@ func _autotest(m: String) -> void:
 		rth.call(2.6, func(): get_viewport().get_texture().get_image().save_png("/tmp/halo_longe.png"))
 		rth.call(6.0, func(): get_tree().quit())
 		return
+	if m.begins_with("bfx_"):
+		_bfx_test(m.substr(4))
+		return
 	if m == "azazel":
 		var rta = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
 		var sha = func(nm): get_viewport().get_texture().get_image().save_png("/tmp/aza_%s.png" % nm)
@@ -1038,6 +1087,8 @@ func _build_viewports() -> void:
 	world = Node3D.new()
 	vp.add_child(world)
 	G.world = world
+	if G.fx == null or not is_instance_valid(G.fx):
+		G.fx = preload("res://scripts/fx.gd").new(); G.fx.name = "FX"; add_child(G.fx)
 	vpc2 = SubViewportContainer.new()
 	vpc2.stretch = true
 	vpc2.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -2082,7 +2133,28 @@ func spawn_orb(pos: Vector3, vel: Vector3) -> void:
 	m.material_override = mat
 	world.add_child(m)
 	m.global_position = pos
-	G.projs.append({"m": m, "mat": mat, "vel": vel, "owner": "enemy", "life": 7.0, "big": false})
+	var pr = {"m": m, "mat": mat, "vel": vel, "owner": "enemy", "life": 7.0, "big": false}
+	_orb_fx(pr)
+	G.projs.append(pr)
+
+## brilho (halo + estrela girando) e rastro de luz nas esferas
+func _orb_fx(pr: Dictionary) -> void:
+	var m: MeshInstance3D = pr.m
+	var g = MeshInstance3D.new(); var q = QuadMesh.new(); q.size = Vector2.ONE * 2.4; g.mesh = q
+	var gm = G.fx.mat("circle_05", Color(1, 1, 1, .9), true, 1)
+	g.material_override = gm; m.add_child(g)
+	var s = MeshInstance3D.new(); var q2 = QuadMesh.new(); q2.size = Vector2.ONE * 1.6; s.mesh = q2
+	var sm = G.fx.mat("star_08", Color(1, 1, 1, 1), true, 1)
+	s.material_override = sm; m.add_child(s)
+	var tr = CPUParticles3D.new()
+	tr.amount = 24; tr.lifetime = .35; tr.local_coords = false
+	tr.gravity = Vector3.ZERO; tr.initial_velocity_min = 0; tr.initial_velocity_max = .5; tr.spread = 180
+	var tq = QuadMesh.new(); tq.size = Vector2.ONE * .9
+	var tm = G.fx.mat("circle_05", Color(1, 1, 1, .7), true, 2)
+	tq.material = tm; tr.mesh = tq
+	var cv = Curve.new(); cv.add_point(Vector2(0, 1)); cv.add_point(Vector2(1, 0)); tr.scale_amount_curve = cv
+	m.add_child(tr)
+	pr.gm = gm; pr.sm = sm; pr.tm = tm
 
 var _fth_mesh: BoxMesh
 func spawn_feather(pos: Vector3, vel: Vector3) -> void:
@@ -2121,6 +2193,10 @@ func _upd_projs(dt: float, t: float) -> void:
 		m.global_position += p.vel * dt
 		if not p.get("feather", false):
 			m.scale = Vector3.ONE * (1.9 if p.big else 1.0) * (1 + sin(t * 30) * .15)
+			if p.has("gm"):
+				var c: Color = p.mat.albedo_color
+				p.gm.albedo_color = Color(c.r, c.g, c.b, .85); p.tm.albedo_color = Color(c.r, c.g, c.b, .6)
+				p.sm.albedo_color = Color(lerp(c.r, 1.0, .6), lerp(c.g, 1.0, .6), lerp(c.b, 1.0, .6), 1)
 		var q = m.global_position
 		if p.owner == "enemy":
 			if q.distance_to(player.global_position + Vector3(0, .9, 0)) < 1.0 and G.hurt_player(20):

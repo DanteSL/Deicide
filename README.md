@@ -74,6 +74,13 @@ Um ranking de heresia (de Devoto a Supremo Sacrilégio) recompensa variar as arm
 | ![Arena do Azazel](docs/img/azazel_arena.jpg) | ![Trono](docs/img/trono_marmore.jpg) |
 | O Olho da Tempestade: raios caindo nas marcas | O salão do trono em mármore com veios de ouro e colunas jônicas |
 
+## Habilidades dos chefes
+
+![Habilidades](docs/img/habilidades.jpg)
+
+Trombetas do Juízo (Gabriel), Sol Negro e Ceifa Carmesim (Miguel), Inferno e Coroa do Abismo (Lilith),
+Mil Olhos e Tempestade Final (Azazel) e Sóis de Sangue (Deus).
+
 ## Como jogar
 
 1. Baixe o **[Godot 4.7](https://godotengine.org/download)** (versão padrão, não precisa da .NET).
@@ -171,6 +178,8 @@ Deicide/
 ```
 
 ## Créditos
+
+- Efeitos de partículas: [Kenney Particle Pack](https://kenney.nl) (CC0).
 
 - Estátuas do corredor da Sala do Trono: modelo **"AngelStatue"**, de Zsky.
 - Lilith: modelo enviado pelo autor (`Lilith.zip`, gerado no Tripo).

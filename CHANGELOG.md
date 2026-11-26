@@ -1,5 +1,29 @@
 # Histórico de mudanças
 
+## Efeitos novos em todos os chefes (Kenney Particle Pack) e ataques de segunda fase
+
+- Biblioteca de efeitos (`scripts/fx.gd`) com as texturas do Kenney Particle Pack (CC0): clarões, ondas de choque no
+  chão, anéis de energia, selos mágicos de aviso que giram e pulsam, feixes com núcleo branco e borda suave, raios com
+  galhos, cortes em arco, colunas de luz/fogo/sangue, fumaça e faíscas texturizadas.
+- Todas as partículas do jogo deixaram de ser cubinhos: faíscas viraram estrelas, fogo virou chama, poeira virou fumaça
+  e o sangue virou gotas suaves. Os traços de raio ganharam borda suave e as esferas inimigas ganharam halo, estrela
+  girando e rastro de luz.
+- Todos os avisos de ataque no chão viraram selos mágicos; sangue de ataques usa o material de sangue novo.
+- Gabriel: feixe, lanças, terremoto, espada e mergulho com efeitos novos; a corrupção solta fumaça e brasas do corpo.
+  Novos ataques corrompidos: Trombetas do Juízo (as 8 trombetas da arena miram e disparam em sequência) e O Céu Sangra
+  (três ondas de colunas de sangue com selos).
+- Miguel: ceifa em arco texturizado, gêiseres de sangue com coluna, corrente em feixe. Eclipse mais forte: relâmpagos
+  vermelhos no céu, chuva de sangue e o próprio Miguel soltando fumaça e sangue. Novos ataques: Sol Negro (o sol do
+  eclipse persegue você e despeja um raio) e Ceifa Carmesim (ondas de corte alta e baixa: deslize ou pule).
+- Lilith: cortes de fogo nas garras, chamas nas ondas, colunas de fogo nas fendas. No Inferno ela solta chamas das asas.
+  Novos ataques: Estrela Caída (um sol de fogo cresce e cai sobre você) e Coroa do Abismo (anéis de colunas de fogo com
+  uma abertura para escapar).
+- Azazel: raios texturizados com galhos e selos de aviso. No Lamento ele solta raios pelo corpo. Novos ataques: Mil Olhos
+  (olhos de luz cercam você e disparam) e Tempestade Final (quatro raios rasteiros girando: pule cada um).
+- Deus: feixe do Olhar, mãos com selo, Dedo de Deus como coluna de luz, maré com o material de sangue. Depois que ele
+  sangra, o corpo pinga sangue e solta fumaça vermelha. Novos ataques: Sóis de Sangue (seis sóis marcam você e
+  despejam raios) e Redemoinho de Sangue (vórtice que puxa e vira um gêiser gigante).
+
 ## Lilith: tecido vermelho com física
 
 - Os panos longos da Lilith (da cintura para baixo, sem as pernas de armadura) agora usam o tecido trançado

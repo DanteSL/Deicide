@@ -369,6 +369,11 @@ func _physics_process(dt: float) -> void:
 	_anim(dt)
 	_gfx(dt)
 	_move(dt)
+	# corrompido: fumaça escura e brasas saindo do corpo
+	if ph2 and G.rng.randf() < dt * 5.0:
+		G.fx.smoke(global_position + Vector3(G.rnd(-5, 5), G.rnd(-6, 4), G.rnd(-2, 2)), Color(.18, .02, .02, .55), 1, 6.0, 2.2, 4.0)
+	if ph2 and G.rng.randf() < dt * 8.0:
+		G.fx.burst(global_position + Vector3(G.rnd(-6, 6), G.rnd(-6, 6), 0), Color(1, .3, .08), 3, 4, .5, 1.2, "flame_05", -3.0)
 	for th in [0.75, 0.5, 0.25]:
 		if hp < max_hp * th and not summoned.has(th) and att != "ascend" and at > .2:
 			summoned[th] = true
@@ -391,7 +396,7 @@ func _pick() -> String:
 	if d < 20: w.quake += 1.0; w.sword += .8
 	else: w.beam += .8; w.dive += .8; w.halo += .5
 	if p.y > 4: w.beam += .6; w.feathers += .6 # jogador no alto
-	if ph2: w.dive += .4; w.orbs += .4
+	if ph2: w.dive += .4; w.orbs += .4; w.trumpets = 1.4; w.bloodfall = 1.4
 	w.erase(last_att)
 	var tot = 0.0
 	for k in w: tot += w[k]
@@ -463,6 +468,16 @@ func _attack(k: String) -> void:
 		"halo":
 			mv = "hold"; T.ring = 10.0; T.glow = .8; T.hands = -.4; T.spread = .5; T.ringsz = 1.5
 			G.snd("whirl", -2, .6)
+		"trumpets":
+			mv = "hold"; hy = BASE_Y + 6; T.spread = 1.0; T.hands = -1.0; T.ring = 6.0; T.glow = 1.0; T.lean = -.3
+			G.main.banner("TROMBETAS DO JUÍZO", "")
+			G.snd("angel", 0, .45); G.snd("charge", -2, .6)
+			ad.k = 0; ad.order = [0, 4, 2, 6, 1, 5, 3, 7]
+		"bloodfall":
+			mv = "hold"; hy = BASE_Y + 8; T.spread = 1.0; T.hands = 1.0; T.ring = 5.0; T.glow = 1.0; T.flap = 1.0
+			G.main.banner("O CÉU SANGRA", "")
+			G.snd("angel", -2, .5)
+			ad.w = 0
 
 func _end(set_cd := true) -> void:
 	if att == "orbs":
@@ -528,6 +543,10 @@ func _run_attack(dt: float) -> void:
 				var push = (p - global_position); push.y = 0
 				G.player.velocity += push.normalized() * 22 + Vector3(0, 8, 0)
 				_wave(); _air_ring(global_position, Color(1, .9, .6))
+				G.fx.flash(eye.global_position, Color(1, .2, .1), 30, .9)
+				G.fx.ring_v(global_position, (G.player.global_position - global_position).normalized(), Color(1, .25, .1), 26, 1.0)
+				G.fx.shock(Vector3(global_position.x, 0, global_position.z), Color(1, .2, .08), 40, 1.2)
+				for i in 10: G.fx.bolt(global_position + Vector3(0, 6, 0), global_position + Vector3(cos(i * .63) * 30, -20, sin(i * .63) * 30), Color(1, .25, .1), 1.4, .4)
 			if at > 2.6: _end()
 		"beam":
 			var tl = 1.15 + ad.k * .9 # momento de travar a mira
@@ -543,8 +562,10 @@ func _run_attack(dt: float) -> void:
 			if _once("fire%d" % ad.k, tf):
 				var dir = (ad.aim - eye_p).normalized()
 				var end = _ray_end(eye_p, dir, 140)
-				G.tracer(eye_p, end, 1.1, Color(1, 1, 1), .4)
-				G.tracer(eye_p, end, .5, Color(1, .85, .56), .6)
+				G.fx.beam(eye_p, end, 2.2, _fxc(), .55)
+				G.fx.flash(end, _fxc(), 10, .5)
+				G.fx.flash(eye_p, _fxc(), 8, .4)
+				G.fx.shock(Vector3(end.x, end.y, end.z), _fxc(), 7, .5)
 				G.emit("white", end, 30, 16, .22, .6)
 				G.emit("spark", end, 26, 14, .15, .6)
 				G.main.world_flash(end, 14)
@@ -599,6 +620,7 @@ func _run_attack(dt: float) -> void:
 				mk.position = Vector3(x, y + .06, z)
 				mk.scale = Vector3(2.2, 1, 2.2)
 				gfx.append({"kind": "mark", "m": mk, "x": x, "y": y, "z": z, "t": .9})
+				G.fx.sigil(Vector3(x, y, z), 2.6, _fxc(), 1.15, 1)
 				G.snd("ping", -10, .6)
 				T.hands = -1.0 if ad.k % 2 else -.7
 			if at > .35 + ad.n * .2 + .4: _end()
@@ -622,6 +644,10 @@ func _run_attack(dt: float) -> void:
 					var gp = Vector3(global_position.x, .5, global_position.z)
 					G.emit("dust", gp, 60, 22, .5, 1.4)
 					G.emit("spark", gp, 40, 26, .15, .8)
+					G.fx.shock(gp, _fxc(), 18, .7)
+					G.fx.shock(gp, Color(1, 1, 1, .7), 10, .4, "circle_03")
+					G.fx.flash(gp + Vector3(0, 2, 0), _fxc(), 16, .5)
+					G.fx.smoke(gp, Color(.75, .7, .65, .55) if not ph2 else Color(.4, .08, .06, .6), 10, 7, 2.0)
 					G.main.world_flash(gp, 18)
 					G.snd("slam", 0); G.snd("boom", -2, .8)
 					G.shake = max(G.shake, 1.1)
@@ -660,6 +686,7 @@ func _run_attack(dt: float) -> void:
 				if fwd.length() > .01:
 					rotation.y = atan2(fwd.x, fwd.z)
 				for i in 3: G.emit("white", global_position + Vector3(G.rnd(-3, 3), G.rnd(-6, 6), G.rnd(-3, 3)), 1, 1, .4, .6, Vector3.ZERO, 0)
+				if G.rng.randf() < .5: G.fx.sprite(global_position + Vector3(G.rnd(-2, 2), G.rnd(-4, 4), 0), "trace_05", Color(_fxc().r, _fxc().g, _fxc().b, .7), 10, 14, .35)
 				# o corpo (cápsula vertical) atropela o jogador
 				var lo = global_position - Vector3(0, 8, 0)
 				var hi = global_position + Vector3(0, 8, 0)
@@ -706,6 +733,9 @@ func _run_attack(dt: float) -> void:
 						gfx.append({"kind": "fissure", "o": o, "d": dv, "s": 0.0, "next": 0.0, "hit": false, "m": null})
 					G.emit("white", o + Vector3(0, .5, 0), 40, 18, .3, .8)
 					G.emit("dust", o, 40, 16, .5, 1.2)
+					G.fx.slash(blade.to_global(Vector3(0, 8, 0)), Vector3(p.x - global_position.x, 0, p.z - global_position.z), 22, _fxc(), .35, "slash_03")
+					G.fx.flash(o + Vector3(0, 1, 0), _fxc(), 12, .4)
+					G.fx.shock(o, _fxc(), 10, .5)
 					G.main.world_flash(o + Vector3(0, 1, 0), 16)
 					G.snd("slam", 0); G.snd("spear", 0, .7)
 					G.shake = max(G.shake, 1.0)
@@ -745,6 +775,61 @@ func _run_attack(dt: float) -> void:
 						G.snd("eshot", -8, 1.1)
 						T.hands = 1.0 if i % 2 else .7
 			if at > t0 + ad.n * .14 + .4: _end()
+		"trumpets":
+			# TROMBETAS DO JUÍZO: as oito trombetas da arena apontam para você e disparam, uma de cada vez
+			var arena = G.main.gabriel_arena
+			if arena and arena.trumpets.size() >= 8:
+				var step = .42
+				for j in 8:
+					var tr = arena.trumpets[ad.order[j]]
+					var bell: Vector3 = tr.n.to_global(Vector3(0, 0, -21.0))
+					var t0 = .5 + j * step
+					if at > t0 - .7 and at < t0:
+						if not ad.has("aim%d" % j): ad["aim%d" % j] = pc
+						ad["aim%d" % j] = ad["aim%d" % j].lerp(pc + G.player.velocity * .2, 1.0 - exp(-6.0 * dt))
+						if G.rng.randf() < dt * 25: G.tracer(bell, ad["aim%d" % j], .05, Color(1, .2, .1, .7), .04)
+						tr.g.albedo_color.a = 1.0
+					if _once("tf%d" % j, t0):
+						var aim: Vector3 = ad.get("aim%d" % j, pc)
+						var end = _ray_end(bell, (aim - bell).normalized(), 160)
+						G.fx.beam(bell, end, 1.6, Color(1, .22, .1), .45)
+						G.fx.flash(bell, Color(1, .4, .15), 9, .4)
+						G.fx.flash(end, Color(1, .2, .1), 8, .4)
+						G.fx.shock(end, Color(1, .2, .08), 6, .5)
+						G.emit("fire", end, 14, 10, .25, .6)
+						G.snd("beam", -4, .8 + j * .04); G.shake = max(G.shake, .35)
+						if _seg_dist(pc, bell, end) < 1.6 and G.hurt_player(18.0):
+							G.player.velocity += (end - bell).normalized() * 9 + Vector3(0, 5, 0)
+				if at > .5 + 8 * step + .6: _end()
+			else: _end()
+		"bloodfall":
+			# O CÉU SANGRA: três ondas de colunas de sangue caem em volta de você, avisadas por selos vermelhos
+			for w in 3:
+				var t0 = .5 + w * 1.15
+				if _once("sig%d" % w, t0):
+					var pts = []
+					var c0 = Vector3(p.x, 0, p.z)
+					pts.append(c0)
+					var ring_n = 5 + w * 2
+					for i in ring_n:
+						var a = i * TAU / ring_n + w * .4
+						pts.append(c0 + Vector3(cos(a), 0, sin(a)) * (5.5 + w * 2.5))
+					ad["pts%d" % w] = pts
+					for q in pts:
+						q.y = _ground_y(q.x, q.z)
+						G.fx.sigil(q, 2.4, Color(1, .12, .08), 1.0, 0)
+					G.snd("ping", -8, .5)
+				if _once("fall%d" % w, t0 + .85):
+					G.snd("slam", -4, .7); G.shake = max(G.shake, .5)
+					for q in ad["pts%d" % w]:
+						var gy = _ground_y(q.x, q.z)
+						var gq = Vector3(q.x, gy, q.z)
+						G.fx.pillar(gq, 1.6, 40, Color(.85, .05, .04), .55)
+						G.fx.burst(gq + Vector3(0, .5, 0), Color(.6, 0, .02), 12, 9, .9, .7, "circle_05", 18.0, true)
+						G.emit("blood2", gq + Vector3(0, .4, 0), 14, 9, .22, .7)
+						if Vector2(p.x - q.x, p.z - q.z).length() < 2.2 and p.y - gy < 4.0:
+							if G.hurt_player(20.0): G.player.velocity.y += 9
+			if at > 4.4: _end()
 		"halo":
 			# arremessa uma auréola gigante girando que vai e volta (pule por cima)
 			if _once("make", .1):
@@ -826,6 +911,8 @@ func _gfx(dt: float) -> void:
 					var q = Vector3(g.x, g.y + .5, g.z)
 					G.emit("white", q, 18, 12, .2, .5)
 					G.emit("spark", q, 14, 10, .12, .4)
+					G.fx.pillar(Vector3(g.x, g.y, g.z), 1.2, 22, _fxc(), .45)
+					G.fx.flash(q, _fxc(), 5, .35)
 					G.snd("spear", -2)
 					G.shake = max(G.shake, .25)
 					if Vector2(p.x - g.x, p.z - g.z).length() < 2.4 and abs(p.y - g.y) < 2.5:
@@ -914,3 +1001,7 @@ func _gfx(dt: float) -> void:
 		if g.get("dead", false) and g.m != null and is_instance_valid(g.m):
 			g.m.queue_free()
 	gfx = gfx.filter(func(g): return not g.get("dead", false))
+
+
+func _fxc() -> Color:
+	return Color(1, .22, .12) if ph2 else Color(1, .86, .55)

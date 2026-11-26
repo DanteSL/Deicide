@@ -111,6 +111,8 @@ var cl_vel := Vector3.ZERO
 var cl_prev := Vector3.ZERO
 var cl_t := 0.0
 const ATTACKS := ["claw", "crosses", "brimstone", "kiss", "dive", "rift", "souls"]
+## só no inferno
+const ATTACKS2 := ["abyss", "meteor"]
 
 var kind = "lilith"
 var alive = true
@@ -539,6 +541,11 @@ func _physics_process(dt: float) -> void:
 			fired.clear(); _relax()
 		return
 	flash -= dt
+	if ph2 and G.rng.randf() < dt * 14.0:
+		var wx = G.rnd(-1, 1)
+		G.fx.sprite(model.to_global(Vector3(wx * .42, .55 + G.rnd(0, .3), -.05)), "flame_0%d" % (5 + G.rng.randi() % 2), Color(1, .4, .08, .9), 2.0, 4.5, .5)
+	if ph2 and G.rng.randf() < dt * 5.0:
+		G.fx.smoke(model.to_global(Vector3(G.rnd(-.2, .2), .2, 0)), Color(.12, .02, .02, .6), 1, 5.0, 2.0, 3.0)
 	if not ph2 and hp < max_hp * .5 and att != "inferno":
 		_attack("inferno")
 	_anim(dt)
@@ -558,7 +565,7 @@ func _pick() -> String:
 	if d < 16: w.claw += 1.3; w.kiss += .4
 	else: w.dive += .8; w.souls += .5; w.rift += .5
 	if p.y > 4: w.brimstone += .6; w.souls += .5
-	if ph2: w.crosses += .4; w.rift += .4
+	if ph2: w.crosses += .4; w.rift += .4; w.abyss = 1.4; w.meteor = 1.3
 	w.erase(last_att)
 	var tot = 0.0
 	for k in w: tot += w[k]
@@ -616,6 +623,14 @@ func _attack(k: String) -> void:
 		"souls":
 			mv = "hold"; T.raise = .6; T.cast = .7; T.spread = .6; T.glow = .6
 			G.snd("whirl", -4, .4)
+		"abyss":
+			mv = "hold"; hover = 2.0; T.claw = 1.0; T.raise = 1.0; T.glow = 1.0; T.nod = .4
+			G.main.banner("COROA DO ABISMO", "")
+			G.snd("charge", -2, .4)
+		"meteor":
+			mv = "hold"; hover = 6.0; T.cast = 1.0; T.raise = 1.0; T.spread = 1.0; T.flap = 1.0; T.glow = 1.0
+			G.main.banner("ESTRELA CAÍDA", "")
+			G.snd("angel", -2, .3); G.snd("charge", -4, .5)
 
 func _end(set_cd := true) -> void:
 	last_att = att
@@ -668,6 +683,10 @@ func _run_attack(dt: float) -> void:
 				var push = (p - global_position); push.y = 0
 				G.player.velocity += push.normalized() * 20 + Vector3(0, 7, 0)
 				_wave(Color(1, .25, .05))
+				G.fx.flash(center(), Color(1, .4, .1), 30, .9)
+				G.fx.ring_v(center(), (p - global_position).normalized(), Color(1, .35, .05), 24, 1.0)
+				G.fx.shock(Vector3(global_position.x, _ground_y(global_position.x, global_position.z), global_position.z), Color(1, .3, .05), 38, 1.2, "circle_03")
+				for i in 12: G.fx.pillar(Vector3(cos(i * TAU / 12) * 14 + global_position.x, 0, sin(i * TAU / 12) * 14 + global_position.z), 1.4, 22, Color(1, .35, .05), .9, "beam_soft")
 				if G.main.has_method("lilith_inferno"): G.main.lilith_inferno()
 			if at > 3.0: _end()
 		"claw":
@@ -683,6 +702,7 @@ func _run_attack(dt: float) -> void:
 					var dir = _fwd().rotated(Vector3.UP, (i - 1) * .35)
 					var o = Vector3(global_position.x, _ground_y(global_position.x, global_position.z) + .5, global_position.z) + dir * 3.0
 					_fire_wave(o, dir)
+					G.fx.slash(center() + dir * 4.0, dir, 14, Color(1, .35, .06), .3, "slash_01" if i % 2 else "slash_02")
 			if ad.has("st"):
 				var u = clamp((at - ad.st) / .18, 0.0, 1.0)
 				swing = (u * 2.0 - 1.0) * (1.0 if ad.sw % 2 == 0 else -1.0)
@@ -727,6 +747,7 @@ func _run_attack(dt: float) -> void:
 					rm.position = Vector3(global_position.x, _ground_y(global_position.x, global_position.z) + .1, global_position.z)
 					rm.scale = Vector3(12, 1, 12)
 					ad.ring = rm
+					G.fx.sigil(rm.position - Vector3(0, .07, 0), 12.0, Color(1, .2, .45), 2.0, 0)
 				if is_instance_valid(ad.get("ring")):
 					var k = 12.0 - at * 2.0
 					ad.ring.scale = Vector3(k, 1, k)
@@ -737,6 +758,9 @@ func _run_attack(dt: float) -> void:
 				G.shake = max(G.shake, .9); G.flash = max(G.flash, .3)
 				var c = Vector3(global_position.x, 1, global_position.z)
 				G.emit("fire", c, 90, 26, .45, 1.0)
+				G.fx.flash(c + Vector3(0, 2, 0), Color(1, .35, .5), 18, .6)
+				G.fx.shock(c - Vector3(0, .9, 0), Color(1, .25, .45), 14, .7)
+				G.fx.smoke(c, Color(.25, .02, .04, .7), 10, 7, 2.0)
 				var dd = Vector2(p.x - c.x, p.z - c.z).length()
 				if dd < 8.5 and G.hurt_player(32.0 if ph2 else 26.0):
 					G.player.velocity += Vector3(p.x - c.x, 0, p.z - c.z).normalized() * 22 + Vector3(0, 9, 0)
@@ -783,6 +807,72 @@ func _run_attack(dt: float) -> void:
 						if Vector2(q.x, q.z).length() > 42: break
 						_rift_mark(q, .6 + k * .06)
 			if at > 2.6: _end()
+		"abyss":
+			# COROA DO ABISMO: três anéis de colunas de fogo explodem do chão em volta dela, abrindo para fora
+			var c = Vector3(global_position.x, 0, global_position.z)
+			for w in 3:
+				var t0 = .7 + w * .55
+				var rr = 6.0 + w * 7.0
+				var n = 10 + w * 6
+				var gap = G.rnd(0, TAU) if not ad.has("gap%d" % w) else ad["gap%d" % w]
+				if _once("m%d" % w, t0 - .55):
+					ad["gap%d" % w] = G.rnd(0, TAU)
+					for i in n:
+						var a = i * TAU / n
+						if absf(wrapf(a - ad["gap%d" % w], -PI, PI)) < .45: continue
+						var q = c + Vector3(cos(a), 0, sin(a)) * rr
+						G.fx.sigil(Vector3(q.x, _ground_y(q.x, q.z), q.z), 1.6, Color(1, .3, .05), .65, 1)
+				if _once("e%d" % w, t0):
+					G.snd("boom", -6, .9 - w * .1); G.shake = max(G.shake, .5)
+					for i in n:
+						var a = i * TAU / n
+						if absf(wrapf(a - ad["gap%d" % w], -PI, PI)) < .45: continue
+						var q = c + Vector3(cos(a), 0, sin(a)) * rr
+						var gy = _ground_y(q.x, q.z)
+						G.fx.pillar(Vector3(q.x, gy, q.z), 1.3, 12, Color(1, .38, .06), .55)
+						G.emit("fire", Vector3(q.x, gy + 1, q.z), 6, 10, .35, .6, Vector3(0, 1, 0), -4)
+						if Vector2(p.x - q.x, p.z - q.z).length() < 2.0 and p.y - gy < 5.0:
+							if G.hurt_player(20.0): G.player.velocity += Vector3(p.x - c.x, 0, p.z - c.z).normalized() * 10 + Vector3(0, 9, 0)
+			if at > 2.6: _end()
+		"meteor":
+			# ESTRELA CAÍDA: ela ergue um sol de fogo, que cresce e cai sobre você; corra para longe do selo
+			if _once("make", .2):
+				var sm = MeshInstance3D.new(); var q = QuadMesh.new(); q.size = Vector2.ONE; sm.mesh = q
+				sm.material_override = G.fx.mat("light_01", Color(1, .45, .1, 1), true, 1)
+				var core = MeshInstance3D.new(); core.mesh = q
+				core.material_override = G.fx.mat("star_09", Color(1, .85, .5, 1), true, 1)
+				core.scale = Vector3.ONE * .6; sm.add_child(core)
+				G.world.add_child(sm)
+				sm.global_position = _hand("armL") + Vector3(0, 6, 0)
+				ad.sun = sm
+				ad.tgt = Vector3(p.x, _ground_y(p.x, p.z), p.z)
+			if is_instance_valid(ad.get("sun")):
+				var sz = clamp(at / 2.0, 0.0, 1.0) * 16.0 + 2.0
+				ad.sun.scale = Vector3.ONE * sz * (1.0 + sin(at * 20.0) * .05)
+				if G.rng.randf() < dt * 30: G.emit("fire", ad.sun.global_position + Vector3(G.rnd(-1, 1), G.rnd(-1, 1), G.rnd(-1, 1)) * sz * .3, 2, 6, .4, .6, Vector3.ZERO, -2)
+				if at < 1.8:
+					ad.tgt = ad.tgt.lerp(Vector3(p.x, _ground_y(p.x, p.z), p.z), 1.0 - exp(-2.5 * dt))
+				if _once("sig", 1.8):
+					ad.sg = G.fx.sigil(ad.tgt, 10.0, Color(1, .3, .05), 1.4, 0)
+					G.snd("charge", -2, .35)
+				if at > 2.2:
+					var u = clamp((at - 2.2) / .9, 0.0, 1.0)
+					ad.sun.global_position = ad.sun.global_position.lerp(ad.tgt + Vector3(0, 2, 0), u * u)
+				if _once("hit", 3.1):
+					var gq: Vector3 = ad.tgt
+					ad.sun.queue_free()
+					G.fx.flash(gq + Vector3(0, 3, 0), Color(1, .5, .15), 40, 1.0)
+					G.fx.shock(gq, Color(1, .35, .05), 30, 1.0, "circle_03")
+					G.fx.shock(gq, Color(1, .9, .6), 14, .5)
+					G.fx.smoke(gq, Color(.2, .05, .02, .75), 18, 12, 3.0, 4.0)
+					for i in 10: G.fx.pillar(gq + Vector3(cos(i * .63) * 7, 0, sin(i * .63) * 7), 1.2, 14, Color(1, .4, .06), .7)
+					G.emit("fire", gq + Vector3(0, 1, 0), 140, 30, .5, 1.2)
+					G.snd("boom", 2, .5); G.snd("porrada", 0, .6)
+					G.shake = max(G.shake, 1.3); G.flash = max(G.flash, .5)
+					var dd = Vector2(p.x - gq.x, p.z - gq.z).length()
+					if dd < 10.0 and G.hurt_player(40.0 * (1.0 - dd / 14.0)):
+						G.player.velocity += Vector3(p.x - gq.x, 0, p.z - gq.z).normalized() * 24 + Vector3(0, 12, 0)
+			if at > 3.8: _end()
 		"souls":
 			# almas penadas: caveiras de fogo que perseguem você devagar (rebata no soco!)
 			var n = 6 if ph2 else 4
@@ -850,6 +940,7 @@ func _cross_spawn(q: Vector3, gy: float, delay: float) -> void:
 	var mk = _ring_mesh(Color(1, .1, .1), .8)
 	mk.position = Vector3(q.x, gy + .07, q.z)
 	mk.scale = Vector3(1.6, 1, 1.6)
+	G.fx.sigil(Vector3(q.x, gy, q.z), 1.8, Color(1, .15, .1), delay + .5, 0)
 	gfx.append({"kind": "cross", "m": cr, "mk": mk, "x": q.x, "y": gy, "z": q.z, "t": -delay, "hit": false, "stuck": 0.0})
 
 func _rift_mark(q: Vector3, delay: float) -> void:
@@ -890,6 +981,7 @@ func _gfx(dt: float) -> void:
 				g.m.global_position += g.dir * (24.0 if ph2 else 20.0) * dt
 				g.m.scale = Vector3(1.0 + g.t * .8, 1, 1)
 				if G.rng.randf() < dt * 30: G.emit("fire", g.m.global_position, 2, 6, .3, .5, Vector3(0, 5, 0), -2)
+				if G.rng.randf() < dt * 22: G.fx.sprite(g.m.global_position + g.dir.cross(Vector3.UP) * G.rnd(-2.2, 2.2) * g.m.scale.x, "flame_0%d" % (5 + G.rng.randi() % 2), Color(1, .45, .1, .9), 1.6, 3.2, .35)
 				var rel = p - g.m.global_position
 				if not g.hit and abs(rel.dot(g.dir)) < 1.0 and abs(rel.dot(g.dir.cross(Vector3.UP))) < 2.4 * g.m.scale.x and rel.y < 1.0:
 					g.hit = true
@@ -914,6 +1006,8 @@ func _gfx(dt: float) -> void:
 						g.stuck = .01
 						G.snd("spear", -4, .7); G.shake = max(G.shake, .25)
 						G.emit("fire", Vector3(g.x, g.y + .3, g.z), 20, 10, .3, .6)
+						G.fx.shock(Vector3(g.x, g.y, g.z), Color(1, .15, .1), 5, .5)
+						G.fx.flash(Vector3(g.x, g.y + 1, g.z), Color(1, .3, .1), 5, .3)
 						if is_instance_valid(g.mk): g.mk.queue_free()
 						if Vector2(p.x - g.x, p.z - g.z).length() < 1.9 and p.y - g.y < 4.0:
 							if G.hurt_player(20.0 if ph2 else 16.0): G.player.velocity.y += 9
@@ -929,6 +1023,7 @@ func _gfx(dt: float) -> void:
 				if g.t <= 0:
 					g.dead = true
 					G.emit("fire", Vector3(g.x, g.y + .5, g.z), 14, 14, .4, .7, Vector3(0, 1, 0), 10)
+					G.fx.pillar(Vector3(g.x, g.y, g.z), .9, 7, Color(1, .4, .06), .4)
 					G.emit("blood2", Vector3(g.x, g.y + .5, g.z), 4, 8, .2, .5)
 					if Vector2(p.x - g.x, p.z - g.z).length() < 1.8 and p.y - g.y < 3.0:
 						if G.hurt_player(16.0 if ph2 else 13.0): G.player.velocity.y += 10

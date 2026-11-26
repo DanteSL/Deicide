@@ -119,6 +119,8 @@ void fragment() {
 }
 """
 const ATTACKS := ["strike", "gaze", "sweep", "nova", "cage", "eyes"]
+## só no Lamento
+const ATTACKS2 := ["thousand", "storm"]
 
 var kind = "azazel"
 var alive = true
@@ -443,6 +445,9 @@ func _physics_process(dt: float) -> void:
 			fired.clear(); _relax()
 		return
 	flash -= dt
+	if ph2 and G.rng.randf() < dt * 3.0:
+		var o = model.to_global(Vector3(G.rnd(-.45, .45), G.rnd(.3, .8), 0))
+		G.fx.bolt(o, o + Vector3(G.rnd(-4, 4), G.rnd(-6, -2), G.rnd(-2, 2)), _col(), .5, .12, 1)
 	if not ph2 and hp < max_hp * .5 and att != "lament":
 		_attack("lament")
 	_anim(dt)
@@ -462,7 +467,7 @@ func _pick() -> String:
 	if d < 14: w.nova += 1.2; w.sweep += .4
 	else: w.gaze += .6; w.eyes += .4
 	if p.y > 3: w.strike += .6; w.gaze += .4
-	if ph2: w.cage += .6; w.strike += .4
+	if ph2: w.cage += .6; w.strike += .4; w.thousand = 1.3; w.storm = 1.2
 	w.erase(last_att)
 	var tot = 0.0
 	for k in w: tot += w[k]
@@ -517,6 +522,14 @@ func _attack(k: String) -> void:
 		"eyes":
 			mv = "orbit"; T.spread = 1.0; T.flap = .6; T.glow = .6
 			G.snd("charge", -8, 1.1)
+		"thousand":
+			mv = "hold"; hover = 3.0; T.spread = 1.0; T.glow = 1.0; T.flap = .4
+			G.main.banner("MIL OLHOS", "")
+			G.snd("charge", -4, .7)
+		"storm":
+			mv = "hold"; hover = 8.0; T.spread = 1.0; T.flap = 1.2; T.glow = 1.0; T.lean = -.15
+			G.main.banner("TEMPESTADE FINAL", "")
+			G.snd("raio", 0, .4); G.snd("charge", -2, .4)
 
 func _end(set_cd := true) -> void:
 	last_att = att
@@ -539,8 +552,7 @@ func _ground_y(x: float, z: float) -> float:
 ## raio (usa o desenho da arena: núcleo branco, brilho e galhos)
 func _bolt(a: Vector3, b: Vector3, w := 1.0, life := .16) -> void:
 	var arena = G.main.get("azazel_arena")
-	if arena: arena.bolt(a, b, _col(), w, life)
-	else: G.tracer(a, b, w, _col(), life)
+	G.fx.bolt(a, b, _col(), w * .9, life * 1.3, 2)
 	if arena: arena.flash_k = max(arena.flash_k, .5)
 
 func _dist_seg(p: Vector3, a: Vector3, b: Vector3) -> float:
@@ -601,6 +613,9 @@ func _run_attack(dt: float) -> void:
 					var hit = get_world_3d().direct_space_state.intersect_ray(q)
 					var end = hit.position if hit else e + dir * 120.0
 					_bolt(e, end, 1.6, .22)
+					G.fx.beam(e, end, 1.2, _col(), .35)
+					G.fx.flash(e, _col(), 6, .3)
+					G.fx.shock(end, _col(), 6, .45)
 					G.snd("raio", 0, G.rnd(.9, 1.1)); G.shake = max(G.shake, .4)
 					G.emit("spark", end, 30, 16, .15, .6)
 					if _dist_seg(pc, e, end) < 1.7:
@@ -642,6 +657,8 @@ func _run_attack(dt: float) -> void:
 				if _once("n%d" % i, .8 + i * .7):
 					G.snd("raio", -2, .7 + i * .1); G.shake = max(G.shake, .4)
 					_nova_ring(1)
+					G.fx.shock(Vector3(global_position.x, _ground_y(global_position.x, global_position.z), global_position.z), _col(), 16, .6, "circle_03")
+					G.fx.flash(eye_pos(), _col(), 10, .35)
 					for k in 4:
 						var a = G.rnd(0, TAU)
 						_bolt(eye_pos(), Vector3(global_position.x + cos(a) * 5, 0, global_position.z + sin(a) * 5), .8, .15)
@@ -676,6 +693,68 @@ func _run_attack(dt: float) -> void:
 					if Vector2(p.x - ad.c.x, p.z - ad.c.z).length() < 2.6:
 						if G.hurt_player(22.0): G.player.velocity.y += 10
 			if at > 3.6: _end()
+		"thousand":
+			# MIL OLHOS: olhos de luz se abrem no ar em volta de você, piscam e disparam raios que se cruzam
+			var n = 10
+			if _once("open", .3):
+				ad.e = []
+				for i in n:
+					var a = i * TAU / n + G.rnd(-.2, .2)
+					var off = Vector3(cos(a) * G.rnd(9, 13), G.rnd(3, 9), sin(a) * G.rnd(9, 13))
+					var root = Node3D.new(); G.world.add_child(root)
+					root.global_position = Vector3(p.x, 0, p.z) + off
+					var q = QuadMesh.new(); q.size = Vector2.ONE * 2.6
+					var glow = MeshInstance3D.new(); glow.mesh = q
+					glow.material_override = G.fx.mat("light_02", Color(_col().r, _col().g, _col().b, .9), true, 1); root.add_child(glow)
+					var iris = MeshInstance3D.new(); var q2 = QuadMesh.new(); q2.size = Vector2.ONE * 1.2; iris.mesh = q2
+					iris.material_override = G.fx.mat("star_02", Color(1, 1, 1, 1), true, 1); root.add_child(iris)
+					root.scale = Vector3.ONE * .01
+					ad.e.append({"n": root, "t": .9 + i * .22})
+				G.snd("ping", -6, .6)
+			if ad.has("e"):
+				for e in ad.e:
+					if not is_instance_valid(e.n): continue
+					e.n.scale = Vector3.ONE * clamp((at - .3) * 3.0, .01, 1.0) * (1.0 + sin(at * 14.0 + e.t * 5.0) * .1)
+					if at > e.t - .45 and at < e.t and G.rng.randf() < dt * 25: G.tracer(e.n.global_position, pc, .04, Color(_col().r, _col().g, _col().b, .6), .04)
+					if at > e.t - .45 and not e.has("aim"): e.aim = pc
+					if at > e.t - .45 and at < e.t - .12: e.aim = e.aim.lerp(pc, 1.0 - exp(-8.0 * dt))
+					if at >= e.t and not e.has("shot"):
+						e.shot = true
+						var a: Vector3 = e.n.global_position
+						var end: Vector3 = a + (e.aim - a).normalized() * (a.distance_to(e.aim) + 6.0)
+						_bolt(a, end, 1.0, .2)
+						G.fx.flash(a, _col(), 4, .3)
+						G.snd("raio", -10, G.rnd(1.1, 1.4))
+						if _dist_seg(pc, a, end) < 1.3 and G.hurt_player(14.0): G.player.velocity += (end - a).normalized() * 6
+						var nn = e.n
+						G.later(.25, func(): if is_instance_valid(nn): nn.queue_free())
+			if at > .9 + n * .22 + .6:
+				for e in ad.get("e", []):
+					if is_instance_valid(e.n): e.n.queue_free()
+				_end()
+		"storm":
+			# TEMPESTADE FINAL: quatro raios rasteiros saem dele e giram pela arena; pule cada um quando passar
+			var c = Vector3(global_position.x, _ground_y(global_position.x, global_position.z) + .6, global_position.z)
+			if _once("sig", .2): G.fx.sigil(c - Vector3(0, .5, 0), 8.0, _col(), 5.0, 0)
+			if at > 1.0 and at < 5.0:
+				var rot = (at - 1.0) * (.9 if at < 3.0 else 1.25)
+				for k in 4:
+					var a = ad.get("a0", 0.0) + rot + k * TAU / 4.0
+					var d = Vector3(cos(a), 0, sin(a))
+					var end = c + d * 46.0
+					if int(at * 24) != int((at - dt) * 24):
+						G.fx.bolt(c, end, _col(), 1.1, .07, 1)
+					var py = p.y - _ground_y(p.x, p.z)
+					var rel = Vector3(p.x - c.x, 0, p.z - c.z)
+					var along = rel.dot(d)
+					var perp = (rel - d * along).length()
+					if along > 0 and perp < 1.0 and py < 1.1 and not ad.has("h%d_%d" % [k, int(at * 2)]):
+						ad["h%d_%d" % [k, int(at * 2)]] = true
+						if G.hurt_player(14.0): G.player.velocity.y += 8
+				if int(at * 5) != int((at - dt) * 5): G.snd("raio", -10, G.rnd(.9, 1.2))
+				if G.rng.randf() < dt * 10: G.fx.shock(c - Vector3(0, .5, 0), _col(), 7, .3)
+			if _once("a", .1): ad.a0 = G.rnd(0, TAU)
+			if at > 5.4: _end()
 		"eyes":
 			# os olhos das asas disparam esferas elétricas em leque
 			var vol = 4 if ph2 else 3
@@ -701,6 +780,7 @@ func _mark(q: Vector3, delay: float, rad: float) -> void:
 	G.world.add_child(m)
 	m.global_position = q + Vector3(0, .08, 0)
 	m.scale = Vector3(1, .1, 1)
+	G.fx.sigil(q, rad * 1.15, _col(), delay + .1, 0)
 	gfx.append({"kind": "mark", "m": m, "t": delay, "x": q.x, "y": q.y, "z": q.z, "r": rad})
 
 func _nova_ring(n: int) -> void:
@@ -728,6 +808,8 @@ func _gfx(dt: float) -> void:
 					_bolt(q + Vector3(G.rnd(-4, 4), 55, G.rnd(-4, 4)), q, 1.4, .2)
 					G.snd("raio", -4, G.rnd(.8, 1.1))
 					G.emit("spark", q + Vector3(0, .3, 0), 24, 14, .12, .5)
+					G.fx.shock(q, _col(), 5, .45)
+					G.fx.flash(q + Vector3(0, .8, 0), _col(), 5, .3)
 					G.shake = max(G.shake, .25)
 					if Vector2(p.x - g.x, p.z - g.z).length() < g.r and p.y - g.y < 5.0:
 						if G.hurt_player(20.0 if ph2 else 16.0): G.player.velocity.y += 8
