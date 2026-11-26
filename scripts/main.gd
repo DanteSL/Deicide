@@ -464,6 +464,18 @@ func _autotest(m: String) -> void:
 	if m == "ceif":
 		_ceif_test()
 		return
+	if m == "arms":
+		start_mode("train")
+		var rta = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+		hud.visible = false
+		for k in 8:
+			rta.call(1.2 + k * .9, func(): player.weapons.select_slot(k))
+			rta.call(2.05 + k * .9, func(): get_viewport().get_texture().get_image().save_png("/tmp/arm_%d.png" % k))
+		rta.call(8.6, func(): player.weapons.punch())
+		for j in 5:
+			rta.call(8.62 + j * .05, func(): get_viewport().get_texture().get_image().save_png("/tmp/arm_soco%d.png" % j))
+		rta.call(9.2, func(): print("ARMS OK"); get_tree().quit())
+		return
 	if m == "gibs":
 		start_mode("train")
 		var rtg = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)

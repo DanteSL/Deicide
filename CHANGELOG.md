@@ -1,5 +1,11 @@
 # Histórico de mudanças
 
+## Braços
+
+- O personagem agora tem braços de verdade: pele branca, quase de mármore, com rachaduras de sangue que brilham.
+- Aparecem em todas as armas: na pistola (mão no cabo), na escopeta (mão na bomba e ao recarregar), nas espadas aladas e no soco.
+  Lança-foguetes, pregadora, rail, arpão e lança-granadas ganharam também a mão esquerda segurando o cano.
+
 ## Pistola
 
 - A arma 1 agora é uma **pistola** (modelo enviado pelo autor): ferrolho que recua a cada tiro e ejeta cápsulas,

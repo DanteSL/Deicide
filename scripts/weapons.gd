@@ -94,6 +94,137 @@ func cyl(r1: float, r2: float, hgt: float, seg: int, mat: Material, p: Vector3, 
 	parent.add_child(m)
 	return m
 
+# ---------------- braços (modelo enviado pelo jogador): pele branca rachada de sangue ----------------
+const SKIN_SHADER := """
+shader_type spatial;
+// pele branca com rachaduras de sangue que brilham levemente
+varying vec3 op;
+void vertex() { op = VERTEX; }
+vec3 h3(vec3 p) {
+	p = vec3(dot(p, vec3(127.1, 311.7, 74.7)), dot(p, vec3(269.5, 183.3, 246.1)), dot(p, vec3(113.5, 271.9, 124.6)));
+	return fract(sin(p) * 43758.5453);
+}
+float n3(vec3 p) {
+	vec3 i = floor(p); vec3 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	float a = h3(i).x; float b = h3(i + vec3(1, 0, 0)).x; float c = h3(i + vec3(0, 1, 0)).x; float d = h3(i + vec3(1, 1, 0)).x;
+	float e = h3(i + vec3(0, 0, 1)).x; float g = h3(i + vec3(1, 0, 1)).x; float k = h3(i + vec3(0, 1, 1)).x; float l = h3(i + vec3(1, 1, 1)).x;
+	return mix(mix(mix(a, b, f.x), mix(c, d, f.x), f.y), mix(mix(e, g, f.x), mix(k, l, f.x), f.y), f.z);
+}
+vec2 vor(vec3 p) {
+	vec3 i = floor(p); vec3 f = fract(p);
+	float d1 = 8.0; float d2 = 8.0;
+	for (int z = -1; z <= 1; z++) for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {
+		vec3 g = vec3(float(x), float(y), float(z));
+		vec3 o = h3(i + g);
+		float d = length(g + o - f);
+		if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) { d2 = d; }
+	}
+	return vec2(d1, d2);
+}
+void fragment() {
+	vec3 p = op * 34.0;
+	vec2 v = vor(p + vec3(n3(p * .5) * .8));
+	float edge = v.y - v.x;
+	float cov = smoothstep(.38, .62, n3(op * 11.0));
+	float crack = (1.0 - smoothstep(.02, .1, edge)) * cov;
+	float near = (1.0 - smoothstep(.0, .35, edge)) * cov;
+	vec3 skin = mix(vec3(.86, .82, .80), vec3(.97, .94, .92), n3(op * 60.0));
+	skin = mix(skin, vec3(.72, .78, .86), (1.0 - smoothstep(.0, .05, abs(n3(op * 25.0) - .5))) * .35);   // veias azuladas
+	vec3 bruise = mix(skin, vec3(.62, .24, .26), near * .55);
+	vec3 blood = vec3(.55, .0, .02);
+	ALBEDO = mix(bruise, blood, crack);
+	EMISSION = vec3(.7, .02, .02) * crack * .35;
+	ROUGHNESS = mix(.6, .18, crack);
+	SPECULAR = .35;
+}
+"""
+var _arm_scene: PackedScene
+var _skin_mat: ShaderMaterial
+
+func _hex_of(m: Material) -> String:
+	return (m as StandardMaterial3D).albedo_color.to_html(false) if m is StandardMaterial3D else ""
+
+## troca as luvas e mangas de caixa de todas as armas pelo braço de verdade
+func _apply_arms() -> void:
+	if not ResourceLoader.exists("res://braco/braco.glb"): return
+	if "--noarms" in OS.get_cmdline_user_args(): return
+	_arm_scene = load("res://braco/braco.glb")
+	_skin_mat = ShaderMaterial.new()
+	var sh = Shader.new(); sh.code = SKIN_SHADER
+	_skin_mat.shader = sh
+	var glove_hex = Color("3a2c2a").to_html(false)
+	var sleeve_hex = Color("7a1410").to_html(false)
+	var groups = {}
+	for mi in _all_meshes(root):
+		var hx = _hex_of(mi.material_override)
+		if hx != glove_hex and hx != sleeve_hex: continue
+		var par: Node3D = mi.get_parent()
+		if not groups.has(par): groups[par] = {"g": [], "s": []}
+		groups[par]["g" if hx == glove_hex else "s"].append(mi)
+	for par in groups:
+		var gl: Array = groups[par].g
+		var sl: Array = groups[par].s
+		if gl.is_empty() or sl.is_empty(): continue
+		# a luva principal é a maior caixa
+		var main: MeshInstance3D = gl[0]
+		for g in gl:
+			if (g.mesh as BoxMesh).size.length() > (main.mesh as BoxMesh).size.length(): main = g
+		var sleeve: MeshInstance3D = sl[0]
+		var dir: Vector3 = (sleeve.position - main.position).normalized()
+		var arm: Node3D = _arm_scene.instantiate()
+		par.add_child(arm)
+		var z = dir
+		var up = Vector3.UP if abs(z.y) < .95 else Vector3.FORWARD
+		var x = up.cross(z).normalized()
+		var y = z.cross(x)
+		arm.transform = Transform3D(Basis(x, y, z), main.position)
+		if par == rev.get("root"): arm.position += PISTOL_HAND_OFS
+		var left: bool = par == sg.get("left") or par == sg.get("load_hand") or (par.position.x + main.position.x) < -.02
+		if par == fist:
+			# soco: nós dos dedos para frente, palma para baixo
+			arm.transform = _arm_xf(main.position, sleeve.position, Vector3(-.3 if left else .3, -1, 0), left)
+		elif left: arm.scale.x = -1.0
+		for m in _all_meshes(arm):
+			m.material_override = _skin_mat
+			m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		for g in gl: g.visible = false
+		for s_ in sl: s_.visible = false
+		if par == fist:
+			for c in par.get_children():
+				if c is MeshInstance3D and c.visible and c != arm: c.visible = false
+	# mão de apoio (esquerda) segurando o cano por baixo nas armas de duas mãos
+	for k in SUPPORT:
+		var md = model(IDS.find(k))
+		if not md.has("body"): continue
+		var sp: Array = SUPPORT[k]
+		var pos: Vector3 = sp[0]
+		var shoulder: Vector3 = Vector3(-.3, -.62, .15) - md.rest
+		var a2: Node3D = _arm_scene.instantiate()
+		md.body.add_child(a2)
+		a2.transform = _arm_xf(pos, shoulder, sp[1], true)
+		for m in _all_meshes(a2):
+			m.material_override = _skin_mat
+			m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+const PISTOL_HAND_OFS := Vector3(-.005, .055, -.035)
+# [posição no corpo da arma, direção da palma]
+const SUPPORT := {
+	"rocket": [Vector3(-.045, -.075, -.24), Vector3(1, .7, 0)],
+	"nail": [Vector3(-.045, -.07, -.22), Vector3(1, .7, 0)],
+	"rail": [Vector3(-.045, -.075, -.26), Vector3(1, .7, 0)],
+	"harp": [Vector3(-.045, -.07, -.24), Vector3(1, .7, 0)],
+	"gren": [Vector3(-.045, -.075, -.22), Vector3(1, .7, 0)],
+}
+
+# braço com o punho em pos, antebraço apontando para 'toward', palma virada para 'palm'
+func _arm_xf(pos: Vector3, toward: Vector3, palm: Vector3, left: bool) -> Transform3D:
+	var z = (toward - pos).normalized()
+	var pp = (palm - z * palm.dot(z)).normalized()
+	var x = -pp
+	var y = z.cross(x)
+	if left: y = -y
+	return Transform3D(Basis(x, y, z), pos)
+
 func _all_meshes(n: Node) -> Array:
 	var out = []
 	if n is MeshInstance3D: out.append(n)
@@ -269,7 +400,7 @@ func _build() -> void:
 	mk(Vector3(.075, .07, .09), glove, Vector3(.005, -.092, .078), rev.root, Vector3(-.3, 0, 0))
 	mk(Vector3(.08, .08, .42), sleeve, Vector3(.025, -.183, .285), rev.root, Vector3(.45, 0, 0))
 	mk(Vector3(.084, .03, .05), gold, Vector3(.025, -.133, .115), rev.root, Vector3(.45, 0, 0))
-	rev.rest = Vector3(.2, -.14, -.5)
+	rev.rest = Vector3(.2, -.105, -.5)
 	rev.kz = .09; rev.kr = .5; rev.lr = .25
 	# ---- escopeta ----
 	sg = rig(Vector3(0, 0, -.12))
@@ -323,6 +454,7 @@ func _build() -> void:
 	X = preload("res://scripts/extra_weapons.gd").new()
 	add_child(X)
 	X.build(self)
+	_apply_arms()
 	apply_upgrades()
 	cur = G.loadout[0] if G.loadout.size() > 0 else 0
 	prev = G.loadout[1] if G.loadout.size() > 1 else cur
