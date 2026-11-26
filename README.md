@@ -18,17 +18,45 @@
 
 *Deicide* é um jogo de tiro em primeira pessoa rápido e violento, feito inteiro em **Godot 4.7** com GDScript.
 Você corre, desliza, dá dash, pula nas paredes, gira as armas e devolve projéteis no soco enquanto enfrenta
-ondas de servas aladas, o arcanjo **Gabriel** e, por fim, o próprio **Deus**.
+ondas de servas aladas, os arcanjos **Gabriel** e **Miguel** e, por fim, o próprio **Deus** no seu trono de mármore, ouro e sangue.
 
-O sangue dos inimigos cura você — quanto mais perto e mais agressivo, mais você sobrevive.
+**Sangue é munição.** Todas as armas de fogo bebem de um único frasco de sangue; cada inimigo que estoura é
+arremessado longe, espirra sangue na tela e solta gotas que voam até você para encher o frasco.
+Ficar sem sangue obriga a partir para o soco — que também cura e devolve projéteis.
 Um ranking de heresia (de Devoto a Supremo Sacrilégio) recompensa variar as armas, acertar na cabeça e aparar ataques, e enche a barra de **Blasfêmia**: cheia, ela para o tempo e executa com raios todos os anjos na tela.
+
+### Os chefes
 
 | | |
 |---|---|
+| ![Miguel](docs/img/miguel_perto.jpg) | ![Miguel no eclipse](docs/img/miguel_eclipse.jpg) |
+| **Miguel**, o Arcanjo Velado: quatro braços, asas cheias de olhos | Abaixo de 50% de vida vem o **Eclipse** e o céu sangra |
+| ![Miguel, olhar das asas](docs/img/miguel_olhos.jpg) | ![Miguel, cruz de sangue](docs/img/miguel_cruz.jpg) |
+| **Olhar das Asas**: rajadas dos seis olhos (dá para devolver no soco) | **Cruz de Sangue**: gêiseres em cruz sob seus pés |
+| ![Deus no trono](docs/img/deus_trono.jpg) | ![Cutscene de Deus](docs/img/cutscene_deus.jpg) |
+| **Deus** espera no alto do altar da Sala do Trono | A cutscene de entrada, com a voz de Deus em língua estranha |
 | ![Gabriel](docs/img/gabriel.jpg) | ![Deus, segunda fase](docs/img/deus_fase2.jpg) |
 | **Gabriel**, o Arauto de Muitos Olhos | **Deus** na segunda fase: a arena inundada de sangue |
-| ![Ceifadora](docs/img/ceifadora.jpg) | ![Revólver](docs/img/revolver.jpg) |
-| A **Ceifadora**, com esqueleto animado por código | A arma principal: gira, ricocheteia e recarrega |
+
+### As arenas
+
+| | |
+|---|---|
+| ![Arena de Miguel](docs/img/miguel.jpg) | ![Sala do Trono](docs/img/sala_do_trono.jpg) |
+| **Santuário do Eclipse** — ruínas flutuando no vazio, selo de sangue no chão e um sol negro | **Sala do Trono** — mármore branco, ouro, cachoeiras e um córrego de sangue |
+| ![Fontes de sangue](docs/img/fontes_de_sangue.jpg) | ![Barras dos chefes](docs/img/barras_chefes.jpg) |
+| As fontes de sangue da Sala do Trono | Cada chefe tem a sua barra de vida (Gabriel, Miguel, Deus) |
+
+### Sangue, armas e soco
+
+| | |
+|---|---|
+| ![Sangue na tela](docs/img/sangue_na_tela.jpg) | ![Cadáver](docs/img/cadaver.jpg) |
+| Inimigo estourado: sangue na tela e o **frasco de sangue** (munição) na HUD | Os corpos são arremessados e ficam no mapa |
+| ![Jab](docs/img/jab.jpg) | ![Revólver](docs/img/revolver_recarga.jpg) |
+| O **jab**: o braço inteiro estica com o punho fechado | O revólver de dois canos e a recarga com as duas mãos |
+| ![Ceifadora](docs/img/ceifadora.jpg) | ![Menu](docs/img/menu.jpg) |
+| A **Ceifadora**, com esqueleto animado por código | O menu principal |
 
 ## Como jogar
 
@@ -48,6 +76,7 @@ Um ranking de heresia (de Devoto a Supremo Sacrilégio) recompensa variar as arm
 | **Ondas** | Hordas crescentes. A cada 5 ondas aparece Gabriel; a cada 10, Deus. |
 | **Treino** | Alvos infinitos para testar armas e melhorias. |
 | **Gabriel** | Luta direta contra o arcanjo (8 ataques, segunda fase). |
+| **Miguel** | Luta contra o Arcanjo Velado na arena dele, o Santuário do Eclipse (7 ataques + Eclipse). |
 | **Deus** | Luta direta contra Deus (10 ataques, segunda fase com a arena inundada). |
 
 ## Controles
@@ -61,8 +90,8 @@ Um ranking de heresia (de Devoto a Supremo Sacrilégio) recompensa variar as arm
 | Atirar | **Clique esquerdo** |
 | Especial da arma | **Clique direito** |
 | Trocar arma | **Q** (anterior) · **1–8** · **roda do mouse** |
-| Girar / recarregar | **R** |
-| Soco e rebater projéteis | **F** |
+| Girar / recarregar (gasta sangue) | **R** |
+| Soco (jab) e rebater projéteis | **F** |
 | Blasfêmia (com a barra cheia) | **G** |
 | Terminal de arsenal (perto dele) | **E** |
 | Pausar / configurações | **ESC** |
@@ -95,11 +124,27 @@ Deicide/
 │   ├── enemy.gd           # inimigos comuns
 │   ├── ceifadora.gd       # esqueleto e animação procedural da Ceifadora
 │   ├── gabriel.gd         # chefe Gabriel
-│   └── deus.gd            # chefe Deus
+│   ├── miguel.gd          # chefe Miguel (partes animadas por código, 7 ataques, Eclipse)
+│   ├── miguel_arena.gd    # Santuário do Eclipse, a arena do Miguel
+│   ├── deus.gd            # chefe Deus
+│   ├── trono.gd           # Sala do Trono e cutscene de Deus
+│   ├── hud2.gd            # HUD: vida, estamina, dash, arma em 3D, munição e frasco de sangue
+│   ├── boss_bar.gd        # barras de vida estilizadas de cada chefe
+│   ├── blood_screen.gd    # sangue espirrado na tela
+│   ├── gibs.gd            # mortes: cadáveres arremessados, manchas e gotas de sangue (munição)
+│   ├── fp_ik.gd           # braços em primeira pessoa: IK, punho fechado, giro da arma
+│   └── menu_ui.gd         # menu principal e de pausa
 ├── gabriel.glb            # modelo do Gabriel (asas em duas partes, auréolas, mãos)
 ├── gabriel_tex.jpg        # textura do Gabriel
 ├── ceifadora.glb          # modelo da Ceifadora com esqueleto de 24 ossos
 ├── deus/                  # modelo animado de Deus, mão decepada e texturas
+├── miguel/                # modelo e texturas do Arcanjo Miguel
+├── maos/                  # braços animados em primeira pessoa
+├── revolver/              # revólver de dois canos
+├── fonte/                 # fonte de sangue da Sala do Trono
+├── anjo/                  # estátua de anjo do corredor
+├── fontes_ui/             # fontes de texto (Cinzel, licença OFL)
+├── musica/                # trilhas sonoras
 ├── sfx/                   # efeitos sonoros e música (gerados por código)
 └── docs/                  # documentação e imagens
 ```

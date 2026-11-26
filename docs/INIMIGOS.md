@@ -46,6 +46,32 @@ Com 75%, 50% e 25% de vida chama reforços.
 
 ---
 
+## Miguel, o Arcanjo Velado
+
+![Miguel](img/miguel_perto.jpg)
+
+Modo **Miguel** no menu. Luta na arena dele, o **Santuário do Eclipse**: um piso de pedra negra flutuando no vazio,
+com um selo de sangue no chão, 18 colunas quebradas, arcos góticos partidos e um sol negro no céu.
+5 200 de vida, cerca de 14 metros de altura. Quatro braços com garras, asas cobertas de olhos e uma auréola de
+raios com um anel de luz parado atrás da cabeça. **A cabeça leva mais dano.** Ele anda atrás de você, não voa.
+
+| Ataque | Como desviar |
+|---|---|
+| **Ceifa dos Quatro Braços** — avança e ceifa duas vezes num arco largo | Pule |
+| **Olhar das Asas** — os seis olhos disparam rajadas de esferas | Rebata com **F** ou desvie |
+| **Cruz de Sangue** — gêiseres de sangue estouram em cruz em volta de você (fase 2: também em X) | Saia das linhas marcadas |
+| **Corrente de Penitência** — mira, trava e lança uma corrente; se pegar, puxa e esmaga | Dash quando a mira travar |
+| **Passo do Eclipse** — some em sangue e cai do alto atrás de você | Saia do círculo vermelho |
+| **Rosário de Sangue** — sobe girando e solta espirais de contas | Fique em movimento entre as espirais |
+| **Coroa de Espinhos** — um anel de espinhos nasce à sua volta e se fecha | Pule por cima |
+
+**Eclipse (abaixo de 50%):** o céu escurece e fica vermelho, o sol negro cresce, a auréola sangra
+e ele passa a atacar mais rápido e a emendar golpes. Morto, volta em 9 segundos para você treinar.
+
+| | |
+|---|---|
+| ![Olhar das Asas](img/miguel_olhos.jpg) | ![Eclipse](img/miguel_eclipse.jpg) |
+
 ## Deus
 
 ![A crista de mãos decepadas](img/deus_crista.jpg)

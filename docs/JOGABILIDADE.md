@@ -53,3 +53,19 @@ O jogo fica pausado enquanto o terminal está aberto.
 
 No menu (ESC): sensibilidade do mouse, campo de visão, volume geral, volume da música e o **visual retrô
 pixelado**. Tudo é salvo em `user://save.cfg`.
+
+
+## Sangue é munição
+
+- Todas as armas de fogo gastam de um único **frasco de sangue** (máximo 200, começa com 120), mostrado na HUD
+  ao lado do painel da arma.
+- Recarregar o revólver custa 2 por bala e a escopeta 4 por cartucho; foguete 14, prego 0,7, raio 12, arpão 6, granada 8.
+  Espadas e soco são de graça.
+- Cada inimigo que estoura é **arremessado longe** (o corpo fica no mapa), espirra **sangue na tela** e solta gotas
+  que voam até você: casca 22, bruto 55, drone 12. Matar no soco rende 50% a mais.
+- Sem sangue a arma dá um clique seco e aparece **SEM SANGUE** — hora de usar o soco.
+
+## Soco (jab)
+
+**F** dá um jab: o braço sobe, estica com o punho fechado, recolhe para a guarda perto do rosto e desce.
+Socar de novo na guarda sai direto de lá. O soco rebate projéteis e mata para encher o frasco.
