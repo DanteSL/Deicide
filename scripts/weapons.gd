@@ -103,6 +103,12 @@ var grips = {} # id da arma -> {"r": Node3D, "l": Node3D, "lmode": String}
 var fist_grip: Node3D
 var rl_marker: Node3D # mão esquerda na recarga da pistola
 var rl_w := 0.0
+# giro da pistola no dedo: pivô no guarda-mato, mão direita com o indicador esticado, mão esquerda solta
+const SPIN_PIVOT := Vector3(0, -.012, .0)
+var spin_w := 0.0
+var spin_r: Node3D
+var spin_l: Node3D
+var SPIN_OFS := Vector3(.0, .0, .0)
 var rack := 0.0
 var load_grip: Node3D
 
@@ -160,6 +166,9 @@ func _setup_arms() -> void:
 		if grips.has(k) and md.has("body"):
 			grips[k].l = _marker(md.body, SUPPORT[k])
 	rl_marker = _marker(rev.root, Vector3.ZERO)
+	spin_r = _marker(rev.root, Vector3.ZERO)
+	spin_l = _marker(rev.root, Vector3(-.17, -.3, .2))
+	spin_l.basis = Basis(Vector3(1, 0, 0), Vector3(0, 0, 1), Vector3(0, -1, 0)) # palma para trás, dedos para cima
 	arms = load("res://maos/maos.glb").instantiate()
 	arms.rotation = Vector3(0, PI, 0)
 	arms.position = ARMS_POS
@@ -188,8 +197,12 @@ func fp_targets(ik) -> void:
 	ik.aim_l = g.get("l") if shown else null
 	ik.mode_l = g.get("lmode", "")
 	ik.free_l = null; ik.free_w = 0.0
+	ik.free_r = null; ik.free_rw = 0.0; ik.finger_w = 0.0
 	if shown and cur == 0 and rl_marker:
 		ik.free_l = rl_marker; ik.free_w = rl_w
+		if spin_w > .001 and not rv_reloading:
+			ik.free_r = spin_r; ik.free_rw = spin_w; ik.finger_w = spin_w
+			ik.free_l = spin_l; ik.free_w = spin_w
 	elif shown and cur == 1:
 		ik.free_l = sg.load_hand; ik.free_w = sb
 	if fist_grip and fist.visible:
@@ -343,7 +356,7 @@ func _build() -> void:
 	glow_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	glow_mat.albedo_color = Color(0.25, 0.9, 1.0, 0)
 	# ---- pistola (modelo enviado pelo jogador) no lugar do revólver: mesmo tiro, ricochete e giro ----
-	rev = rig(Vector3(0, .02, -.1))
+	rev = rig(SPIN_PIVOT)
 	var b: Node3D = rev.body
 	var p_metal = _mat("2e3139", .35, .75)
 	var p_black = _mat("141519", .55, .2)
@@ -1043,6 +1056,15 @@ func _process(dt: float) -> void:
 			var tw: float = 0.0
 			if rv_reloading: tw = _sm(rv_t / .14) * (1.0 - _sm((rv_t - .95) / .2))
 			rl_w = tw
+			# giro no dedo (floreio, fim de troca e carga do ricochete)
+			var spinning: bool = (s < 1 or charging) and not rv_reloading
+			spin_w += ((1.0 if spinning else 0.0) - spin_w) * (1.0 - exp(-(16.0 if spinning else 9.0) * dt))
+			if spin_r:
+				# o indicador atravessa o guarda-mato (eixo X do giro); palma para baixo
+				var fd := Vector3(-1, 0, -.2).normalized()
+				var palm := Vector3(0, -1, .15).normalized()
+				palm = (palm - fd * palm.dot(fd)).normalized()
+				spin_r.transform = Transform3D(Basis(fd.cross(palm).normalized(), palm, -fd).orthonormalized(), SPIN_PIVOT - fd * .085 + SPIN_OFS)
 			if rl_marker and rv_reloading:
 				var ps = _pistol_reload_pose(rv_t)
 				var fwd: Vector3 = ps[2]

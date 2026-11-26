@@ -528,6 +528,19 @@ func _autotest(m: String) -> void:
 		rtg.call(4.6, shg.bind("3_chao"))
 		rtg.call(5.0, func(): print("GIBS OK pedaços=", gibs.gibs.size(), " manchas=", gibs.splats.size(), " ts=", Engine.time_scale); get_tree().quit())
 		return
+	if m == "spin":
+		start_mode("train")
+		var rts = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+		hud.visible = false
+		var wp = player.weapons
+		var st = {"k": 0, "on": false}
+		get_tree().process_frame.connect(func():
+			if st.on and wp.spin_t < 1.0 and wp.spin_t >= st.k * .11:
+				get_viewport().get_texture().get_image().save_png("/tmp/sp_%d.png" % st.k); st.k += 1)
+		rts.call(1.0, func(): wp.select_slot(0))
+		rts.call(2.0, func(): st.on = true; wp.start_spin(3, 2.4, "x"))
+		rts.call(9.0, func(): print("SPIN OK k=", st.k); get_tree().quit())
+		return
 	if m == "miguel":
 		start_mode("miguel")
 		var rtq = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)

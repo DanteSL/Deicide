@@ -10,6 +10,10 @@ var aim_l: Node3D = null
 var mode_l := ""
 var free_l: Node3D = null # alvo livre da mão esquerda (recargas): palma = +Y do nó, dedos = -Z
 var free_w := 0.0
+var free_r: Node3D = null # alvo livre da mão direita (giro no dedo)
+var free_rw := 0.0
+var finger_w := 0.0 # estica o indicador direito
+var index_r = []
 var GRIP_FWD := .075
 var GRIP_PALM := .03
 var GRIP_UP := .0 # "pistol" (envolve a mão direita), "barrel" (segura o cano), "hand", "punch"
@@ -18,6 +22,9 @@ func setup() -> void:
 	var sk := get_skeleton()
 	for side in ["r", "l"]:
 		bones[side] = [sk.find_bone("upperarm_" + side), sk.find_bone("lowerarm_" + side), sk.find_bone("hand_" + side)]
+	for nm in ["index_01_r", "index_02_r", "index_03_r"]:
+		var b = sk.find_bone(nm)
+		if b >= 0: index_r.append(b)
 
 func _process_modification_with_delta(_dt: float) -> void:
 	var sk := get_skeleton()
@@ -63,7 +70,19 @@ func _process_modification_with_delta(_dt: float) -> void:
 		tl = ft if tl == null else (tl as Transform3D).interpolate_with(ft, clamp(free_w, 0.0, 1.0))
 	# cotovelos sempre para baixo e para fora (nunca subindo na frente da câmera)
 	var ib := skg.basis.inverse()
+	if free_r and free_rw > 0.0:
+		var g3: Transform3D = free_r.global_transform.orthonormalized()
+		var ry := -g3.basis.z
+		var rx := -g3.basis.y # mão direita: a palma é o -X do osso
+		rx = (rx - ry * rx.dot(ry)).normalized()
+		var rt := Transform3D(Basis(rx, ry, rx.cross(ry)), g3.origin - ry * .07)
+		tr = rt if tr == null else (tr as Transform3D).interpolate_with(rt, clamp(free_rw, 0.0, 1.0))
 	if tr != null: _solve(sk, bones.r, inv * tr, ib * Vector3(.8, -1, .25))
+	if finger_w > 0.0:
+		for b in index_r:
+			var q0: Quaternion = sk.get_bone_pose_rotation(b)
+			var q1: Quaternion = sk.get_bone_rest(b).basis.get_rotation_quaternion()
+			sk.set_bone_pose_rotation(b, q0.slerp(q1, clamp(finger_w, 0.0, 1.0)))
 	if tl != null: _solve(sk, bones.l, inv * tl, ib * Vector3(-.8, -1, .25))
 
 # espelha uma pegada da mão direita para a esquerda (eixos do esqueleto espelhados em X)
