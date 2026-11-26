@@ -22,6 +22,31 @@ var m_gold_dark: StandardMaterial3D
 var m_blood_still: ShaderMaterial
 var m_blood_flow: ShaderMaterial
 var m_blood_fall: ShaderMaterial
+var _blood_sh: Shader
+var _bm_cache = {}
+
+## material de sangue (veja o shader: 0 faixa, 1 poça, 2 mancha seca, 3 superfície)
+func bm(mode: int, seed: float, flow := 0.0, stretch := Vector2.ONE) -> ShaderMaterial:
+	var key = "%d/%.2f/%.2f/%s" % [mode, seed, flow, stretch]
+	if _bm_cache.has(key): return _bm_cache[key]
+	var m = ShaderMaterial.new()
+	m.shader = _blood_sh
+	m.set_shader_parameter("mode", mode)
+	m.set_shader_parameter("seed", seed)
+	m.set_shader_parameter("flow", flow)
+	m.set_shader_parameter("stretch", stretch)
+	_bm_cache[key] = m
+	return m
+
+## poça irregular no chão
+func pool(x: float, z: float, r: float, y := .03, sq := 1.0) -> void:
+	var f = flat(Vector3(x, y, z), Vector2(r * 2, r * 2 * sq), bm(1, float(randi() % 9) + .37))
+	f.rotation.y = G.rnd(0, TAU)
+
+## mancha seca com filetes numa parede (normal = direção para fora da parede)
+func stain(p: Vector3, nrm: Vector3, w: float, h: float) -> void:
+	var q = quad(p + nrm * .02, Vector2(w, h), bm(2, float(randi() % 11) + .5))
+	q.rotation = Vector3(0, atan2(nrm.x, nrm.z), 0)
 var m_carpet: StandardMaterial3D
 var door_l: Node3D
 var door_r: Node3D
@@ -47,19 +72,72 @@ var surge := 0.0
 
 const BLOOD_SHADER := """
 shader_type spatial;
-render_mode unshaded, cull_disabled;
-uniform vec4 c1 : source_color = vec4(.32, .0, .015, 1.0);
-uniform vec4 c2 : source_color = vec4(.85, .04, .04, 1.0);
-uniform float speed = 0.0;
-uniform float ripple = 1.0;
-uniform float scale = 1.0;
+render_mode cull_disabled, depth_draw_opaque;
+// sangue procedural: mode 0 = faixa escorrendo, 1 = poça irregular, 2 = mancha seca com filetes, 3 = superfície cheia
+uniform int mode = 1;
+uniform float seed = 0.0;
+uniform float flow = 0.0;
+uniform vec2 stretch = vec2(1.0, 1.0);
+uniform vec4 fresh : source_color = vec4(.50, .015, .025, 1.0);
+uniform vec4 deep : source_color = vec4(.13, .0, .008, 1.0);
+uniform vec4 dried : source_color = vec4(.20, .025, .02, 1.0);
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p) {
+	vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+float fbm(vec2 p) { float v = 0.0; float a = .5; for (int i = 0; i < 5; i++) { v += a * noise(p); p *= 2.03; a *= .5; } return v; }
 void fragment() {
-	vec2 uv = UV * scale;
-	float w = sin(uv.x * 23.0 + sin(uv.y * 7.0 + TIME * 1.3) * 2.0) * .5 + .5;
-	float s = fract(uv.y * 2.5 - TIME * speed + w * .35);
-	float r = sin(length(uv - .5) * 40.0 * ripple - TIME * 2.0) * .5 + .5;
-	float k = speed > 0.0 ? smoothstep(.55, 1.0, s) * (.5 + .5 * w) : r * .35 * ripple;
-	ALBEDO = mix(c1.rgb, c2.rgb, k);
+	vec2 uv = UV;
+	vec2 q = (uv - .5) * 2.0;
+	float m = 1.0;
+	float thick = 1.0;
+	if (mode == 1) {
+		float r = length(q);
+		float edge = .55 + .45 * fbm(q * 1.8 + seed);
+		m = step(r, edge);
+		float drops = step(.80, fbm(uv * 11.0 + seed * 3.7)) * step(r, 1.0);
+		m = max(m, drops);
+		thick = smoothstep(edge, 0.0, r);
+	} else if (mode == 0) {
+		float w = .62 + .38 * fbm(vec2(uv.y * 3.0 * stretch.y + seed, TIME * .25 + seed));
+		m = step(abs(uv.x - .5) * 2.0, w);
+		thick = 1.0 - abs(uv.x - .5) * 2.0 / max(w, .01);
+	} else if (mode == 2) {
+		// respingo: mancha irregular em cima, respingos em volta e filetes escorrendo dela
+		vec2 c = (uv - vec2(.5, .27)) * vec2(1.0, 1.5);
+		float edge = .30 + .22 * fbm(uv * 4.0 + seed);
+		float blot = step(length(c), edge);
+		float spk = step(.74, fbm(uv * 15.0 + seed * 2.0)) * step(uv.y, .6) * step(length(c), .62);
+		float cols = 6.0;
+		float colx = floor(uv.x * cols);
+		float has = step(.25, hash(vec2(colx, seed + 3.0)));
+		float x0 = abs(fract(uv.x * cols) - .5);
+		float wdt = .12 + .2 * hash(vec2(colx + 7.0, seed));
+		float st = .3;
+		float len = st + (1.0 - st) * (.2 + .8 * hash(vec2(colx, seed)));
+		float tp = mix(1.0, .5, clamp((uv.y - st) / max(len - st, .01), 0.0, 1.0));
+		float run = has * step(x0, wdt * tp) * step(uv.y, len) * step(st - .05, uv.y);
+		float head = has * step(length(vec2(x0, (uv.y - len) * cols * .55)), wdt * 1.3);
+		float inx = step(abs(uv.x - .5), edge * .9);
+		m = max(max(blot, spk), max(run, head) * inx);
+		thick = .45;
+	}
+	if (m < .5) discard;
+	vec2 fuv = uv * stretch + vec2(0.0, -TIME * flow);
+	float n = fbm(fuv * 4.0 + seed);
+	float n2 = fbm(fuv * 13.0 - seed);
+	vec3 col = mix(fresh.rgb, deep.rgb, clamp(thick * .75 + n * .45 - .15, 0.0, 1.0));
+	if (mode == 2) col = mix(fresh.rgb * .85, dried.rgb, clamp(.25 + n * .55, 0.0, 1.0));
+	ALBEDO = col;
+	ROUGHNESS = mode == 2 ? .3 : .06 + n2 * .12;
+	SPECULAR = mode == 2 ? .5 : .85;
+	float e = .02;
+	float hx = fbm(fuv * 8.0 + vec2(e, 0.0)) - fbm(fuv * 8.0 - vec2(e, 0.0));
+	float hy = fbm(fuv * 8.0 + vec2(0.0, e)) - fbm(fuv * 8.0 - vec2(0.0, e));
+	NORMAL_MAP = normalize(vec3(-hx * 5.0, -hy * 5.0, 1.0)) * .5 + .5;
+	NORMAL_MAP_DEPTH = mode == 2 ? .2 : .8;
+	EMISSION = fresh.rgb * (mode == 2 ? .0 : .06);
 }
 """
 
@@ -96,15 +174,11 @@ func _mats() -> void:
 	m_gold_dark = m_gold.duplicate()
 	m_gold_dark.albedo_color = Color("9a7428")
 	m_gold_dark.emission = Color("2a1a04")
-	var sh = Shader.new()
-	sh.code = BLOOD_SHADER
-	m_blood_still = ShaderMaterial.new(); m_blood_still.shader = sh
-	m_blood_flow = ShaderMaterial.new(); m_blood_flow.shader = sh
-	m_blood_flow.set_shader_parameter("speed", .45)
-	m_blood_flow.set_shader_parameter("scale", 4.0)
-	m_blood_fall = ShaderMaterial.new(); m_blood_fall.shader = sh
-	m_blood_fall.set_shader_parameter("speed", 1.6)
-	m_blood_fall.set_shader_parameter("scale", 3.0)
+	_blood_sh = Shader.new()
+	_blood_sh.code = BLOOD_SHADER
+	m_blood_still = bm(3, 1.0)
+	m_blood_flow = bm(0, 2.0, .35, Vector2(1, 10))
+	m_blood_fall = bm(0, 3.0, 1.3, Vector2(1, 3))
 	m_carpet = StandardMaterial3D.new()
 	m_carpet.albedo_color = Color("5a0610")
 	m_carpet.roughness = .9
@@ -270,10 +344,22 @@ func _hall() -> void:
 	ring.position = Vector3(0, .02, 0)
 	add_child(ring)
 	# poças de sangue espalhadas
-	for p in [[-12, 8, 3.2], [14, -6, 2.4], [-30, -30, 4.0], [31, 30, 3.0], [-8, -34, 2.2], [20, 38, 2.6], [-34, 10, 2.0], [9, 24, 1.6]]:
-		var d = disc(Vector3(p[0], .03, p[1]), p[2], m_blood_still)
-		d.scale = Vector3(1, 1, G.rnd(.6, 1.0))
-		d.rotation.y = G.rnd(0, PI)
+	seed(7)
+	for p in [[-12, 8, 3.6], [14, -6, 2.8], [-30, -30, 4.4], [31, 30, 3.4], [-8, -34, 2.6], [20, 38, 3.0], [-34, 10, 2.4], [9, 24, 2.0], [-18, 30, 1.6], [27, -36, 2.2], [5, -20, 1.4], [-22, -8, 1.8]]:
+		pool(p[0], p[1], p[2], .03 + randf() * .01)
+	# sangue acumulado nos cantos e no rodapé
+	for c in [[-43.5, -81.5], [43.5, -81.5], [-43.5, 43.5], [43.5, 43.5]]:
+		pool(c[0], c[1], 4.5, .035, .8)
+	for z in range(-74, 42, 9):
+		for sx in [-1, 1]:
+			if randf() < .55: pool(sx * 44.6, z + randf() * 4, G.rnd(1.2, 2.6), .036, .5)
+	# manchas e escorridos nas paredes
+	for i in 22:
+		var sx = -1 if i % 2 == 0 else 1
+		var z = G.rnd(-80, 42)
+		stain(Vector3(sx * 45.85, G.rnd(5, 18), z), Vector3(-sx, 0, 0), G.rnd(4.0, 7.5), G.rnd(6, 11))
+	for i in 6:
+		stain(Vector3(G.rnd(-40, 40), G.rnd(5, 16), -83.85), Vector3(0, 0, 1), G.rnd(4, 7.5), G.rnd(6, 11))
 	# rosácea no alto da parede norte
 	var rz = -83.8
 	var win_c = Vector3(0, 33, rz)
@@ -318,8 +404,14 @@ func _corridor() -> void:
 		blk(8.9, y, 80, .2, 1, 64, m_gold, false)
 	# canaletas de sangue correndo em direção ao portão
 	for sx in [-1, 1]:
-		var f = flat(Vector3(sx * 8.2, .04, 80), Vector2(1.2, 64), m_blood_flow)
+		blk(sx * 8.2, -.02, 80, 1.6, .1, 64, m_gold_dark, false)
+		var f = flat(Vector3(sx * 8.2, .1, 80), Vector2(1.3, 64), bm(0, 4.0 + sx, .25, Vector2(1, 30)))
 		f.rotation.y = PI
+	seed(11)
+	for i in 10:
+		var sx = -1 if i % 2 == 0 else 1
+		stain(Vector3(sx * 8.95, G.rnd(4, 13), G.rnd(52, 110)), Vector3(-sx, 0, 0), G.rnd(3.0, 5.0), G.rnd(5, 8))
+	for i in 5: pool(G.rnd(-6, 6), G.rnd(54, 108), G.rnd(.8, 1.8), .07)
 	blk(0, 0, 80, 7, .06, 65, m_carpet, false)
 	for sx in [-1, 1]:
 		blk(sx * 3.7, 0, 80, .4, .08, 65, m_gold, false)
@@ -449,7 +541,7 @@ func _altar() -> void:
 	var L = sqrt(ALTAR_TOP * ALTAR_TOP + run * run)
 	var riv = quad(Vector3(0, ALTAR_TOP * .5 + .12, -46.0 - run * .5), Vector2(3.4, L + .6), m_blood_fall)
 	riv.rotation = Vector3(atan2(-run, ALTAR_TOP), 0, 0)
-	disc(Vector3(0, .04, -43), 5.5, m_blood_still).scale = Vector3(1, 1, .6)
+	pool(0, -43.5, 5.5, .04, .6)
 	# trono
 	var tz = -71.0
 	blk(0, ALTAR_TOP, tz + 2, 10, 3.2, 7, m_gold)
@@ -527,11 +619,13 @@ func _bloodfall(side: int, z: float) -> void:
 	var wx = side * 45.85
 	# boca dourada de onde jorra
 	blk(side * 45.2, 30.5, z, 1.6, 1.8, 3.0, m_gold, false)
-	var f = quad(Vector3(side * 45.7, 15.4, z), Vector2(2.2, 30.4), m_blood_fall, Vector3(0, -side * PI / 2, 0))
+	stain(Vector3(side * 45.85, 21, z), Vector3(-side, 0, 0), 7.0, 20)
+	var f = quad(Vector3(side * 45.6, 15.4, z), Vector2(3.0, 30.4), bm(0, 5.0 + z * .01, 1.3, Vector2(1, 3)), Vector3(0, -side * PI / 2, 0))
 	f.rotation = Vector3(0, -side * PI / 2, 0)
+	pool(side * 42.0, z, 2.2, .04, .7)
 	# calha no chão
 	blk(side * 44.2, 0, z, 3.0, .8, 4.6, m_gold)
-	flat(Vector3(side * 44.2, .82, z), Vector2(2.6, 4.2), m_blood_flow)
+	flat(Vector3(side * 44.2, .82, z), Vector2(2.6, 4.2), m_blood_still)
 	var pt = CPUParticles3D.new()
 	pt.amount = 24; pt.lifetime = .6
 	pt.direction = Vector3(-side, 1.5, 0); pt.spread = 40

@@ -473,9 +473,17 @@ func _autotest(m: String) -> void:
 			player.yaw = atan2(-d.x, -d.z)
 			player.pitch = atan2(d.y, Vector2(d.x, d.z).length()))
 		rth.call(1.8, func(): get_viewport().get_texture().get_image().save_png("/tmp/halo_perto.png"))
+		var poses = [[Vector3(-34, 1.2, -28), Vector3(-46, 10, -34)], [Vector3(30, 1.2, 10), Vector3(20, 0, 22)], [Vector3(-38, 1.2, 0), Vector3(-46, 2, 14)], [Vector3(0, 1.2, 70), Vector3(-9, 4, 84)], [Vector3(36, 1.2, -60), Vector3(46, 0, -82)]]
+		for k in poses.size():
+			rth.call(3.0 + k * .5, func():
+				player.global_position = poses[k][0]
+				var d = poses[k][1] - (poses[k][0] + Vector3(0, 1.6, 0))
+				player.yaw = atan2(-d.x, -d.z)
+				player.pitch = atan2(d.y, Vector2(d.x, d.z).length()))
+			rth.call(3.4 + k * .5, func(): get_viewport().get_texture().get_image().save_png("/tmp/sangue_%d.png" % k))
 		rth.call(2.0, func(): player.global_position = Vector3(0, 1.2, 10); player.yaw = 0.0; player.pitch = .18)
 		rth.call(2.6, func(): get_viewport().get_texture().get_image().save_png("/tmp/halo_longe.png"))
-		rth.call(3.0, func(): get_tree().quit())
+		rth.call(6.0, func(): get_tree().quit())
 		return
 	if m == "trono":
 		start_mode("deus")
