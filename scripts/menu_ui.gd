@@ -15,7 +15,7 @@ const MODES := {
 	"miguel": ["MIGUEL", "O Arcanjo Velado: quatro braços, asas cheias de olhos e uma arena só dele sob o eclipse.", 4],
 	"deus": ["DEUS", "O Criador em pessoa, coroado de mãos decepadas. Quando ele sangra, a arena afoga.", 5],
 }
-const ROMAN := ["I", "II", "III", "IV", "V", "VI", "VII", "VIII"]
+const ROMAN := ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI"]
 
 var main: Node
 var paused := false
@@ -36,6 +36,33 @@ var cont_btn: Button
 var exit_btn: Button
 var f_title: FontVariation
 var f_wide: FontVariation
+var f_deco: Font
+var f_cin: Font
+var left: VBoxContainer
+var title_art: Control
+var pause_head: Control
+var blur: ColorRect
+var deco: Control
+var foot: Label
+var hint: Label
+var lay_tw: Tween
+var t_drips: Array = []
+
+## fundo da pausa: o jogo continua visível atrás, borrado e escurecido
+const PAUSE_SHADER := """
+shader_type canvas_item;
+uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap;
+uniform float amount = 1.0;
+void fragment() {
+	vec2 uv = SCREEN_UV;
+	vec3 c = textureLod(screen_tex, uv, 2.2 * amount).rgb;
+	float g = dot(c, vec3(.3, .59, .11));
+	c = mix(c, vec3(g) * vec3(1.05, .9, .85), .45);
+	float v = smoothstep(.95, .2, length(uv - .5) * 1.3);
+	c *= mix(.22, .5, v);
+	COLOR = vec4(c, amount);
+}
+"""
 
 func setup(m: Node) -> void:
 	main = m
@@ -49,6 +76,8 @@ func setup(m: Node) -> void:
 	f_wide.base_font = ThemeDB.fallback_font
 	f_wide.spacing_glyph = 5
 	f_wide.variation_embolden = .35
+	f_deco = load("res://fontes_ui/cinzel_decorative_900.woff2") if ResourceLoader.exists("res://fontes_ui/cinzel_decorative_900.woff2") else f_title
+	f_cin = load("res://fontes_ui/cinzel_700.woff2") if ResourceLoader.exists("res://fontes_ui/cinzel_700.woff2") else f_wide
 	for i in 70: ash.append(_new_ash(true))
 	for i in 9: eyes_blink.append(randf() * 6.0)
 	_build()
@@ -68,22 +97,46 @@ func _lbl(text: String, size: int, color: Color, font: Font = null, outline := 0
 
 func _build() -> void:
 	# coluna da esquerda: título + lista
-	var left = VBoxContainer.new()
+	# fundo borrado da pausa (fica atrás de tudo)
+	blur = ColorRect.new()
+	blur.set_anchors_preset(Control.PRESET_FULL_RECT)
+	blur.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bm = ShaderMaterial.new(); var bsh = Shader.new(); bsh.code = PAUSE_SHADER; bm.shader = bsh
+	blur.material = bm
+	blur.visible = false
+	add_child(blur)
+	deco = Control.new()
+	deco.set_anchors_preset(Control.PRESET_FULL_RECT)
+	deco.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	deco.draw.connect(_draw_pause_deco)
+	add_child(deco)
+	left = VBoxContainer.new()
 	left.anchor_left = 0; left.anchor_top = 0; left.anchor_right = 0; left.anchor_bottom = 1
 	left.offset_left = 86; left.offset_top = 70; left.offset_right = 640; left.offset_bottom = -40
 	left.add_theme_constant_override("separation", 0)
 	add_child(left)
 	title_box = HBoxContainer.new()
-	title_box.add_theme_constant_override("separation", 0)
 	left.add_child(title_box)
-	title_box.add_child(_lbl("DEI", 104, RED, f_title, 12))
-	title_box.add_child(_lbl("CIDE", 104, GOLD, f_title, 12))
-	tag = _lbl("MATE OS ANJOS  ·  DEPOIS MATE DEUS", 15, PALE, f_wide)
+	# título desenhado: letras góticas douradas, brilho de brasa, rachadura e sangue escorrendo
+	title_art = Control.new()
+	title_art.custom_minimum_size = Vector2(560, 150)
+	title_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title_art.draw.connect(_draw_title)
+	title_box.add_child(title_art)
+	tag = _lbl("", 1, PALE)
+	tag.visible = false
 	left.add_child(tag)
-	var sp = Control.new(); sp.custom_minimum_size = Vector2(0, 16); left.add_child(sp)
+	# cabeçalho da pausa
+	pause_head = Control.new()
+	pause_head.custom_minimum_size = Vector2(520, 120)
+	pause_head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pause_head.draw.connect(_draw_pause_head)
+	pause_head.visible = false
+	left.add_child(pause_head)
+	var sp = Control.new(); sp.custom_minimum_size = Vector2(0, 4); left.add_child(sp)
 	sub = _lbl("", 17, GOLD, f_wide)
 	left.add_child(sub)
-	var sp2 = Control.new(); sp2.custom_minimum_size = Vector2(0, 22); left.add_child(sp2)
+	var sp2 = Control.new(); sp2.custom_minimum_size = Vector2(0, 6); left.add_child(sp2)
 	list = VBoxContainer.new()
 	list.add_theme_constant_override("separation", 2)
 	left.add_child(list)
@@ -123,15 +176,18 @@ func _build() -> void:
 		stack.add_child(pages[k])
 		pages[k].visible = k == "info"
 	# rodapé
-	var foot = _lbl("DEICIDE  ·  GODOT 4.7  ·  github.com/DanteSL/Deicide", 12, DIM, f_wide)
+	foot = _lbl("DEICIDE  ·  GODOT 4.7  ·  github.com/DanteSL/Deicide", 12, DIM, f_wide)
 	foot.anchor_top = 1; foot.anchor_bottom = 1
 	foot.offset_left = 86; foot.offset_top = -40
 	add_child(foot)
-	var hint = _lbl("MOUSE OU ↑ ↓  ·  ENTER", 12, DIM, f_wide)
+	hint = _lbl("MOUSE OU ↑ ↓  ·  ENTER", 12, DIM, f_wide)
 	hint.anchor_left = 1; hint.anchor_right = 1; hint.anchor_top = 1; hint.anchor_bottom = 1
 	hint.offset_left = -300; hint.offset_right = -70; hint.offset_top = -40
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(hint)
+
+func _tw() -> Tween:
+	return create_tween().set_ignore_time_scale()
 
 func _entry(text: String, _desc: String, cb: Callable, key: String, small := false) -> Button:
 	var b = Button.new()
@@ -191,7 +247,7 @@ func _on_focus(b: Button, on: bool) -> void:
 	var st: StyleBoxEmpty = b.get_meta("st")
 	var bar: Panel = b.get_meta("bar")
 	var num: Label = b.get_meta("num")
-	var tw = create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	var tw = _tw().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tw.tween_property(st, "content_margin_left", 84.0 if on else 58.0, .16)
 	var w = b.get_theme_font("font").get_string_size(b.text, HORIZONTAL_ALIGNMENT_LEFT, -1, b.get_theme_font_size("font_size")).x
 	tw.tween_property(bar, "size:x", (w + 80.0) if on else 0.0, .2)
@@ -205,8 +261,16 @@ func _on_focus(b: Button, on: bool) -> void:
 
 func _show_page(k: String) -> void:
 	for p in pages: pages[p].visible = p == k
+	if paused:
+		panel.visible = k != "info"
+		# na pausa a coluna desliza para a esquerda para abrir espaço ao painel
+		var off := -560.0 if k != "info" else -250.0
+		if lay_tw: lay_tw.kill()
+		lay_tw = _tw().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		lay_tw.tween_property(left, "offset_left", off, .25)
+		lay_tw.tween_property(left, "offset_right", off + 500.0, .25)
 	pages[k].modulate.a = 0
-	create_tween().tween_property(pages[k], "modulate:a", 1.0, .18)
+	_tw().tween_property(pages[k], "modulate:a", 1.0, .18)
 
 func _page_info() -> Control:
 	var v = VBoxContainer.new()
@@ -255,7 +319,7 @@ func _show_info(k: String) -> void:
 	else:
 		info.rec.text = "RECORDE  ·  RANK %s  ·  %d ABATES" % [G.RANKS[int(r.get("rank", 0))][0], int(r.get("kills", 0))]
 	info.nm.modulate.a = 0
-	create_tween().tween_property(info.nm, "modulate:a", 1.0, .15)
+	_tw().tween_property(info.nm, "modulate:a", 1.0, .15)
 
 func _slider_theme(sl: HSlider) -> void:
 	var track = StyleBoxFlat.new()
@@ -424,18 +488,37 @@ func open(is_paused: bool) -> void:
 	cont_btn.visible = paused
 	exit_btn.text = "MENU PRINCIPAL" if paused else "SAIR"
 	_number_entries()
-	sub.text = ("PAUSADO  ·  " + MODES[G.mode][0]) if paused else ""
-	sub.visible = paused
-	tag.visible = not paused
+	sub.text = ""
+	sub.visible = false
+	tag.visible = false
+	title_box.visible = not paused
+	pause_head.visible = paused
+	blur.visible = paused
+	foot.visible = not paused
+	hint.visible = not paused
+	if lay_tw: lay_tw.kill()
+	for p in pages: pages[p].visible = p == "info"
+	deco.queue_redraw()
+	# pausa: coluna centralizada sobre o jogo borrado; menu principal: coluna à esquerda
+	if paused:
+		left.anchor_left = .5; left.anchor_right = .5
+		left.offset_left = -250; left.offset_right = 250; left.offset_top = 40
+		for b in buttons: b.custom_minimum_size.x = 500
+	else:
+		left.anchor_left = 0; left.anchor_right = 0
+		left.offset_left = 86; left.offset_right = 640; left.offset_top = 50
+		for b in buttons: b.custom_minimum_size.x = 440
+	panel.visible = not paused
+	panel.offset_left = -560; panel.offset_right = -70
 	_show_info(G.mode if paused else "waves")
 	# entrada animada
 	modulate.a = 0
-	create_tween().tween_property(self, "modulate:a", 1.0, .25)
+	_tw().tween_property(self, "modulate:a", 1.0, .25)
 	var i = 0
 	for b in buttons:
 		if not b.visible: continue
 		b.modulate.a = 0
-		var tw = create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		var tw = _tw().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tw.tween_interval(.04 * i)
 		tw.tween_property(b, "modulate:a", 1.0, .2)
 		i += 1
@@ -448,6 +531,10 @@ func _exit() -> void:
 
 func _unhandled_input(ev: InputEvent) -> void:
 	if not visible: return
+	if ev.is_action_pressed("ui_cancel") and paused and not pages.info.visible:
+		_show_page("info")
+		get_viewport().set_input_as_handled()
+		return
 	if ev.is_action_pressed("ui_cancel") and not paused and not pages.info.visible:
 		_show_info("waves")
 		get_viewport().set_input_as_handled()
@@ -479,10 +566,23 @@ func _process(dt: float) -> void:
 		eyes_blink[i] -= dt
 		if eyes_blink[i] < -.18: eyes_blink[i] = randf_range(2.0, 7.0)
 	queue_redraw()
+	if title_art and title_art.visible:
+		if randf() < dt * 1.2 and t_drips.size() < 9:
+			t_drips.append({"x": randf_range(30, 520), "len": 0.0, "max": randf_range(14, 46), "w": randf_range(1.6, 3.2), "drop": -1.0})
+		for d in t_drips:
+			if d.len < d.max: d.len += dt * randf_range(8, 18)
+			elif d.drop < 0: d.drop = 0.0
+			else: d.drop += dt * 300
+		t_drips = t_drips.filter(func(d): return d.drop < 400)
+		title_art.queue_redraw()
+	if paused:
+		pause_head.queue_redraw()
+		deco.queue_redraw()
 
 func _draw() -> void:
+	if paused: return
 	var vs = size
-	var a_bg = .92 if paused else 1.0
+	var a_bg = 1.0
 	# fundo em degradê (preto em cima, sangue embaixo)
 	var steps = 24
 	for i in steps:
@@ -570,3 +670,114 @@ func _eye(p: Vector2, r: float, op: float, a: float, look := Vector2.ZERO) -> vo
 	draw_circle(ip + Vector2(-ir * .3, -ir * .35), ir * .18, Color(1, 1, 1, .8 * a))
 	pts.append(pts[0])
 	draw_polyline(pts, Color(GOLD, a), 2.0, true)
+
+
+# ---------------- título ----------------
+func _spaced_draw(c: CanvasItem, f: Font, x0: float, y: float, txt: String, sz: int, sp: float, col: Color, outline := 0, ocol := Color.BLACK) -> float:
+	var x := x0
+	for ch in txt:
+		if outline > 0: c.draw_string_outline(f, Vector2(x, y), ch, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, outline, ocol)
+		else: c.draw_string(f, Vector2(x, y), ch, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, col)
+		x += f.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x + sp
+	return x - sp
+
+func _draw_title() -> void:
+	var c := title_art
+	var txt := "DEICIDE"
+	var sz := 100
+	var sp := 6.0
+	var base := 108.0
+	var x0 := 8.0
+	var w := 0.0
+	for ch in txt: w += f_deco.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x + sp
+	w -= sp
+	var pulse := .5 + .5 * sin(t * 1.6)
+	# brilho de brasa atrás das letras
+	for k in 4:
+		_spaced_draw(c, f_deco, x0, base, txt, sz, sp, Color.WHITE, 26 - k * 6, Color(.85, .08, .03, (.05 + .04 * pulse) * (k + 1) * .5))
+	# sombra funda
+	_spaced_draw(c, f_deco, x0 + 4, base + 6, txt, sz, sp, Color(0, 0, 0, .8))
+	# contorno escuro + dourado
+	_spaced_draw(c, f_deco, x0, base, txt, sz, sp, Color.WHITE, 10, Color(.12, .02, .01))
+	_spaced_draw(c, f_deco, x0, base, txt, sz, sp, Color.WHITE, 3, Color(1, .82, .45))
+	# preenchimento: ouro escuro embaixo e claro em cima (duas passadas deslocadas)
+	_spaced_draw(c, f_deco, x0, base, txt, sz, sp, Color("a86a1c"))
+	_spaced_draw(c, f_deco, x0, base - 2, txt, sz, sp, Color("e8b048"))
+	_spaced_draw(c, f_deco, x0, base - 4, txt, sz, sp, Color(1, .9, .6, .35))
+	# reflexo que passa pelas letras
+	var sx: float = fmod(t * 160.0, w + 400.0) - 200.0
+	c.draw_colored_polygon(PackedVector2Array([Vector2(x0 + sx, base - 80), Vector2(x0 + sx + 26, base - 80), Vector2(x0 + sx - 4, base + 8), Vector2(x0 + sx - 30, base + 8)]), Color(1, .95, .8, .1))
+	# sangue escorrendo da base das letras
+	for d in t_drips:
+		var p := Vector2(x0 + min(d.x, w - 10), base + 2)
+		if d.drop < 0:
+			c.draw_line(p, p + Vector2(0, d.len), Color(.55, 0, .02, .95), d.w)
+			c.draw_circle(p + Vector2(0, d.len), d.w * .9, Color(.62, 0, .03))
+		else:
+			c.draw_line(p, p + Vector2(0, d.max * .35), Color(.45, 0, .02, .8), d.w * .7)
+			c.draw_circle(p + Vector2(0, d.max + d.drop), d.w, Color(.62, 0, .03, .9))
+	# filete com losango e cruz invertida
+	var ly := base + 30.0
+	c.draw_line(Vector2(x0, ly), Vector2(x0 + w * .44, ly), Color(GOLD, .7), 2.0)
+	c.draw_line(Vector2(x0 + w * .56, ly), Vector2(x0 + w, ly), Color(GOLD, .7), 2.0)
+	var mc := Vector2(x0 + w * .5, ly)
+	c.draw_colored_polygon(PackedVector2Array([mc + Vector2(-10, 0), mc + Vector2(0, -8), mc + Vector2(10, 0), mc + Vector2(0, 8)]), GOLD)
+	c.draw_rect(Rect2(mc + Vector2(-1.5, -26), Vector2(3, 20)), GOLD)
+	c.draw_rect(Rect2(mc + Vector2(-6, -14), Vector2(12, 3)), GOLD)
+	for s2: float in [-1.0, 1.0]:
+		c.draw_circle(Vector2(x0 + (w if s2 > 0 else 0.0), ly), 3, GOLD)
+
+# ---------------- pausa ----------------
+func _draw_pause_head() -> void:
+	var c := pause_head
+	var w := c.size.x
+	var cx := w * .5
+	var txt := "PAUSA"
+	var sz := 62
+	var sp := 16.0
+	var tw := 0.0
+	for ch in txt: tw += f_deco.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x + sp
+	tw -= sp
+	var x0 := cx - tw * .5
+	_spaced_draw(c, f_deco, x0, 64, txt, sz, sp, Color.WHITE, 12, Color(.7, .05, .03, .25))
+	_spaced_draw(c, f_deco, x0, 64, txt, sz, sp, Color.WHITE, 6, Color(.08, .01, .01))
+	_spaced_draw(c, f_deco, x0, 64, txt, sz, sp, Color("e8c070"))
+	var md: String = MODES.get(G.mode, ["", ""])[0]
+	var sub_t := md + "  ·  " + _fmt_time(G.stats.get("t", 0.0)) + "  ·  " + str(G.stats.get("kills", 0)) + " ABATES"
+	var stw := f_cin.get_string_size(sub_t, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+	c.draw_string_outline(f_cin, Vector2(cx - stw * .5, 96), sub_t, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, 4, Color(0, 0, 0, .8))
+	c.draw_string(f_cin, Vector2(cx - stw * .5, 96), sub_t, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(PALE, .9))
+	for s2: float in [-1.0, 1.0]:
+		var a := Vector2(cx + s2 * (tw * .5 + 18), 44)
+		var b := Vector2(cx + s2 * (w * .5 - 4), 44)
+		c.draw_line(a, b, Color(GOLD, .7), 2.0)
+		c.draw_colored_polygon(PackedVector2Array([a + Vector2(-6, 0), a + Vector2(0, -6), a + Vector2(6, 0), a + Vector2(0, 6)]), GOLD)
+	c.draw_line(Vector2(cx - w * .3, 112), Vector2(cx + w * .3, 112), Color(GOLD, .35), 1.0)
+
+func _fmt_time(sec: float) -> String:
+	var s2 := int(sec)
+	return "%d:%02d" % [s2 / 60, s2 % 60]
+
+func _draw_pause_deco() -> void:
+	if not paused: return
+	var c := deco
+	var vs := c.size
+	var cx := vs.x * .5
+	# moldura vertical dourada nos dois lados da coluna
+	var top := 60.0
+	var bot := vs.y - 60.0
+	for s2: float in [-1.0, 1.0]:
+		var x := cx + s2 * 300.0
+		c.draw_line(Vector2(x, top + 30), Vector2(x, bot - 30), Color(GOLD, .35), 2.0)
+		c.draw_line(Vector2(x + s2 * 8, top + 60), Vector2(x + s2 * 8, bot - 60), Color(GOLD, .15), 1.0)
+		for y: float in [top + 30, bot - 30]:
+			c.draw_colored_polygon(PackedVector2Array([Vector2(x - 6, y), Vector2(x, y - 6), Vector2(x + 6, y), Vector2(x, y + 6)]), Color(GOLD, .8))
+	# auréola fina girando atrás do cabeçalho
+	var hc := Vector2(cx, 120)
+	_ring(hc, 120, 2, t * .1, 16, Color(GOLD, .18), .2)
+	_ring(hc, 104, 1, -t * .15, 32, Color(GOLD, .12), .1)
+	# cinzas por cima do jogo borrado
+	for a in ash:
+		var col: Color = a.c
+		col.a *= .6
+		c.draw_rect(Rect2(a.p, Vector2(a.s, a.s)), col)

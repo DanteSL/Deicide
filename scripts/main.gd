@@ -454,8 +454,10 @@ func _autotest(m: String) -> void:
 		rtm.call(5.0, func(): show_menu(true))
 		rtm.call(5.5, func(): var i = AudioServer.get_bus_index("Musica"); print("ABAFADO cutoff=", AudioServer.get_bus_effect(i, 0).cutoff_hz, " on=", AudioServer.is_bus_effect_enabled(i, 0), " efeitos_db=", AudioServer.get_bus_volume_db(AudioServer.get_bus_index("Efeitos"))))
 		rtm.call(5.6, shm.bind("pause"))
-		rtm.call(5.8, func(): quit_to_menu())
-		rtm.call(6.5, func(): shm.call("volta"); print("MENU OK state=", G.state, " started=", started, " enemies=", G.enemies.size()); get_tree().quit())
+		rtm.call(5.7, func(): menu._show_page("cfg"))
+		rtm.call(6.0, shm.bind("pause_cfg"))
+		rtm.call(6.1, func(): quit_to_menu())
+		rtm.call(6.8, func(): shm.call("volta"); print("MENU OK state=", G.state, " started=", started, " enemies=", G.enemies.size()); get_tree().quit())
 		return
 	if m == "deus":
 		_deus_test()

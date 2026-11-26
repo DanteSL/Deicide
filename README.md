@@ -65,6 +65,8 @@ Um ranking de heresia (de Devoto a Supremo Sacrilégio) recompensa variar as arm
 | O **jab**: o braço inteiro estica com o punho fechado | O revólver de dois canos e a recarga com as duas mãos |
 | ![Ceifadora](docs/img/ceifadora.jpg) | ![Menu](docs/img/menu.jpg) |
 | A **Ceifadora**, com esqueleto animado por código | O menu principal |
+| ![Pausa](docs/img/pausa.jpg) | |
+| O menu de pausa, com o jogo borrado ao fundo | |
 
 ## Como jogar
 

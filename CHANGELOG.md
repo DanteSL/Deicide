@@ -1,5 +1,14 @@
 # Histórico de mudanças
 
+## Título novo e menu de pausa transparente
+
+- Menu principal: o título virou só "DEICIDE", sem a descrição embaixo, em letras góticas douradas com brilho de brasa
+  pulsando, reflexo passando pelas letras, gotas de sangue escorrendo e um filete com cruz invertida.
+- Menu de pausa (ESC) redesenhado: o jogo continua visível atrás, borrado e escurecido com vinheta;
+  "PAUSA" no centro com modo, tempo e abates, coluna centralizada entre molduras douradas e cinzas caindo.
+  Configurações e controles abrem num painel à direita e a coluna desliza para o lado.
+- Animações do menu não travam mais com câmera lenta (ignoram a escala de tempo).
+
 ## Lilith mais viva
 
 - Pernas e saia balançam de leve, como quem flutua (cada perna num ritmo, sem rasgar a malha).
