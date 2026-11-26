@@ -559,8 +559,70 @@ func _altar() -> void:
 	add_child(halo)
 	# braseiros nos cantos do topo
 	for sx in [-1, 1]:
-		cyl(sx * 6.5, ALTAR_TOP, -59, .5, .8, 3.0, m_gold, false)
-		_flame(Vector3(sx * 6.5, ALTAR_TOP + 3.6, -59), 1.0)
+		cyl(sx * 5.6, ALTAR_TOP, -61.3, .5, .8, 3.0, m_gold, false)
+		_flame(Vector3(sx * 5.6, ALTAR_TOP + 3.6, -61.3), 1.0)
+	_creek()
+
+# ---------------- córrego de sangue em volta do trono ----------------
+## nasce em duas bocas douradas na base do trono, contorna a frente e despenca escada abaixo
+func _creek() -> void:
+	var Y = ALTAR_TOP
+	var lx = 7.9        # pernas laterais
+	var zb = -64.2      # nascente (junto à base do trono)
+	var zf = -58.4      # trecho da frente
+	var zo = -56.35     # borda do altar (onde começa o rio da escada)
+	var W = 1.3
+	var segs = [  # [centro x, centro z, comprimento, rotação y do fluxo, horizontal?]
+		[-lx, (zb + zf) * .5, zf - zb, 0.0, false],
+		[lx, (zb + zf) * .5, zf - zb, 0.0, false],
+		[-lx * .5, zf, lx, PI / 2, true],
+		[lx * .5, zf, lx, -PI / 2, true],
+		[0.0, (zf + zo) * .5, zo - zf, 0.0, false],
+	]
+	for i in segs.size():
+		var sg = segs[i]
+		var horiz: bool = sg[4]
+		var sx = (sg[2] + W) if horiz else W
+		var sz = W if horiz else sg[2]
+		# leito e meio-fios dourados
+		blk(sg[0], Y - .02, sg[1], sx + .3, .06, sz + .3, m_gold_dark, false)
+		for side in [-1, 1]:
+			if horiz: blk(sg[0], Y, sg[1] + side * (W * .5 + .12), sx + .2, .22, .22, m_gold, false)
+			elif i < 2: blk(sg[0] + side * (W * .5 + .12), Y, sg[1], .22, .22, sz, m_gold, false)
+			else: blk(sg[0] + side * (W * .5 + .12), Y, sg[1], .22, .22, sz, m_gold, false)
+		var f = flat(Vector3(sg[0], Y + .07, sg[1]), Vector2(W * .95, sg[2] + (W if horiz else 0.0)), bm(0, 20.0 + i, .5, Vector2(1, sg[2] * .5)))
+		f.rotation.y = sg[3]
+	# as bocas de onde o sangue brota
+	for sx in [-1, 1]:
+		var x = sx * lx
+		blk(x, Y, zb - .9, 1.6, 1.4, 1.2, m_gold, false)
+		var mouth = MeshInstance3D.new()
+		var mm = BoxMesh.new(); mm.size = Vector3(.8, .35, .1)
+		mouth.mesh = mm; mouth.material_override = glow(Color(.25, 0, .02))
+		mouth.position = Vector3(x, Y + .7, zb - .28)
+		add_child(mouth)
+		var fall = quad(Vector3(x, Y + .38, zb - .2), Vector2(.6, .62), bm(0, 30.0 + sx, 1.4, Vector2(1, 1)))
+		var pt = CPUParticles3D.new()
+		pt.amount = 18; pt.lifetime = .5
+		pt.direction = Vector3(0, .6, 1); pt.spread = 30
+		pt.initial_velocity_min = .8; pt.initial_velocity_max = 1.8
+		pt.gravity = Vector3(0, -9.8, 0)
+		var dm = SphereMesh.new(); dm.radius = .05; dm.height = .14; dm.radial_segments = 5; dm.rings = 3
+		dm.material = glow(Color(.6, .01, .03))
+		pt.mesh = dm
+		pt.position = Vector3(x, Y + .12, zb + .1)
+		add_child(pt)
+	# respingo onde o córrego despenca na escada
+	var sp = CPUParticles3D.new()
+	sp.amount = 26; sp.lifetime = .7
+	sp.direction = Vector3(0, .4, 1); sp.spread = 35
+	sp.initial_velocity_min = 1.2; sp.initial_velocity_max = 2.6
+	sp.gravity = Vector3(0, -9.8, 0)
+	var dm2 = SphereMesh.new(); dm2.radius = .06; dm2.height = .16; dm2.radial_segments = 5; dm2.rings = 3
+	dm2.material = glow(Color(.6, .01, .03))
+	sp.mesh = dm2
+	sp.position = Vector3(0, Y + .1, zo)
+	add_child(sp)
 
 # ---------------- trono detalhado ----------------
 var m_velvet: StandardMaterial3D
