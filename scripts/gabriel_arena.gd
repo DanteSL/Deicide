@@ -106,7 +106,9 @@ func _cyl(r1: float, r2: float, h: float, mat: Material, pos: Vector3, col := tr
 	var sh = CylinderShape3D.new(); sh.radius = max(r1, r2); sh.height = h
 	return _body(mi, sh, pos, rot)
 
+var M: Node
 func build(_m: Node) -> void:
+	M = _m
 	_mats()
 	_floor()
 	_balustrade()
@@ -114,6 +116,7 @@ func build(_m: Node) -> void:
 	_platforms()
 	_sky()
 	_feathers()
+	_entrance()
 	# luzes quentes
 	for i in 4:
 		var a = i * TAU / 4.0 + PI / 4
@@ -397,9 +400,12 @@ func _feathers() -> void:
 
 func reset_state() -> void:
 	blare = 0.0
+	hall_state = "off"
+	_set_gate(0.0)
 
 func _process(dt: float) -> void:
 	t += dt
+	_upd_hall(dt)
 	if clouds_mat: clouds_mat.set_shader_parameter("time_s", t)
 	for pf in puffs:
 		pf.a += pf.spd * dt
@@ -429,3 +435,307 @@ func _process(dt: float) -> void:
 ## look_at sem precisar estar na árvore (a arena é montada antes de entrar no mundo)
 func _aim(n: Node3D, target: Vector3, up: Vector3) -> void:
 	n.basis = Basis.looking_at(target - n.position, up)
+
+
+# =====================================================================
+# ENTRADA: o Pórtico da Balança (fica longe da praça; o portão leva até o Átrio)
+# Ruínas → praça com mosaico rachado e a balança dourada → escadaria entre dois blocos de mármore
+# com anjos ajoelhados de espada → colunas e o portão dourado em arco, com luz atrás.
+# =====================================================================
+const HALL := Vector3(2000, 0, 0)
+const GATE_Z := -18.0
+var hall_state := "off" # off | wait | open | done
+var gate_l: Node3D
+var gate_r: Node3D
+var gate_open := 0.0
+var gate_bodies: Array = []
+var pans: Array = []
+var hall_flames: Array = []
+var m_red: StandardMaterial3D
+var m_dark: StandardMaterial3D
+var m_gem: StandardMaterial3D
+
+func _h(v: Vector3) -> Vector3:
+	return HALL + v
+
+func _entrance() -> void:
+	m_red = StandardMaterial3D.new(); m_red.albedo_color = Color("7a0a10"); m_red.roughness = .35; m_red.metallic = .2
+	m_red.emission_enabled = true; m_red.emission = Color("2a0002")
+	m_dark = StandardMaterial3D.new()
+	var nt = NoiseTexture2D.new(); var nz = FastNoiseLite.new(); nz.frequency = .03; nz.seed = 71
+	nt.noise = nz; nt.seamless = true
+	var g = Gradient.new(); g.set_color(0, Color("231c1a")); g.set_color(1, Color("5a4d46")); nt.color_ramp = g
+	m_dark.albedo_texture = nt; m_dark.uv1_triplanar = true; m_dark.uv1_world_triplanar = true; m_dark.uv1_scale = Vector3.ONE * .12
+	m_dark.roughness = .95
+	m_gem = StandardMaterial3D.new(); m_gem.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; m_gem.albedo_color = Color(.4, 1, .35)
+	var white_m = m_marble.duplicate()
+	white_m.albedo_color = Color(1.05, 1.0, .98)
+	# --- ruínas na chegada ---
+	_box(Vector3(34, 1, 30), m_dark, _h(Vector3(0, -.5, 41)))
+	var rng = RandomNumberGenerator.new(); rng.seed = 5150
+	for i in 9:
+		var sx = -1 if i % 2 == 0 else 1
+		var p = Vector3(sx * rng.randf_range(6, 14), 0, rng.randf_range(30, 52))
+		if i < 4:
+			_cyl(.8, .9, rng.randf_range(5, 9), m_marble2, _h(p + Vector3(0, 0, 0)), true, 10, Vector3(PI / 2, rng.randf() * TAU, 0))
+		else:
+			var hh = rng.randf_range(1.5, 6.5)
+			_cyl(.85, .95, hh, m_marble2, _h(p + Vector3(0, hh * .5, 0)), true, 10)
+		for k in 3:
+			_box(Vector3(rng.randf_range(.6, 1.6), rng.randf_range(.4, 1.0), rng.randf_range(.6, 1.4)), m_marble2, _h(p + Vector3(rng.randf_range(-2, 2), .3, rng.randf_range(-2, 2))), false, Vector3(rng.randf(), rng.randf() * TAU, rng.randf() * .5))
+	# encosta de pedra escura irregular dos dois lados das ruínas
+	for sx in [-1, 1]:
+		for k in 7:
+			var rp = Vector3(sx * rng.randf_range(17, 21), rng.randf_range(0, 2), 28 + k * 4.2)
+			var rs = SphereMesh.new(); rs.radius = rng.randf_range(2.5, 4.5); rs.height = rs.radius * rng.randf_range(1.2, 2.2); rs.radial_segments = 7; rs.rings = 4
+			var rk = _mesh(rs, m_dark, _h(rp), Vector3(rng.randf(), rng.randf() * TAU, rng.randf() * .4))
+	# --- degraus da praça + braseiros verdes ---
+	for k in 3:
+		_box(Vector3(10, .4 * (k + 1), 1.0), white_m, _h(Vector3(0, .2 * (k + 1), 26.5 - k * 1.0)))
+	for sx in [-1, 1]:
+		_brazier(_h(Vector3(sx * 5.8, .0, 26.5)), true)
+	# --- praça com mosaico rachado ---
+	_box(Vector3(32, 1.2, 26), white_m, _h(Vector3(0, .6, 11)))
+	var mc = _h(Vector3(0, 1.21, 11))
+	_cyl(11.5, 11.5, .04, white_m, mc, false, 48)
+	for rr in [11.0, 7.4, 3.8]:
+		var tm = TorusMesh.new(); tm.inner_radius = rr - .28; tm.outer_radius = rr; tm.rings = 72; tm.ring_segments = 4
+		var rm = _mesh(tm, m_red, mc + Vector3(0, .02, 0)); rm.scale = Vector3(1, .12, 1)
+	for i in 24:
+		var a = i * TAU / 24.0
+		for seg in [[3.8, 7.4], [7.4, 11.0]]:
+			if seg[0] > 5 and i % 2 == 1: continue
+			var a0 = Vector3(cos(a), 0, sin(a)) * seg[0]; var a1 = Vector3(cos(a), 0, sin(a)) * seg[1]
+			var bx = _box(Vector3(.18, .03, seg[1] - seg[0]), m_red, mc + (a0 + a1) * .5 + Vector3(0, .02, 0), false)
+			bx.rotation.y = -a + PI / 2
+	# rachaduras de sangue saindo do mosaico
+	for i in 16:
+		var a = rng.randf() * TAU
+		var p0 = Vector3(cos(a), 0, sin(a)) * rng.randf_range(9, 12)
+		var pc = p0
+		for k in 4:
+			var d = Vector3(cos(a + rng.randf_range(-.8, .8)), 0, sin(a + rng.randf_range(-.8, .8))) * rng.randf_range(.8, 1.8)
+			var bx = _box(Vector3(.09, .025, d.length()), m_red, mc + pc + d * .5 + Vector3(0, .015, 0), false)
+			bx.rotation.y = atan2(d.x, d.z)
+			pc += d
+	# pedestal da balança
+	var pp = _h(Vector3(0, 1.2, 11))
+	_cyl(1.7, 1.9, 2.4, white_m, pp + Vector3(0, 1.2, 0), true, 24)
+	_cyl(1.95, 1.95, .25, m_red, pp + Vector3(0, .15, 0), false, 24)
+	_cyl(1.8, 1.8, .2, m_red, pp + Vector3(0, 2.3, 0), false, 24)
+	_balance(pp + Vector3(0, 2.4, 0))
+	# --- escadaria principal (6 m) ---
+	var steps = 15
+	for k in steps:
+		var top = 1.2 + (k + 1) * .4
+		var zc = -.47 - k * .93
+		_box(Vector3(14, top, .93), white_m, _h(Vector3(0, top * .5, zc)))
+		_box(Vector3(14.2, .06, .1), m_red, _h(Vector3(0, top - .03, zc + .47)), false)
+	# patamar de cima
+	_box(Vector3(26, 7.2, 18), white_m, _h(Vector3(0, 3.6, -23)))
+	# --- blocos laterais com os anjos ---
+	for sx in [-1, 1]:
+		# bloco baixo (pedestal dos anjos) e torre alta atrás
+		_box(Vector3(13, 6, 12), white_m, _h(Vector3(sx * 13.5, 3, -2)))
+		_box(Vector3(13.2, .5, 12.2), m_red, _h(Vector3(sx * 13.5, 6.1, -2)), false)
+		_box(Vector3(13.2, .35, 12.2), m_red, _h(Vector3(sx * 13.5, 1.5, -2)), false)
+		_box(Vector3(11, 20, 22), white_m, _h(Vector3(sx * 14.5, 10, -19)))
+		for yy in [8.0, 12.5, 19.6]:
+			_box(Vector3(11.2, .35, 22.2), m_red, _h(Vector3(sx * 14.5, yy, -19)), false)
+		# faixas verticais vermelhas na face da torre
+		for xx in [9.4, 19.6]:
+			_box(Vector3(.4, 12, .2), m_red, _h(Vector3(sx * xx, 14, -7.9)), false)
+		# asas vermelhas atrás do anjo
+		for k in 2:
+			var wing = _box(Vector3(3.0, 7.5, .3), m_red, _h(Vector3(sx * 13.5 + (k * 2 - 1) * 2.4, 10.4, -7.75)), false)
+			wing.rotation = Vector3(0, 0, -(k * 2 - 1) * .35)
+		# selo em ferradura com gema verde
+		var tm = TorusMesh.new(); tm.inner_radius = 1.1; tm.outer_radius = 1.45; tm.rings = 32; tm.ring_segments = 6
+		_mesh(tm, m_red, _h(Vector3(sx * 13.5, 17.2, -7.85)), Vector3(PI / 2, 0, 0))
+		var gs = SphereMesh.new(); gs.radius = .35; gs.height = .7
+		_mesh(gs, m_gem, _h(Vector3(sx * 13.5, 17.2, -7.6)))
+		_hall_statue(_h(Vector3(sx * 13.5, 6.25, -3.5)), sx)
+	# --- colunas e o portão ---
+	for sx in [-1, 1]:
+		var cp = _h(Vector3(sx * 5.2, 7.2, -15.5))
+		_box(Vector3(2.4, 1.0, 2.4), white_m, cp + Vector3(0, .5, 0))
+		_box(Vector3(2.5, .25, 2.5), m_red, cp + Vector3(0, 1.05, 0), false)
+		_cyl(.85, .95, 9.0, white_m, cp + Vector3(0, 5.5, 0), true, 20)
+		for f in 10:
+			var fa = f * TAU / 10.0
+			_box(Vector3(.12, 8.6, .12), m_marble2, cp + Vector3(cos(fa) * .9, 5.5, sin(fa) * .9), false)
+		_box(Vector3(2.2, .9, 2.2), m_red, cp + Vector3(0, 10.4, 0), false)
+		var gm = SphereMesh.new(); gm.radius = .22; gm.height = .44
+		_mesh(gm, m_gem, cp + Vector3(0, 10.4, 1.12))
+		_box(Vector3(2.8, 1.6, 2.8), white_m, cp + Vector3(0, 11.6, 0))
+		_box(Vector3(3.0, .3, 3.0), m_red, cp + Vector3(0, 12.5, 0), false)
+		_brazier(_h(Vector3(sx * 8.5, 7.2, -14.0)), false)
+	# parede do portão
+	for sx in [-1, 1]:
+		_box(Vector3(4.6, 14, 2.0), white_m, _h(Vector3(sx * 5.3, 14.2, GATE_Z - 1.2)))
+	_box(Vector3(6.0, 6.5, 2.0), white_m, _h(Vector3(0, 17.95, GATE_Z - 1.2)))
+	# arco dourado
+	var ac = _h(Vector3(0, 13.0, GATE_Z - .1))
+	for i in 13:
+		var a = PI * i / 12.0
+		var seg = _box(Vector3(.45, .7, .5), m_gold, ac + Vector3(cos(a) * 2.75, sin(a) * 2.75, 0), false)
+		seg.rotation.z = a
+	for sx in [-1, 1]:
+		_box(Vector3(.5, 5.8, .5), m_gold, _h(Vector3(sx * 2.75, 10.1, GATE_Z - .1)), false)
+		_mesh(SphereMesh.new(), m_gem, _h(Vector3(sx * 2.75, 13.2, GATE_Z + .2)))
+	# luz do outro lado do portão
+	var lq = MeshInstance3D.new(); var qm = QuadMesh.new(); qm.size = Vector2(5.4, 8.8); lq.mesh = qm
+	var lm = StandardMaterial3D.new(); lm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; lm.albedo_color = Color(1, .95, .82); lm.disable_fog = true
+	lq.material_override = lm
+	lq.position = _h(Vector3(0, 11.6, GATE_Z - 1.6))
+	add_child(lq)
+	var gl = OmniLight3D.new(); gl.light_color = Color(1, .9, .7); gl.light_energy = 3.0; gl.omni_range = 14
+	gl.position = _h(Vector3(0, 10, GATE_Z + 2)); add_child(gl)
+	# folhas do portão (barras douradas), dobradiças nas laterais
+	for sx in [-1, 1]:
+		var hinge = Node3D.new()
+		hinge.position = _h(Vector3(sx * 2.5, 7.2, GATE_Z))
+		add_child(hinge)
+		for b in 9:
+			var bx = b * .28 + .15
+			var bh = 5.6 + (2.6 * sqrt(max(0.0, 1.0 - pow((2.5 - bx) / 2.5, 2))) if bx > 0 else 0.0)
+			_mesh(_cylm(.05, bh), m_gold, Vector3(-sx * bx, bh * .5, 0), Vector3.ZERO, hinge)
+		for yy in [.6, 2.6, 4.6]:
+			var bm2 = BoxMesh.new(); bm2.size = Vector3(2.5, .14, .12)
+			_mesh(bm2, m_gold, Vector3(-sx * 1.25, yy, 0), Vector3.ZERO, hinge)
+		# arabesco: anel no meio da folha
+		var orn = TorusMesh.new(); orn.inner_radius = .45; orn.outer_radius = .6; orn.rings = 20; orn.ring_segments = 4
+		_mesh(orn, m_gold, Vector3(-sx * 1.25, 3.6, 0), Vector3(PI / 2, 0, 0), hinge)
+		var sb = StaticBody3D.new(); sb.collision_layer = 1; sb.collision_mask = 0
+		var cs = CollisionShape3D.new(); var bs = BoxShape3D.new(); bs.size = Vector3(2.5, 8.5, .4); cs.shape = bs
+		cs.position = Vector3(-sx * 1.25, 4.2, 0); sb.add_child(cs); hinge.add_child(sb)
+		gate_bodies.append(cs)
+		if sx < 0: gate_l = hinge
+		else: gate_r = hinge
+	# paredes invisíveis em volta da entrada
+	for w in [[Vector3(0, 10, 56), Vector3(40, 20, 1)], [Vector3(-16.5, 10, 10), Vector3(1, 20, 60)], [Vector3(16.5, 10, 10), Vector3(1, 20, 60)], [Vector3(0, 20, GATE_Z - 4), Vector3(40, 40, 1)]]:
+		var sh = BoxShape3D.new(); sh.size = w[1]
+		_body(null, sh, _h(w[0]))
+	# sangue: escorrendo do portão escada abaixo, na balança e no mosaico
+	if M and M.get("trono"):
+		var tr = M.trono
+		for k in 12:
+			var top = 1.2 + (steps - k) * .4
+			var zc = -.47 - (steps - 1 - k) * .93
+			var f = _mesh(_planem(Vector2(rng.randf_range(1.0, 2.4), .9)), tr.bm(1, float(k % 9) + .37), _h(Vector3(-1.2 + sin(k * .7) * .8, top + .02, zc)))
+			f.rotation.y = rng.randf() * .4
+		for k in 5:
+			var f2 = _mesh(_planem(Vector2(rng.randf_range(2, 4), rng.randf_range(2, 4))), tr.bm(1, float(k) + 1.37), _h(Vector3(rng.randf_range(-6, 6), 1.24, rng.randf_range(4, 18))))
+			f2.rotation.y = rng.randf() * TAU
+		var f3 = _mesh(_planem(Vector2(3.2, 3.2)), tr.bm(1, 3.37), pp + Vector3(.6, .04, 1.6))
+	# luz vermelha do salão
+	for l in [[Vector3(0, 12, 8), Color(1, .25, .22), 3.0, 34.0], [Vector3(-12, 9, -6), Color(1, .3, .3), 2.0, 18.0], [Vector3(12, 9, -6), Color(1, .3, .3), 2.0, 18.0], [Vector3(0, 6, 36), Color(.9, .35, .3), 1.4, 26.0]]:
+		var ol = OmniLight3D.new(); ol.position = _h(l[0]); ol.light_color = l[1]; ol.light_energy = l[2]; ol.omni_range = l[3]
+		add_child(ol)
+
+func _cylm(r: float, h: float) -> CylinderMesh:
+	var c = CylinderMesh.new(); c.top_radius = r; c.bottom_radius = r; c.height = h; c.radial_segments = 6
+	return c
+
+func _planem(sz: Vector2) -> PlaneMesh:
+	var p = PlaneMesh.new(); p.size = sz
+	return p
+
+func _brazier(p: Vector3, big: bool) -> void:
+	var s = 1.0 if big else .8
+	_cyl(.35 * s, .5 * s, 1.0 * s, m_marble2, p + Vector3(0, .5 * s, 0), true, 8)
+	var bowl = CylinderMesh.new(); bowl.top_radius = .9 * s; bowl.bottom_radius = .45 * s; bowl.height = .55 * s; bowl.radial_segments = 14
+	_mesh(bowl, m_red, p + Vector3(0, 1.25 * s, 0))
+	var fl = CPUParticles3D.new()
+	fl.amount = 26; fl.lifetime = .8
+	fl.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE; fl.emission_sphere_radius = .45 * s
+	fl.direction = Vector3.UP; fl.spread = 12
+	fl.initial_velocity_min = 1.2; fl.initial_velocity_max = 2.2; fl.gravity = Vector3(0, 1.0, 0)
+	fl.scale_amount_min = .6; fl.scale_amount_max = 1.1
+	var q = QuadMesh.new(); q.size = Vector2(.5, .7) * s
+	var fm = StandardMaterial3D.new(); fm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	fm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; fm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	fm.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES; fm.albedo_texture = _soft_tex(); fm.vertex_color_use_as_albedo = true
+	q.material = fm
+	fl.mesh = q
+	var gr = Gradient.new(); gr.set_color(0, Color(1, 1, .9, .9)); gr.set_color(1, Color(.3, 1, .3, 0))
+	fl.color_ramp = gr
+	fl.position = p + Vector3(0, 1.5 * s, 0)
+	add_child(fl)
+	var l = OmniLight3D.new(); l.light_color = Color(.5, 1, .5); l.light_energy = 1.6; l.omni_range = 7
+	l.position = p + Vector3(0, 2.2 * s, 0); add_child(l)
+	hall_flames.append(l)
+
+## a balança dourada: haste, águia de asas abertas com a gema verde, braço e dois pratos com correntes
+func _balance(p: Vector3) -> void:
+	var root = Node3D.new(); root.position = p; add_child(root)
+	_mesh(_cylm(.12, 3.4), m_gold, Vector3(0, 1.7, 0), Vector3.ZERO, root)
+	_mesh(_cylm(.45, .25), m_gold, Vector3(0, .12, 0), Vector3.ZERO, root)
+	var arm = BoxMesh.new(); arm.size = Vector3(3.4, .14, .14)
+	_mesh(arm, m_gold, Vector3(0, 3.0, 0), Vector3.ZERO, root)
+	for sx in [-1, 1]:
+		var w = BoxMesh.new(); w.size = Vector3(1.4, .1, .5)
+		_mesh(w, m_gold, Vector3(sx * .65, 3.55, 0), Vector3(0, 0, sx * .55), root)
+		var w2 = BoxMesh.new(); w2.size = Vector3(1.0, .08, .4)
+		_mesh(w2, m_gold, Vector3(sx * .6, 3.25, 0), Vector3(0, 0, sx * .25), root)
+	var gs = SphereMesh.new(); gs.radius = .18; gs.height = .36
+	_mesh(gs, m_gem, Vector3(0, 3.35, .12), Vector3.ZERO, root)
+	for sx in [-1, 1]:
+		var pan = Node3D.new(); pan.position = Vector3(sx * 1.6, 3.0, 0); root.add_child(pan)
+		for k in 3:
+			var a = k * TAU / 3.0
+			var ch = _mesh(_cylm(.02, 1.25), m_gold, Vector3(cos(a) * .25, -.6, sin(a) * .25), Vector3(sin(a) * .2, 0, -cos(a) * .2), pan)
+		var dish = CylinderMesh.new(); dish.top_radius = .6; dish.bottom_radius = .35; dish.height = .18; dish.radial_segments = 16
+		_mesh(dish, m_gold, Vector3(0, -1.25, 0), Vector3.ZERO, pan)
+		pans.append({"n": pan, "s": sx})
+
+func _hall_statue(p: Vector3, sx: int) -> void:
+	if not ResourceLoader.exists("res://anjo/anjo.glb") or M == null or M.get("trono") == null: return
+	var inst: Node3D = load("res://anjo/anjo.glb").instantiate()
+	inst.position = p
+	inst.scale = Vector3.ONE * 1.55
+	inst.rotation.y = -sx * .25 # de frente para quem sobe, levemente virado para a escada
+	add_child(inst)
+	var sh = Shader.new(); sh.code = M.trono.STATUE_SHADER
+	var sm = ShaderMaterial.new(); sm.shader = sh; sm.set_shader_parameter("seed", 3.3 + sx)
+	var steel = StandardMaterial3D.new(); steel.albedo_color = Color(.22, .2, .21); steel.metallic = .8; steel.roughness = .3
+	for mi in inst.find_children("*", "MeshInstance3D", true, false):
+		var mesh: Mesh = mi.mesh
+		for si in mesh.get_surface_count():
+			var mat = mesh.surface_get_material(si)
+			var nm = String(mat.resource_name) if mat else ""
+			var m: Material = sm
+			if nm.contains("PilarScreen"): m = m_gold
+			elif nm.contains("Pilar"): m = m_red
+			elif nm.contains("Red"): m = m_gem
+			elif nm.contains("Gray"): m = steel
+			mi.set_surface_override_material(si, m)
+
+func _set_gate(u: float) -> void:
+	gate_open = u
+	if gate_l: gate_l.rotation.y = -u * 1.7
+	if gate_r: gate_r.rotation.y = u * 1.7
+	for cs in gate_bodies: cs.disabled = u > .5
+
+## modo Gabriel: o jogador começa nas ruínas e sobe até o portão
+func start_hall() -> void:
+	hall_state = "wait"
+	_set_gate(0.0)
+
+func _upd_hall(dt: float) -> void:
+	for pn in pans:
+		pn.n.rotation.z = sin(t * .9) * .06 * pn.s
+		pn.n.position.y = 3.0 + sin(t * .9) * .08 * pn.s
+	for l in hall_flames:
+		l.light_energy = 1.4 + sin(t * 13.0 + l.position.x) * .25 + randf() * .15
+	if hall_state == "off" or hall_state == "done" or G.player == null: return
+	var lp: Vector3 = G.player.global_position - HALL
+	if hall_state == "wait" and lp.z < GATE_Z + 7.0 and lp.y > 6.0:
+		hall_state = "open"
+		G.snd("slam", -4, .55); G.snd("angel", -6, .7)
+		G.shake = max(G.shake, .3)
+		var tw = create_tween()
+		tw.tween_method(_set_gate, 0.0, 1.0, 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	if hall_state == "open" and lp.z < GATE_Z - .3:
+		hall_state = "done"
+		if M and M.has_method("gabriel_enter"): M.gabriel_enter()

@@ -26,7 +26,14 @@ os braços seguram o cajado com as duas mãos (cinemática inversa).
 
 ![Gabriel](img/gabriel_orbes.jpg)
 
-No modo **Gabriel** a luta acontece no **Átrio das Trombetas**: uma praça octogonal de mármore flutuando acima de um
+No modo **Gabriel** você começa nas ruínas do **Pórtico da Balança**: uma praça com mosaico de mármore rachado de
+sangue, uma balança dourada sobre um pedestal, a escadaria entre dois blocos com anjos de espada e asas vermelhas,
+braseiros de fogo verde e, no alto, um portão dourado em arco com luz atrás. O portão se abre quando você chega perto;
+ao atravessá-lo, a luz te leva ao **Átrio das Trombetas** e Gabriel desce do céu.
+
+![Pórtico da Balança](img/portico_balanca.jpg)
+
+A luta acontece no **Átrio das Trombetas**: uma praça octogonal de mármore flutuando acima de um
 mar de nuvens ao amanhecer, com uma estrela de ouro embutida no chão, oito trombetas gigantes de ouro apontando
 para o céu (brilham mais na segunda fase), quatro plataformas suspensas com escadas para pegar altura contra
 o arcanjo no ar, penas caindo e um olho gigante no céu que acompanha você e pisca.

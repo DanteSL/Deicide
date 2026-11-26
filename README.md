@@ -42,6 +42,8 @@ Um ranking de heresia (de Devoto a Supremo Sacrilégio) recompensa variar as arm
 
 | | |
 |---|---|
+| ![Pórtico da Balança](docs/img/portico_balanca.jpg) | ![Portão dourado](docs/img/portico_portao.jpg) |
+| **Pórtico da Balança** — a entrada do Gabriel: mosaico rachado de sangue, a balança dourada e os anjos de espada | O portão dourado se abre quando você chega e leva ao Átrio |
 | ![Átrio das Trombetas](docs/img/gabriel_arena.jpg) | ![Átrio visto de cima](docs/img/gabriel_arena_cima.jpg) |
 | **Átrio das Trombetas** — a arena do Gabriel: praça de mármore acima das nuvens, ao amanhecer | Vista de cima: estrela de ouro no chão, 8 trombetas gigantes e plataformas suspensas |
 | ![Arena de Miguel](docs/img/miguel.jpg) | ![Sala do Trono](docs/img/sala_do_trono.jpg) |
@@ -77,7 +79,7 @@ Um ranking de heresia (de Devoto a Supremo Sacrilégio) recompensa variar as arm
 |---|---|
 | **Ondas** | Hordas crescentes. A cada 5 ondas aparece Gabriel; a cada 10, Deus. |
 | **Treino** | Alvos infinitos para testar armas e melhorias. |
-| **Gabriel** | Luta contra o arcanjo na arena dele, o Átrio das Trombetas (8 ataques, segunda fase). |
+| **Gabriel** | Suba o Pórtico da Balança, atravesse o portão dourado e lute contra o arcanjo no Átrio das Trombetas (8 ataques, segunda fase). |
 | **Miguel** | Luta contra o Arcanjo Velado na arena dele, o Santuário do Eclipse (7 ataques + Eclipse). |
 | **Deus** | Luta direta contra Deus (10 ataques, segunda fase com a arena inundada). |
 
@@ -128,7 +130,7 @@ Deicide/
 │   ├── gabriel.gd         # chefe Gabriel
 │   ├── miguel.gd          # chefe Miguel (partes animadas por código, 7 ataques, Eclipse)
 │   ├── miguel_arena.gd    # Santuário do Eclipse, a arena do Miguel
-│   ├── gabriel_arena.gd   # Átrio das Trombetas, a arena do Gabriel
+│   ├── gabriel_arena.gd   # Pórtico da Balança (entrada) e Átrio das Trombetas, a arena do Gabriel
 │   ├── deus.gd            # chefe Deus
 │   ├── trono.gd           # Sala do Trono e cutscene de Deus
 │   ├── hud2.gd            # HUD: vida, estamina, dash, arma em 3D, munição e frasco de sangue

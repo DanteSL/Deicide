@@ -25,9 +25,11 @@ var trono: Node3D
 var miguel_arena: Node3D
 var gabriel_arena: Node3D
 var _dawn_sky: Sky
+var _hall_sky: Sky
 var level := "arena"
 const LEVEL_ENV := {
 	"arena": {"background_color": Color("2b0b0e"), "fog_light_color": Color("2b0b0e"), "ambient_light_color": Color("d0a088"), "ambient_light_energy": .75, "fog_depth_begin": 28.0, "fog_depth_end": 125.0, "sun": .8},
+	"gabriel_hall": {"background_color": Color("2a0608"), "fog_light_color": Color("6a0c10"), "ambient_light_color": Color("ff9a94"), "ambient_light_energy": .45, "fog_depth_begin": 40.0, "fog_depth_end": 140.0, "sun": .3},
 	"gabriel": {"background_color": Color("c86a4a"), "fog_light_color": Color("d88a5e"), "ambient_light_color": Color("ffc8a0"), "ambient_light_energy": .32, "fog_depth_begin": 90.0, "fog_depth_end": 330.0, "sun": .7},
 	"miguel": {"background_color": Color("0a0610"), "fog_light_color": Color("1a0c22"), "ambient_light_color": Color("b8a8d0"), "ambient_light_energy": .6, "fog_depth_begin": 40.0, "fog_depth_end": 230.0, "sun": .5},
 	"trono": {"background_color": Color("160205"), "fog_light_color": Color("2a0a0c"), "ambient_light_color": Color("e8d2c0"), "ambient_light_energy": .55, "fog_depth_begin": 50.0, "fog_depth_end": 190.0, "sun": .55},
@@ -568,22 +570,31 @@ func _autotest(m: String) -> void:
 			world.add_child(pc)
 			var view = func(pos, at):
 				pc.global_position = pos; pc.look_at(at, Vector3.UP); pc.make_current()
-			rtf.call(1.0, func(): if G.boss: G.boss.visible = false)
-			rtf.call(1.2, func(): hud.visible = false; view.call(Vector3(-8, 9, 52), Vector3(0, 4, 0)))
-			rtf.call(1.8, shf.bind("ga_arena"))
-			rtf.call(1.9, func(): view.call(Vector3(14, 3, 14), Vector3(32, 12, -32)))
-			rtf.call(2.5, shf.bind("ga_trombetas"))
-			rtf.call(2.6, func(): view.call(Vector3(6, 2, 8), Vector3(-18, 6, -18)))
-			rtf.call(3.2, shf.bind("ga_plataforma"))
-			rtf.call(3.3, func(): view.call(Vector3(0, 60, 75), Vector3(0, 0, 0)))
-			rtf.call(3.9, shf.bind("ga_cima"))
-			rtf.call(4.0, func(): player.cam.make_current(); hud.visible = true; if G.boss: G.boss.visible = true)
-			rtf.call(6.0, func(): player.global_position = Vector3(0, 1.2, 30))
-			rtf.call(7.0, func(): if G.boss: G.boss._attack("beam"))
-			rtf.call(8.2, shf.bind("gabriel"))
-			rtf.call(10.0, func(): if G.boss: G.boss._end(false); G.boss._attack("orbs"))
-			rtf.call(11.6, shf.bind("gabriel2"))
-			rtf.call(12.5, func(): get_tree().quit())
+			var H: Vector3 = gabriel_arena.HALL
+			rtf.call(2.0, func(): hud.visible = false; view.call(H + Vector3(0, 3.4, 27), H + Vector3(0, 8, -14)))
+			rtf.call(2.2, func(): view.call(H + Vector3(0, 3.4, 27), H + Vector3(0, 8, -14)))
+			rtf.call(2.5, shf.bind("hall_1"))
+			rtf.call(2.6, func(): view.call(H + Vector3(-6, 2.4, 22), H + Vector3(0, 4.5, 11)))
+			rtf.call(3.1, shf.bind("hall_2"))
+			rtf.call(3.2, func(): view.call(H + Vector3(-3, 9.0, -7), H + Vector3(0, 10.5, -19)))
+			rtf.call(3.7, shf.bind("hall_3"))
+			rtf.call(3.8, func(): view.call(H + Vector3(0, 44, 44), H + Vector3(0, 0, 6)))
+			rtf.call(4.3, shf.bind("hall_cima"))
+			rtf.call(4.4, func(): player.cam.make_current(); hud.visible = true)
+			# sobe a escada andando até o portão
+			rtf.call(4.5, func(): player.global_position = H + Vector3(0, 7.8, -9))
+			rtf.call(6.5, func(): player.global_position = H + Vector3(0, 7.8, -19.5))
+			rtf.call(7.5, func(): print("HALL state=", gabriel_arena.hall_state, " level=", level, " boss=", G.boss != null))
+			rtf.call(8.0, func(): if G.boss: G.boss.visible = false)
+			rtf.call(8.2, func(): hud.visible = false; view.call(Vector3(-8, 9, 52), Vector3(0, 4, 0)))
+			rtf.call(8.8, shf.bind("ga_arena"))
+			rtf.call(8.9, func(): view.call(Vector3(0, 60, 75), Vector3(0, 0, 0)))
+			rtf.call(9.4, shf.bind("ga_cima"))
+			rtf.call(9.5, func(): player.cam.make_current(); hud.visible = true; if G.boss: G.boss.visible = true)
+			rtf.call(12.0, func(): player.global_position = Vector3(0, 1.2, 30))
+			rtf.call(13.0, func(): if G.boss: G.boss._attack("beam"))
+			rtf.call(14.2, shf.bind("gabriel"))
+			rtf.call(15.0, func(): print("GAB OK boss=", G.boss != null); get_tree().quit())
 		else:
 			rtf.call(6.0, func(): if G.boss: G.boss.global_position = Vector3(0, G.boss.BASE_Y, -10); player.global_position = Vector3(0, 1.2, 8))
 			rtf.call(6.1, func(): hud.visible = false)
@@ -1506,7 +1517,10 @@ func reset() -> void:
 	G.projs.clear()
 	G.clear_timers()
 	_set_level({"deus": "trono", "miguel": "miguel", "boss": "gabriel"}.get(G.mode, "arena"))
-	player.reset_at({"trono": Vector3(0, 2.3, 104), "miguel": Vector3(0, 2.3, 30), "gabriel": Vector3(0, 2.3, 30)}.get(level, Vector3(0, 2.3, 26)))
+	player.reset_at({"trono": Vector3(0, 2.3, 104), "miguel": Vector3(0, 2.3, 30), "gabriel": gabriel_arena.HALL + Vector3(0, 2.3, 40)}.get(level, Vector3(0, 2.3, 26)))
+	if level == "gabriel":
+		gabriel_arena.start_hall()
+		apply_env("gabriel_hall")
 	player.weapons.reset_ammo()
 	player.weapons.switch_to(G.loadout[0], true)
 	wave = 0
@@ -1522,7 +1536,7 @@ func reset() -> void:
 	if blood_scr: blood_scr.clear()
 	for c in feed_box.get_children(): c.queue_free()
 	if G.mode == "boss":
-		G.later(1.2, respawn_gabriel)
+		pass # Gabriel só aparece quando o jogador atravessa o portão da entrada (gabriel_enter)
 	elif G.mode == "miguel":
 		G.later(1.5, respawn_miguel)
 	elif G.mode == "deus":
@@ -1543,13 +1557,29 @@ func _set_level(l: String) -> void:
 	if trono: trono.reset_state()
 	if miguel_arena: miguel_arena.reset_state()
 	if gabriel_arena: gabriel_arena.reset_state()
-	var E: Dictionary = LEVEL_ENV[level]
+	apply_env(level)
+
+func apply_env(name: String) -> void:
+	var E: Dictionary = LEVEL_ENV[name]
 	for k in E:
 		if k != "sun": world_env.set(k, E[k])
 	world_sun.light_energy = E.sun
-	world_sun.light_color = {"arena": Color("ffe2c4"), "miguel": Color("c8b8ff"), "gabriel": Color("ffd9a8")}.get(level, Color("fff4e8"))
+	world_sun.light_color = {"arena": Color("ffe2c4"), "miguel": Color("c8b8ff"), "gabriel": Color("ffd9a8"), "gabriel_hall": Color("ff7a70")}.get(name, Color("fff4e8"))
 	# o Átrio das Trombetas tem céu de amanhecer de verdade (degradê), as outras arenas usam cor lisa
-	if level == "gabriel":
+	if name == "gabriel_hall":
+		if _hall_sky == null:
+			var hm = ProceduralSkyMaterial.new()
+			hm.sky_top_color = Color("1a0103")
+			hm.sky_horizon_color = Color("a8141a")
+			hm.sky_curve = .2
+			hm.ground_horizon_color = Color("6a1012")
+			hm.ground_bottom_color = Color("1a0203")
+			_hall_sky = Sky.new()
+			_hall_sky.sky_material = hm
+		world_env.sky = _hall_sky
+		world_env.background_mode = Environment.BG_SKY
+		world_env.fog_sky_affect = .4
+	elif name == "gabriel":
 		if _dawn_sky == null:
 			var sm = ProceduralSkyMaterial.new()
 			sm.sky_top_color = Color("2c2f6e")
@@ -1566,6 +1596,17 @@ func _set_level(l: String) -> void:
 	else:
 		world_env.background_mode = Environment.BG_COLOR
 		world_env.fog_sky_affect = 1.0
+
+## atravessou o portão da entrada: luz branca e o Átrio das Trombetas
+func gabriel_enter() -> void:
+	G.flash = 1.0
+	G.snd("angel", -2, .6)
+	apply_env("gabriel")
+	player.global_position = Vector3(0, 2.3, 34)
+	player.velocity = Vector3.ZERO
+	player.yaw = 0.0
+	banner("ÁTRIO DAS TROMBETAS", "O ARAUTO TE ESPERA")
+	G.later(1.6, respawn_gabriel)
 
 ## Deus já espera no alto do altar; a luta só começa depois da cutscene.
 func spawn_deus_cine() -> void:

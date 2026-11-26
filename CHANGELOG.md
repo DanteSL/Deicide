@@ -1,5 +1,14 @@
 # Histórico de mudanças
 
+## Entrada do Gabriel: o Pórtico da Balança
+
+- No modo **Gabriel** o jogador começa nas ruínas de uma entrada inspirada na arte enviada pelo autor:
+  mosaico circular rachado de sangue, balança dourada com águia e gema verde (os pratos balançam),
+  escadaria de 6 m com sangue escorrendo, dois blocos de mármore com faixas vermelhas, anjos ajoelhados de espada
+  diante de asas vermelhas, selos em ferradura com gemas verdes, braseiros de fogo verde, colunas caneladas
+  e um portão dourado em arco com luz do outro lado. Céu e neblina vermelhos.
+- O portão abre quando você chega no alto; ao atravessar, um clarão leva ao Átrio das Trombetas e Gabriel aparece.
+
 ## Arena do Gabriel: o Átrio das Trombetas
 
 - Nova arena só do Gabriel (`scripts/gabriel_arena.gd`), usada no modo **Gabriel**: praça octogonal de mármore acima das
