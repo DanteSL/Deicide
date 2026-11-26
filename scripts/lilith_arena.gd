@@ -48,9 +48,12 @@ void fragment(){
 }
 """
 
+## lava derretida (textura enviada pelo jogador): duas camadas correndo em direções diferentes,
+## distorcidas por ruído, com brilho pulsando; no Inferno fica mais quente e clara
 const LAVA_SHADER := """
 shader_type spatial;
 render_mode unshaded, fog_disabled;
+uniform sampler2D tex : source_color, filter_linear_mipmap, repeat_enable;
 uniform float time_s = 0.0;
 uniform float heat = 0.0;
 uniform float scale = 70.0;
@@ -58,15 +61,16 @@ uniform vec2 flow = vec2(.08, .05);
 float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float n(vec2 p){ vec2 i = floor(p); vec2 f = fract(p); f = f*f*(3.0-2.0*f);
 	return mix(mix(h(i), h(i+vec2(1,0)), f.x), mix(h(i+vec2(0,1)), h(i+vec2(1,1)), f.x), f.y); }
-float fbm(vec2 p){ float v = 0.0; float a = .5; for (int i = 0; i < 5; i++){ v += a * n(p); p *= 2.1; a *= .5; } return v; }
 void fragment(){
-	vec2 w = UV * scale;
-	float c = fbm(w * .5 + time_s * flow);
-	float c2 = fbm(w * 1.3 - vec2(time_s * .12, -time_s * .03) + c * 2.0);
-	float crust = smoothstep(.45, .7, c2);
-	vec3 hot = mix(vec3(1.0, .35, .02), vec3(1.0, .85, .3), smoothstep(.2, .0, abs(c - .5)) );
-	vec3 col = mix(hot * (1.0 + heat * .6), vec3(.1, .025, .02), clamp(crust * 1.2, 0.0, 1.0) * (1.0 - heat * .45));
-	ALBEDO = col;
+	vec2 uv = UV * scale * vec2(1.0, 2.0);
+	vec2 warp = vec2(n(uv * 1.3 + time_s * .15), n(uv * 1.3 - time_s * .12 + 7.0)) - .5;
+	vec3 a = texture(tex, uv + time_s * flow + warp * .12).rgb;
+	vec3 b = texture(tex, uv * .63 + vec2(.37, .11) - time_s * flow.yx * .7 - warp * .08).rgb;
+	vec3 c = mix(a, b, .4);
+	float lum = dot(c, vec3(.3, .55, .15));
+	float pulse = .9 + .1 * sin(time_s * 1.7 + uv.x * .3);
+	c = c * (1.15 + heat * .6) * pulse + vec3(1.0, .7, .3) * smoothstep(.55, .85, lum) * (.25 + heat * .5);
+	ALBEDO = c;
 }
 """
 
@@ -95,6 +99,9 @@ func _mats() -> void:
 	cracks_mat = StandardMaterial3D.new(); cracks_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; cracks_mat.albedo_color = Color(1, .35, .05)
 	sigil_mat = StandardMaterial3D.new(); sigil_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; sigil_mat.albedo_color = Color(1, .15, .05)
 	lava_mat = ShaderMaterial.new(); var sh = Shader.new(); sh.code = LAVA_SHADER; lava_mat.shader = sh
+	if ResourceLoader.exists("res://lilith/lava_mar.jpg"): lava_mat.set_shader_parameter("tex", load("res://lilith/lava_mar.jpg"))
+	lava_mat.set_shader_parameter("scale", 28.0)
+	lava_mat.set_shader_parameter("flow", Vector2(.025, .012))
 
 func _body(mi: Node3D, shape: Shape3D, pos: Vector3, rot := Vector3.ZERO) -> StaticBody3D:
 	var sb = StaticBody3D.new(); sb.collision_layer = 1; sb.collision_mask = 0
@@ -127,8 +134,8 @@ func build(_m: Node) -> void:
 	_mats()
 	var rng = RandomNumberGenerator.new(); rng.seed = 666
 	fall_mat = lava_mat.duplicate()
-	fall_mat.set_shader_parameter("scale", 6.0)
-	fall_mat.set_shader_parameter("flow", Vector2(0, -.9))
+	fall_mat.set_shader_parameter("scale", 1.5)
+	fall_mat.set_shader_parameter("flow", Vector2(0, -.35))
 	# ilha de rocha
 	if m_floor == null: m_floor = m_rock
 	_cyl(R, R + 2, 3.0, m_floor, Vector3(0, -1.5, 0), true, 14)

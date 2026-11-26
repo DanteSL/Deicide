@@ -2,6 +2,8 @@
 
 ## Chão de lava na arena da Lilith
 
+- O lago em volta da ilha (e as cachoeiras das paredes) usam a textura de lava derretida enviada pelo autor:
+  duas camadas correndo em direções diferentes, distorcidas por ruído, com brilho pulsando e mais quentes no Inferno.
 - O chão da ilha, os rochedos e a base do trono usam a textura de rocha de lava enviada pelo autor (tornada contínua para repetir sem emendas).
 - Um shader próprio faz as rachaduras vermelhas da textura brilharem e pulsarem; no Inferno elas ficam muito mais fortes.
 
