@@ -28,7 +28,7 @@ Um ranking de heresia (de Devoto a Supremo Sacrilégio) recompensa variar as arm
 | ![Gabriel](docs/img/gabriel.jpg) | ![Deus, segunda fase](docs/img/deus_fase2.jpg) |
 | **Gabriel**, o Arauto de Muitos Olhos | **Deus** na segunda fase: a arena inundada de sangue |
 | ![Ceifadora](docs/img/ceifadora.jpg) | ![Revólver](docs/img/revolver.jpg) |
-| A **Ceifadora**, com esqueleto animado por código | O revólver: gira, ricocheteia e recarrega bala por bala |
+| A **Ceifadora**, com esqueleto animado por código | A arma principal: gira, ricocheteia e recarrega |
 
 ## Como jogar
 

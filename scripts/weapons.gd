@@ -229,69 +229,47 @@ func _build() -> void:
 	glow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	glow_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	glow_mat.albedo_color = Color(0.25, 0.9, 1.0, 0)
-	# ---- revólver no estilo da escopeta: blocos grossos, armação vermelha, aço escuro, madeira e dourado ----
-	rev = rig(Vector3(0, -.01, -.005))
+	# ---- pistola (modelo enviado pelo jogador) no lugar do revólver: mesmo tiro, ricochete e giro ----
+	rev = rig(Vector3(0, .02, -.1))
 	var b: Node3D = rev.body
-	var redr = _mat("5a1e1e", .5, .5)
-	var steel2 = _mat("3c3f48", .4, .6)
-	var hole = G.unshaded(Color(.04, .04, .05))
-	rev.steel = redr
-	redr.emission_enabled = true
-	redr.emission = Color.BLACK
-	# cano grosso com trilho em cima e ponta dourada
-	cyl(.022, .022, .26, 10, dark, Vector3(0, .058, -.22), b)
-	cyl(.026, .026, .022, 10, gold, Vector3(0, .058, -.355), b)
-	cyl(.011, .011, .004, 8, hole, Vector3(0, .058, -.368), b)
-	mk(Vector3(.016, .014, .25), dark, Vector3(0, .083, -.22), b)
-	mk(Vector3(.008, .018, .016), gold, Vector3(0, .096, -.34), b)
-	mk(Vector3(.03, .026, .2), dark, Vector3(0, .028, -.21), b)
-	# armação vermelha (como a caixa da escopeta)
-	mk(Vector3(.05, .02, .13), redr, Vector3(0, .096, -.03), b)
-	mk(Vector3(.05, .026, .13), redr, Vector3(0, .002, -.03), b)
-	mk(Vector3(.05, .11, .026), redr, Vector3(0, .05, -.105), b)
-	mk(Vector3(.054, .12, .05), redr, Vector3(0, .045, .055), b)
-	mk(Vector3(.056, .012, .05), dark, Vector3(0, .1, .055), b)
-	mk(Vector3(.012, .03, .03), gold, Vector3(.028, .06, .05), b)
-	mk(Vector3(.012, .03, .03), gold, Vector3(-.028, .06, .05), b)
-	# tambor de aço com seis câmaras e sulcos
-	rev.drum_base = Vector3(0, .05, -.035)
-	rev.drum_open = Vector3(-.065, -.016, 0)
+	var p_metal = _mat("2e3139", .35, .75)
+	var p_black = _mat("141519", .55, .2)
+	var p_light = _mat("8f949d", .28, .85)
+	p_light.emission_enabled = true
+	p_light.emission = Color.BLACK
+	rev.steel = p_light
+	rev.pistol = true
+	var pist: Node3D = load("res://pistola/pistola.glb").instantiate()
+	b.add_child(pist)
+	for mi in _all_meshes(pist):
+		var mesh: Mesh = mi.mesh
+		for si in mesh.get_surface_count():
+			var sm = mesh.surface_get_material(si)
+			var nm = String(sm.resource_name) if sm else ""
+			mi.set_surface_override_material(si, p_light if nm.begins_with("Light") else (p_black if nm.begins_with("Black") else p_metal))
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if String(mi.name).begins_with("Ferrolho"): rev.slide = mi
+	if rev.has("slide"): rev.slide_base = rev.slide.position
+	# pente: fica escondido na empunhadura e cai/entra na recarga
+	rev.drum_base = Vector3(0, -.1, .07)
+	rev.drum_open = Vector3(0, -.15, .035)
 	rev.drum = Node3D.new()
 	rev.drum.position = rev.drum_base
+	rev.drum.rotation.x = -.25
 	b.add_child(rev.drum)
-	cyl(.041, .041, .095, 12, steel2, Vector3.ZERO, rev.drum)
-	cyl(.043, .043, .012, 12, dark, Vector3(0, 0, .045), rev.drum)
-	for k in 6:
-		var a = k / 6.0 * TAU
-		var a2 = a + TAU / 12.0
-		mk(Vector3(.01, .012, .07), dark, Vector3(cos(a2) * .039, sin(a2) * .039, 0), rev.drum, Vector3(0, 0, a2))
-		cyl(.0085, .0085, .004, 6, hole, Vector3(cos(a) * .024, sin(a) * .024, -.048), rev.drum)
-		cyl(.007, .007, .004, 6, gold, Vector3(cos(a) * .024, sin(a) * .024, .052), rev.drum)
-	cyl(.01, .01, .1, 8, gold, Vector3.ZERO, rev.drum)
-	# cão dourado
+	mk(Vector3(.03, .1, .045), p_black, Vector3(0, .005, 0), rev.drum)
+	mk(Vector3(.036, .012, .052), p_metal, Vector3(0, -.05, 0), rev.drum)
+	cyl(.006, .006, .03, 6, gold, Vector3(0, .058, -.008), rev.drum, Vector3(PI / 2, 0, 0))
 	rev.hammer = Node3D.new()
-	rev.hammer.position = Vector3(0, .1, .07)
 	b.add_child(rev.hammer)
-	mk(Vector3(.016, .036, .018), dark, Vector3(0, .014, .004), rev.hammer, Vector3(-.4, 0, 0))
-	mk(Vector3(.02, .01, .026), gold, Vector3(0, .033, .02), rev.hammer, Vector3(-.2, 0, 0))
-	# guarda-mato e gatilho
-	mk(Vector3(.014, .008, .08), dark, Vector3(0, -.04, -.005), b)
-	mk(Vector3(.014, .045, .008), dark, Vector3(0, -.02, -.045), b)
-	mk(Vector3(.014, .04, .008), dark, Vector3(0, -.024, .032), b, Vector3(-.25, 0, 0))
-	mk(Vector3(.008, .03, .01), gold, Vector3(0, -.014, -.005), b, Vector3(.3, 0, 0))
-	# cabo de madeira com placa escura na base (como a coronha da escopeta)
-	mk(Vector3(.046, .13, .06), wood, Vector3(0, -.055, .1), b, Vector3(-.38, 0, 0))
-	mk(Vector3(.05, .018, .066), dark, Vector3(0, -.12, .124), b, Vector3(-.38, 0, 0))
-	for sd in [-1, 1]:
-		cyl(.007, .007, .004, 8, gold, Vector3(sd * .025, -.045, .094), b, Vector3(0, 0, PI / 2))
 	rev.muzzle = Node3D.new()
-	rev.muzzle.position = Vector3(0, .058, -.37)
+	rev.muzzle.position = Vector3(0, .058, -.38)
 	b.add_child(rev.muzzle)
 	rev.fl = _flash_quad(.22, rev.muzzle)
-	mk(Vector3(.075, .07, .09), glove, Vector3(.005, -.06, .095), rev.root, Vector3(-.38, 0, 0))
-	mk(Vector3(.08, .08, .42), sleeve, Vector3(.025, -.15, .3), rev.root, Vector3(.45, 0, 0))
-	mk(Vector3(.084, .03, .05), gold, Vector3(.025, -.1, .13), rev.root, Vector3(.45, 0, 0))
-	rev.rest = Vector3(.2, -.16, -.5)
+	mk(Vector3(.075, .07, .09), glove, Vector3(.005, -.092, .078), rev.root, Vector3(-.3, 0, 0))
+	mk(Vector3(.08, .08, .42), sleeve, Vector3(.025, -.183, .285), rev.root, Vector3(.45, 0, 0))
+	mk(Vector3(.084, .03, .05), gold, Vector3(.025, -.133, .115), rev.root, Vector3(.45, 0, 0))
+	rev.rest = Vector3(.2, -.14, -.5)
 	rev.kz = .09; rev.kr = .5; rev.lr = .25
 	# ---- escopeta ----
 	sg = rig(Vector3(0, 0, -.12))
@@ -528,6 +506,7 @@ func fire_rev() -> void:
 	if r.wall: G.emit("spark", r.end, 6, 8, .08, .3)
 	G.tracer(muzzle_world(), r.end, .016, Color(1, .88, .6), .08)
 	cd = .36; recoil = 1; hammer = 1; drum_t += TAU / 6
+	_eject_casing()
 	muzzle_flash(rev)
 	G.shake = max(G.shake, .12)
 	G.snd("rev", -2, G.rnd(.96, 1.04))
@@ -535,6 +514,18 @@ func fire_rev() -> void:
 	rv_ammo -= 1
 	if rv_ammo <= 0:
 		G.later(.3, func(): if cur == 0 and rv_ammo <= 0: start_rev_reload())
+
+## cápsula saindo da janela de ejeção da pistola
+func _eject_casing() -> void:
+	if not rev.has("pistol"): return
+	var m = MeshInstance3D.new()
+	var cm = CylinderMesh.new()
+	cm.top_radius = .006; cm.bottom_radius = .006; cm.height = .022; cm.radial_segments = 6
+	m.mesh = cm
+	m.material_override = G.lit(Color("b88a30"), .3, .8)
+	root.add_child(m)
+	m.global_position = rev.body.to_global(Vector3(.012, .085, -.08))
+	vparts.append({"m": m, "v": Vector3(G.rnd(.5, .8), G.rnd(.4, .7), G.rnd(.05, .2)), "life": .7, "spin": G.rnd(-25, 25)})
 
 func bounces(ch: float) -> int:
 	return 1 + int(floor(ch * 7.999))
@@ -561,6 +552,7 @@ func fire_rico(ch: float) -> void:
 		G.snd("ping", -6)
 	_hop(start, n, visited, count, dmg, ch)
 	cd = .55; recoil = 1.6; hammer = 1; drum_t += TAU / 6
+	_eject_casing()
 	muzzle_flash(rev)
 	G.shake = max(G.shake, .5)
 	G.snd("big", 0, G.rnd(.9, .96))
@@ -683,6 +675,9 @@ func start_rev_reload() -> void:
 
 func _upd_rev_reload(dt: float) -> void:
 	if not rv_reloading: return
+	if rev.has("pistol"):
+		_upd_pistol_reload(dt)
+		return
 	rv_t += dt
 	var t = rv_t
 	var n = rv_max
@@ -709,6 +704,32 @@ func _upd_rev_reload(dt: float) -> void:
 	if rv_ev == 2 + n and t >= tc:
 		rv_ev += 1; G.snd("latch", -6)
 	if t >= tc + .1:
+		rv_reloading = false
+		rv_ammo = rv_max
+		start_spin(2, .5, "x")
+		cd = .15
+
+## recarga da pistola: solta o pente, ele cai, entra um novo e o ferrolho é puxado
+func _upd_pistol_reload(dt: float) -> void:
+	rv_t += dt
+	var t = rv_t
+	if rv_ev == 0 and t >= .18:
+		rv_ev = 1
+		G.snd("latch", -6)
+		# o pente vazio cai
+		var mag = rev.drum.duplicate()
+		root.add_child(mag)
+		mag.global_transform = rev.drum.global_transform
+		vparts.append({"m": mag, "v": Vector3(G.rnd(-.05, .05), -.4, .1), "life": .8, "spin": G.rnd(-6, 6)})
+	if rv_ev == 1 and t >= .62:
+		rv_ev = 2
+		G.snd("latch", -4, 1.15)
+		rv_ammo = rv_max
+	if rv_ev == 2 and t >= .78:
+		rv_ev = 3
+		hammer = 1.0
+		G.snd("pump", -8, 1.5)
+	if t >= .95:
 		rv_reloading = false
 		rv_ammo = rv_max
 		start_spin(2, .5, "x")
@@ -845,7 +866,13 @@ func _process(dt: float) -> void:
 		rb += ((1.0 if rv_reloading else 0.0) - rb) * (1.0 - exp(-12 * dt))
 		var tcl = .42 + rv_max * .09 - .07
 		var open = 0.0
-		if rv_reloading:
+		if rv_reloading and rev.has("pistol"):
+			# pente some para baixo (já caiu) e um novo sobe até encaixar
+			if rv_t < .18: open = 0.0
+			elif rv_t < .4: open = 1.0
+			elif rv_t < .62: open = 1.0 - ease_out((rv_t - .4) / .22)
+			else: open = 0.0
+		elif rv_reloading:
 			if rv_t < .3: open = ease_out(min(1.0, rv_t / .28))
 			elif rv_t < tcl: open = 1.0
 			else: open = 1.0 - clamp((rv_t - tcl) / .12, 0.0, 1.0)
@@ -856,7 +883,11 @@ func _process(dt: float) -> void:
 		rev.pivot.rotation = Vector3(c_ang if charging else ang, 0, 0)
 		rev.hammer.rotation.x = .6 * (1 - hammer)
 		drum_a += (drum_t - drum_a) * (1.0 - exp(-25 * dt))
-		rev.drum.rotation.z = drum_a
+		if rev.has("pistol"):
+			rev.drum.visible = rv_reloading and rv_t >= .18
+			if rev.has("slide"): rev.slide.position = rev.slide_base + Vector3(0, 0, .05 * hammer)
+		else:
+			rev.drum.rotation.z = drum_a
 		glow_mat.albedo_color.a = charge if charging else 0.0
 		if charging:
 			w.root.position += Vector3(G.rnd(-1, 1), G.rnd(-1, 1), 0) * .003 * charge

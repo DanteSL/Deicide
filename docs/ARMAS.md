@@ -6,7 +6,7 @@ Cada arma tem **3 melhorias** que podem ser ligadas e desligadas à vontade. Tud
 
 | # | Arma | Clique esquerdo | Clique direito |
 |---|---|---|---|
-| 1 | **Revólver** | Tiro preciso, 6 balas. Tiro na cabeça dá dano dobrado. | **Segure** para girar a arma e carregar o ricochete: quanto mais tempo, em mais inimigos a bala quica. |
+| 1 | **Pistola** | Tiro preciso, 6 balas. Tiro na cabeça dá dano dobrado. | **Segure** para girar a arma e carregar o ricochete: quanto mais tempo, em mais inimigos a bala quica. |
 | 2 | **Escopeta** | Leque de chumbo, a arma gira a cada tiro. 6 cartuchos. | **Rajada dupla**: gasta dois cartuchos e o coice te empurra (mire no chão para voar). |
 | 3 | **Espadas aladas** | Arremessa uma das 4 espadas, que voltam sozinhas. Destroem projéteis no caminho. | **Tempestade**: as 4 espadas voam teleguiadas nos inimigos visíveis. Com espadas fora, chama todas de volta. |
 | 4 | **Lança-foguetes** | Foguete explosivo; perto de você, te arremessa (salto-foguete). | **Segure** para guiar o míssil pela mira; soltar detona. |
@@ -17,7 +17,7 @@ Cada arma tem **3 melhorias** que podem ser ligadas e desligadas à vontade. Tud
 
 Além das armas:
 
-- **R** gira a arma (inspeção) e recarrega revólver e escopeta.
+- **R** gira a arma (inspeção) e recarrega pistola e escopeta.
 - **F** é o soco: aparar um projétil laranja no momento certo congela o tempo por um instante e devolve o
   projétil muito mais forte, com uma explosão.
 
@@ -25,7 +25,7 @@ Além das armas:
 
 | Arma | Melhoria | Efeito |
 |---|---|---|
-| Revólver | Tambor estendido | 8 balas em vez de 6 |
+| Pistola | Pente estendido | 8 balas em vez de 6 |
 | | Ricochete rápido | Carrega o ricochete na metade do tempo |
 | | Bala perfurante | O tiro normal atravessa inimigos |
 | Escopeta | Cartuchos incendiários | Inimigos atingidos queimam por 3 s |

@@ -1,5 +1,10 @@
 # Histórico de mudanças
 
+## Pistola
+
+- A arma 1 agora é uma **pistola** (modelo enviado pelo autor): ferrolho que recua a cada tiro e ejeta cápsulas,
+  recarga trocando o pente e puxando o ferrolho. Continua girando e carregando o ricochete.
+
 ## Mortes explosivas
 
 - Todo inimigo comum explode em pedaços ao morrer, de qualquer jeito: as peças do corpo voam, giram, quicam e deixam

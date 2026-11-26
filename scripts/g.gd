@@ -391,7 +391,7 @@ func blast(q: Vector3, k := 1.0, src := "parry") -> void:
 
 # ---------------- arsenal: armas, melhorias e equipamento ----------------
 const WEAP := [
-	{"id": "rev", "name": "REVÓLVER", "short": "REV", "desc": "6 balas. Direito (segurar): gira a arma e carrega o ricochete entre inimigos."},
+	{"id": "rev", "name": "PISTOLA", "short": "PIS", "desc": "6 balas. Direito (segurar): gira a arma e carrega o ricochete entre inimigos."},
 	{"id": "sg", "name": "ESCOPETA", "short": "ESC", "desc": "6 cartuchos, gira a cada tiro. Direito: rajada dupla (coice que te empurra — mire no chão para voar)."},
 	{"id": "sword", "name": "ESPADAS ALADAS", "short": "ESP", "desc": "4 espadas sobre as mãos. Clique arremessa uma; direito: tempestade teleguiada (com espadas fora, chama de volta)."},
 	{"id": "rocket", "name": "LANÇA-FOGUETES", "short": "FOG", "desc": "Foguete explosivo; perto de você, te arremessa. Direito: míssil guiado pela mira enquanto segura, soltar detona."},
@@ -400,7 +400,7 @@ const WEAP := [
 	{"id": "harp", "name": "ARPÃO", "short": "ARP", "desc": "Arpão com cabo que fisga inimigos. Direito: gancho, te puxa até a parede ou o inimigo."},
 	{"id": "gren", "name": "LANÇA-GRANADAS", "short": "GRA", "desc": "Granadas que quicam e explodem no pavio ou ao tocar um inimigo. Direito: detona todas."}]
 const UPG := {
-	"rev": [["ext", "Tambor estendido", "8 balas em vez de 6."], ["fast", "Ricochete rápido", "Carrega o ricochete na metade do tempo."], ["pierce", "Bala perfurante", "O tiro normal atravessa inimigos."]],
+	"rev": [["ext", "Pente estendido", "8 balas em vez de 6."], ["fast", "Ricochete rápido", "Carrega o ricochete na metade do tempo."], ["pierce", "Bala perfurante", "O tiro normal atravessa inimigos."]],
 	"sg": [["fire", "Cartuchos incendiários", "O chumbo põe fogo: inimigos queimam por 3 s."], ["drum", "Carregador de tambor", "10 cartuchos."], ["fast", "Bombeamento rápido", "Atira e recarrega bem mais rápido."]],
 	"sword": [["boom", "Lâminas explosivas", "Explodem no primeiro inimigo que atingem."], ["fast", "Asas velozes", "Voam e voltam muito mais rápido."], ["heal", "Lâminas sagradas", "Cada acerto cura 6 de vida."]],
 	"rocket": [["fast", "Recarga automática", "Recarrega na metade do tempo."], ["frag", "Fragmentação", "A explosão espalha estilhaços incandescentes."], ["jump", "Salto potente", "Salto-foguete 50% mais forte."]],
