@@ -181,6 +181,54 @@ void fragment() {
 }
 """
 
+## globo ocular de verdade: íris tirada do olho do próprio Azazel, esclera úmida com veias,
+## brilho molhado; acende antes de disparar e fica injetado de sangue na segunda fase
+const EYEBALL_SHADER := """
+shader_type spatial;
+uniform sampler2D iris_tex : source_color, filter_linear_mipmap, repeat_disable;
+uniform float glow = 0.0;
+uniform vec3 glow_col = vec3(.5, .85, 1.0);
+uniform float blood = 0.0;
+varying vec3 n;
+float h21(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float vn(vec2 p) {
+	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y);
+}
+void vertex() { n = normalize(VERTEX); }
+void fragment() {
+	// frente do olho = -Z (para onde o look_at aponta)
+	float fz = -n.z;
+	vec2 q = vec2(-n.x, n.y);
+	// esclera: branco-amarelado com veias finas que ficam vermelhas no sangue
+	float ang = atan(q.y, q.x);
+	float vein = smoothstep(.72, .95, vn(vec2(ang * 6.0, fz * 9.0)) * vn(vec2(ang * 17.0, fz * 23.0)) * 1.8);
+	vein *= smoothstep(.95, .3, fz);
+	vec3 col = mix(vec3(.88, .84, .78), vec3(.93, .9, .86), vn(q * 8.0));
+	col = mix(col, vec3(.65, .08, .06), vein * (.45 + blood * .5));
+	col = mix(col, vec3(.75, .2, .18), blood * .35 * (1.0 - fz));
+	// íris: textura do olho do Azazel projetada na frente
+	float ri = .46;
+	vec2 uv = q / (ri * 2.0 * .786) + .5;
+	vec4 ir = texture(iris_tex, uv);
+	float in_i = ir.a * step(0.0, fz) * step(length(q), ri * 1.05);
+	vec3 irc = mix(ir.rgb, ir.rgb * vec3(.55, .8, 1.0), .5) * .75;
+	irc = mix(irc, vec3(.45, .05, .04), blood * .5);
+	col = mix(col, irc, in_i);
+	// sombra suave na borda da íris (limbo)
+	float rr = length(q) / ri;
+	col *= 1.0 - smoothstep(.85, 1.0, rr) * (1.0 - smoothstep(1.0, 1.15, rr)) * .7;
+	col = mix(col, vec3(.01), (1.0 - smoothstep(.33, .38, rr)) * step(0.0, fz));
+	ALBEDO = col;
+	ROUGHNESS = .06;
+	SPECULAR = .9;
+	CLEARCOAT = 1.0;
+	CLEARCOAT_ROUGHNESS = .05;
+	float pup = 1.0 - smoothstep(.28, .36, rr);
+	EMISSION = glow_col * glow * in_i * (1.2 + pup * 2.0);
+}
+"""
+
 func _mats() -> void:
 	m_floor = ShaderMaterial.new(); var fs = Shader.new(); fs.code = FLOOR_SHADER; m_floor.shader = fs
 	m_stone = StandardMaterial3D.new()
@@ -265,12 +313,10 @@ func build(_m: Node) -> void:
 		for k in 3:
 			var tm = TorusMesh.new(); tm.inner_radius = 1.5 - k * .15; tm.outer_radius = 1.9 - k * .15; tm.rings = 16; tm.ring_segments = 6
 			_mesh(tm, m_copper, c + Vector3(0, 4 + k * hgt * .3, 0))
-		# olho de pedra virado para o centro
-		var eh = c + Vector3(0, hgt * .62, 0) - dir * 1.5
-		var ep = QuadMesh.new(); ep.size = Vector2(3.2, 3.2)
-		var em: ShaderMaterial = m_eye.duplicate()
-		var eye = _mesh(ep, em, eh)
-		eye.rotation.y = atan2(-dir.x, -dir.z)
+		# olho de verdade numa órbita de pedra, virado para o centro (depois segue o jogador)
+		var eh = c + Vector3(0, hgt * .62, 0) - dir * 1.35
+		var rig = _eyeball(eh, dir)
+		var em: ShaderMaterial = rig.mat
 		# coroa: pontas de cobre
 		var top = c + Vector3(0, 1.6 + hgt, 0)
 		for k in 5:
@@ -278,7 +324,7 @@ func build(_m: Node) -> void:
 			var sp = _cyl(0, .25, 3.2, m_copper, top + Vector3(cos(ka) * .8, 1.2, sin(ka) * .8), false, 5)
 			sp.rotation = Vector3(sin(ka) * .25, 0, -cos(ka) * .25)
 		_cyl(.05, .3, 6, m_copper, top + Vector3(0, 3, 0), false, 5)
-		spires.append({"top": top + Vector3(0, 6, 0), "eyep": eh, "eye": em, "blink": rng.randf_range(1, 6), "ph": rng.randf() * 10})
+		spires.append({"top": top + Vector3(0, 6, 0), "eyep": eh, "eye": em, "ball": rig.ball, "lt": rig.lt, "lb": rig.lb, "cd": rng.randf_range(4, 12), "charge": -1.0, "aim": Vector3.ZERO, "blink": rng.randf_range(1, 6), "ph": rng.randf() * 10})
 	# --- pilares quebrados e escombros ---
 	for i in 10:
 		var a = rng.randf() * TAU; var d = rng.randf_range(20, R - 12)
@@ -330,6 +376,31 @@ func build(_m: Node) -> void:
 	flash_l.position = Vector3(0, 60, 0); add_child(flash_l)
 
 var _orig_c2: ShaderMaterial
+var _eye_sh: Shader
+var _iris: Texture2D
+
+## órbita de pedra com pálpebras de carne petrificada + globo ocular que gira
+func _eyeball(p: Vector3, dir: Vector3) -> Dictionary:
+	if _eye_sh == null:
+		_eye_sh = Shader.new(); _eye_sh.code = EYEBALL_SHADER
+		_iris = load("res://azazel/iris.png") if ResourceLoader.exists("res://azazel/iris.png") else null
+	var R0 = 1.05
+	var socket = Node3D.new(); socket.position = p; add_child(socket)
+	socket.basis = Basis.looking_at(-dir, Vector3.UP)   # frente (-Z) aponta para o centro
+	# moldura: anel de pedra em amêndoa
+	var tm = TorusMesh.new(); tm.inner_radius = R0 * 1.02; tm.outer_radius = R0 * 1.45; tm.rings = 32; tm.ring_segments = 10
+	var fr = _mesh(tm, m_stone, Vector3(0, 0, -.25), Vector3(PI / 2, 0, 0), socket); fr.scale = Vector3(1.25, 1, .85)
+	var ball = Node3D.new(); socket.add_child(ball)
+	var sm = SphereMesh.new(); sm.radius = R0; sm.height = R0 * 2; sm.radial_segments = 32; sm.rings = 16
+	var mat = ShaderMaterial.new(); mat.shader = _eye_sh; mat.set_shader_parameter("iris_tex", _iris)
+	_mesh(sm, mat, Vector3.ZERO, Vector3.ZERO, ball)
+	# pálpebras: duas meias-esferas de pele/pedra que fecham por cima e por baixo
+	var lid_m = StandardMaterial3D.new(); lid_m.albedo_color = Color(.42, .38, .37); lid_m.roughness = .55
+	lid_m.normal_enabled = true; lid_m.normal_texture = m_stone.normal_texture; lid_m.normal_scale = .5
+	var hs = SphereMesh.new(); hs.radius = R0 * 1.08; hs.height = R0 * 1.08; hs.is_hemisphere = true; hs.radial_segments = 24; hs.rings = 8
+	var lt = Node3D.new(); socket.add_child(lt); _mesh(hs, lid_m, Vector3.ZERO, Vector3.ZERO, lt)
+	var lb = Node3D.new(); socket.add_child(lb); _mesh(hs, lid_m, Vector3.ZERO, Vector3(PI, 0, 0), lb)
+	return {"ball": ball, "lt": lt, "lb": lb, "mat": mat}
 
 func reset_state() -> void:
 	set_phase2(0.0)
@@ -352,8 +423,8 @@ func set_phase2(k: float) -> void:
 	m_copper.emission = Color("0c2a24").lerp(Color("4a0402"), k)
 	m_rune.albedo_color = Color(.4, .85, 1.0).lerp(Color(1, .1, .05), k)
 	for s in spires:
-		s.eye.set_shader_parameter("glow", Vector3(.4, .85, 1.0).lerp(Vector3(1, .1, .05), k))
-		s.eye.set_shader_parameter("cry", k)
+		s.eye.set_shader_parameter("glow_col", Vector3(.5, .85, 1.0).lerp(Vector3(1, .1, .05), k))
+		s.eye.set_shader_parameter("blood", k)
 	for l in lights: l.light_color = Color(.55, .7, 1.0).lerp(Color(1, .3, .25), k)
 	flash_l.light_color = Color(.75, .85, 1.0).lerp(Color(1, .25, .15), k)
 
@@ -371,7 +442,7 @@ func bleed() -> void:
 		var dm = SphereMesh.new(); dm.radius = .09; dm.height = .3; dm.radial_segments = 5; dm.rings = 3
 		var mm = StandardMaterial3D.new(); mm.albedo_color = Color(.5, 0, .03); mm.roughness = .1
 		dm.material = mm; pt.mesh = dm
-		pt.position = s.eyep + Vector3(0, -.9, 0)
+		pt.position = s.eyep + Vector3(0, -1.1, 0) - Vector3(s.eyep.x, 0, s.eyep.z).normalized() * .9
 		add_child(pt)
 		tears.append(pt)
 
@@ -427,14 +498,63 @@ func _process(dt: float) -> void:
 	for r in rocks:
 		r.n.position.y = r.y0 + sin(t * r.spd + r.ph) * 1.5
 		r.n.rotation.y += dt * .02
+	var fight: bool = M != null and M.level == "azazel" and G.state == "play" and G.boss != null and is_instance_valid(G.boss) and G.boss.get("kind") == "azazel" and G.player != null
+	var shooters := 0
+	for s in spires:
+		if s.charge >= 0: shooters += 1
 	for s in spires:
 		s.blink -= dt
 		var bl = 0.0
 		if s.blink < 0:
 			bl = sin(clamp(-s.blink / .22, 0.0, 1.0) * PI)
 			if s.blink < -.22: s.blink = randf_range(2.0, 7.0)
-		s.eye.set_shader_parameter("blink", bl)
-		s.eye.set_shader_parameter("time_s", t + s.ph)
+		if s.charge >= 0: bl = 0.0
+		# pálpebras: abertas ~55° para cima e para baixo; fechando no piscar
+		var op = lerp(1.05, 0.0, bl)
+		s.lt.rotation.x = op
+		s.lb.rotation.x = -op
+		# o olho encara o jogador durante a luta (com limite dentro da órbita); fora dela, passeia
+		var ball: Node3D = s.ball
+		var want: Basis
+		if fight:
+			var tgt: Vector3 = G.player.global_position + Vector3(0, 1.4, 0)
+			var lt = ball.get_parent().global_transform.affine_inverse() * tgt
+			var dirl = lt.normalized()
+			if dirl.z > -.25: dirl = (dirl + Vector3(0, 0, -.6)).normalized()
+			want = Basis.looking_at(dirl, Vector3.UP)
+		else:
+			want = Basis.from_euler(Vector3(sin(t * .7 + s.ph) * .3, sin(t * .5 + s.ph * 2.0) * .5, 0))
+		ball.basis = ball.basis.slerp(want, 1.0 - exp(-6.0 * dt)).orthonormalized()
+		# dispara um raiozinho de vez em quando para atrapalhar
+		var glow := 0.0
+		if fight:
+			if s.charge < 0:
+				s.cd -= dt
+				if s.cd <= 0 and shooters < (2 if phase2 > .5 else 1):
+					s.charge = 0.0; shooters += 1
+					G.snd("charge", -14, 1.6)
+			else:
+				s.charge += dt
+				glow = clamp(s.charge / .9, 0.0, 1.0)
+				if s.charge < .75: s.aim = G.player.global_position + Vector3(0, .9, 0)
+				var eyep: Vector3 = ball.global_position + (ball.global_transform.basis * Vector3(0, 0, -1.05))
+				if s.charge > .3 and randf() < dt * 20: G.tracer(eyep, s.aim, .03, Color(.6, .85, 1.0, .35).lerp(Color(1, .2, .1, .35), phase2), .04)
+				if s.charge >= .95:
+					s.charge = -1.0
+					s.cd = randf_range(7.0, 13.0) * (.65 if phase2 > .5 else 1.0)
+					var col = Color(.75, .85, 1.0).lerp(Color(1, .2, .1), phase2)
+					var end: Vector3 = eyep + (s.aim - eyep).normalized() * (eyep.distance_to(s.aim) + 4.0)
+					bolt(eyep, end, col, .7, .14, 1)
+					G.snd("raio", -12, randf_range(1.3, 1.6))
+					G.emit("spark", s.aim, 10, 8, .1, .4)
+					var pc: Vector3 = G.player.global_position + Vector3(0, .9, 0)
+					var ab = end - eyep
+					var tt = clamp((pc - eyep).dot(ab) / ab.length_squared(), 0.0, 1.0)
+					if pc.distance_to(eyep + ab * tt) < 1.3:
+						if G.hurt_player(8.0 if phase2 < .5 else 11.0): G.player.velocity += ab.normalized() * 6 + Vector3(0, 3, 0)
+		else:
+			s.charge = -1.0
+		s.eye.set_shader_parameter("glow", glow)
 	# relâmpagos ao longe
 	if M and M.level == "azazel":
 		sky_bolt_cd -= dt

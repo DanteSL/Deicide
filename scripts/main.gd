@@ -830,6 +830,13 @@ func _autotest(m: String) -> void:
 		for k in 40: rta.call(k * .5, keep)
 		rta.call(2.0, func(): look.call(Vector3(0, 1.3, 30), Vector3(0, 12, -18)))
 		rta.call(3.0, sha.bind("0_chegada"))
+		var a0 = PI / 8
+		var dir0 = Vector3(cos(a0), 0, sin(a0))
+		var eye0 = dir0 * (44.0 - 6.5) + Vector3(0, 22.0 * .62, 0) - dir0 * 1.35
+		rta.call(5.5, func(): look.call(eye0 - dir0 * 5.5 + Vector3(-1.5, -1.9, 0), eye0))
+		rta.call(5.8, func(): player.frozen = true)
+		rta.call(6.2, sha.bind("torre"))
+		rta.call(6.3, func(): player.frozen = false)
 		var atks = ["strike", "gaze", "sweep", "nova", "cage", "eyes"]
 		for i in atks.size():
 			var k = atks[i]
@@ -852,7 +859,12 @@ func _autotest(m: String) -> void:
 		rta.call(34.6, sha.bind("4_chora"))
 		rta.call(34.7, func(): look.call(Vector3(-20, 1.3, 25), Vector3(10, 3, -10)))
 		rta.call(35.4, sha.bind("5_arena2"))
-		rta.call(35.5, func(): if G.boss: G.boss._attack("strike"); look.call(Vector3(6, 1.3, 16), Vector3(0, 4, -6)))
+		rta.call(35.45, func(): look.call(eye0 - dir0 * 5.5 + Vector3(-1.5, -1.9, 0), eye0))
+		rta.call(35.6, func(): player.frozen = true)
+		rta.call(35.48, func(): azazel_arena.spires[0].cd = 0.0)
+		rta.call(36.0, sha.bind("torre2"))
+		rta.call(36.05, func(): player.frozen = false)
+		rta.call(36.1, func(): if G.boss: G.boss._attack("strike"); look.call(Vector3(6, 1.3, 16), Vector3(0, 4, -6)))
 		rta.call(36.8, sha.bind("6_raio2"))
 		rta.call(37.0, func(): print("AZAZEL OK ph2=", G.boss.ph2 if G.boss else null, " hp=", G.boss.hp if G.boss else 0); get_tree().quit())
 		return

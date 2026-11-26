@@ -382,7 +382,6 @@ func _anim(dt: float) -> void:
 		m.set_shader_parameter("time_s", phase)
 	model.position.y = sin(phase * 1.1) * .5 + A.rise - s * .25 * A.flap
 	model.rotation = Vector3(A.lean - flinch * .2 + sin(phase * .7) * .03, 0, sin(phase * .5) * .04 + flinch * G.rnd(-.05, .05))
-	halo.rotation.z += dt * (.4 + A.glow * 2.0)
 	halo.scale = Vector3.ONE * (3.2 + sin(phase * 3.0) * .08 + A.glow * .5)
 	var c = _col()
 	halo_mat.albedo_color = Color(c.r, c.g, c.b, .35 + A.glow * .4 + sin(phase * 17.0) * .08)

@@ -1,5 +1,14 @@
 # Histórico de mudanças
 
+## Azazel: olhos de verdade nas torres e auréola parada
+
+- Os olhos das torres eram um quadrado com um olho desenhado. Agora são globos oculares 3D numa órbita de pedra:
+  íris tirada do olho do próprio Azazel, esclera úmida com veias, brilho molhado e pálpebras que piscam.
+- Durante a luta todos os olhos giram e ficam encarando o jogador.
+- De tempos em tempos um olho brilha, mira (traço fino) e dispara um raio em você (dois ao mesmo tempo na segunda fase).
+- Na segunda fase os olhos ficam injetados de sangue, vermelhos, e choram sangue pela torre.
+- A auréola azul atrás do Azazel ficou parada (antes girava).
+
 ## Novo chefe: AZAZEL, o Vigia da Tempestade
 
 - Um olho gigante cercado de asas cobertas de olhos, sob uma coroa de anéis (6200 de vida, novo modo no menu).
