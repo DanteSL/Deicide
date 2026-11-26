@@ -1,5 +1,17 @@
 # Histórico de mudanças
 
+## Portão do céu e Gabriel corrompido
+
+- Portão novo na entrada do Gabriel, inspirado nos portões do céu: pares de colunas brancas caneladas com capitéis
+  coríntios dourados, entablamentos com friso de ouro, arco duplo dourado com brasão radiante e coroa, folhas de grade
+  em forma de harpa com arabescos, anjos no topo das colunas, dois anjos voando e nuvens na base.
+- O portão agora é aberto (sem parede atrás): pelo vão dá para ver o Átrio das Trombetas lá no fundo, ligado por uma
+  ponte de mármore e nuvens. A entrada foi aproximada da arena e a névoa ficou mais longa.
+- Átrio das Trombetas angelical: céu azul claro, mármore branco, ouro, feixes de luz descendo e estátuas de anjo nas plataformas.
+- Na metade da vida o Gabriel se corrompe (fica cor de sangue, olhos vermelhos) e o céu vira inferno: mármore cor de sangue,
+  ouro escurecido, nuvens e céu vermelhos, fogo saindo das trombetas, chuva de sangue, poças de sangue se espalhando,
+  sangue escorrendo das plataformas e corpos de anjos caídos jogados pela arena. Ao renascer, a arena volta a ser celestial.
+
 ## Entrada do Gabriel: degraus da praça, anjos chorando sangue
 
 - Os três degraus da chegada (entre os braseiros verdes) também ganharam rampa de colisão: dá para subir andando.

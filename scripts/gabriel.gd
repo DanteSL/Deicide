@@ -515,7 +515,12 @@ func _run_attack(dt: float) -> void:
 			G.shake = max(G.shake, .15)
 			if G.rng.randf() < dt * 25: G.emit("white", global_position + Vector3(G.rnd(-8, 8), G.rnd(-10, 10), 0), 3, 6, .25, .8, Vector3(0, 8, 0), -4)
 			if _once("burst", 1.7):
-				gcol = GCOL2
+				# Gabriel corrompido: fica cor de sangue e o céu vira inferno
+				gcol = Color(1.0, .3, .26)
+				glow_mat.albedo_color = Color(1, .2, .1, .5)
+				eye_col = Color(1, .1, .05)
+				G.main.banner("GABRIEL CORROMPIDO", "O CÉU SANGRA")
+				if G.main.gabriel_arena: G.main.gabriel_arena.corrupt()
 				T.ringsz = 1.35; T.fold = 0.0; T.flap = 1.8; RATE.fold = 14.0
 				G.flash = 1.0; G.shake = max(G.shake, 1.2)
 				G.snd("boom", 0, .7); G.snd("flapbig", 0, .8); _flap_snd(1.5)

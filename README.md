@@ -67,6 +67,10 @@ Um ranking de heresia (de Devoto a Supremo Sacrilégio) recompensa variar as arm
 | A **Ceifadora**, com esqueleto animado por código | O menu principal |
 | ![Pausa](docs/img/pausa.jpg) | ![Anjo Caído](docs/img/anjo_caido.jpg) |
 | O menu de pausa, com o jogo borrado ao fundo | O **Anjo Caído** saltando com o cajado |
+| ![Portão](docs/img/portao_ceu.jpg) | ![Gabriel no céu](docs/img/gabriel_ceu.jpg) |
+| O portão do céu na entrada do Gabriel | O Átrio das Trombetas angelical |
+| ![Gabriel corrompido](docs/img/gabriel_inferno.jpg) | |
+| Na metade da vida o Gabriel se corrompe e o céu vira inferno | |
 
 ## Como jogar
 

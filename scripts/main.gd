@@ -27,11 +27,13 @@ var gabriel_arena: Node3D
 var lilith_arena: Node3D
 var _dawn_sky: Sky
 var _hall_sky: Sky
+var _hell_sky: Sky
 var level := "arena"
 const LEVEL_ENV := {
 	"arena": {"background_color": Color("2b0b0e"), "fog_light_color": Color("2b0b0e"), "ambient_light_color": Color("d0a088"), "ambient_light_energy": .75, "fog_depth_begin": 28.0, "fog_depth_end": 125.0, "sun": .8},
-	"gabriel_hall": {"background_color": Color("2a0608"), "fog_light_color": Color("6a0c10"), "ambient_light_color": Color("ff9a94"), "ambient_light_energy": .45, "fog_depth_begin": 40.0, "fog_depth_end": 140.0, "sun": .3},
-	"gabriel": {"background_color": Color("c86a4a"), "fog_light_color": Color("d88a5e"), "ambient_light_color": Color("ffc8a0"), "ambient_light_energy": .32, "fog_depth_begin": 90.0, "fog_depth_end": 330.0, "sun": .7},
+	"gabriel_hall": {"background_color": Color("2a0608"), "fog_light_color": Color("8a3a30"), "ambient_light_color": Color("ffb0a4"), "ambient_light_energy": .5, "fog_depth_begin": 70.0, "fog_depth_end": 340.0, "sun": .4},
+	"gabriel_inferno": {"background_color": Color("1a0202"), "fog_light_color": Color("5a0806"), "ambient_light_color": Color("ff6a50"), "ambient_light_energy": .5, "fog_depth_begin": 50.0, "fog_depth_end": 260.0, "sun": .45},
+	"gabriel": {"background_color": Color("cfe0f5"), "fog_light_color": Color("efe6f2"), "ambient_light_color": Color("fff4e6"), "ambient_light_energy": .5, "fog_depth_begin": 110.0, "fog_depth_end": 420.0, "sun": .85},
 	"lilith": {"background_color": Color("0e0303"), "fog_light_color": Color("2a0804"), "ambient_light_color": Color("8a6a78"), "ambient_light_energy": .45, "fog_depth_begin": 45.0, "fog_depth_end": 200.0, "sun": .25},
 	"miguel": {"background_color": Color("0a0610"), "fog_light_color": Color("1a0c22"), "ambient_light_color": Color("b8a8d0"), "ambient_light_energy": .6, "fog_depth_begin": 40.0, "fog_depth_end": 230.0, "sun": .5},
 	"trono": {"background_color": Color("160205"), "fog_light_color": Color("2a0a0c"), "ambient_light_color": Color("e8d2c0"), "ambient_light_energy": .55, "fog_depth_begin": 50.0, "fog_depth_end": 190.0, "sun": .55},
@@ -807,6 +809,32 @@ func _autotest(m: String) -> void:
 		rth.call(2.0, func(): player.global_position = Vector3(0, 1.2, 10); player.yaw = 0.0; player.pitch = .18)
 		rth.call(2.6, func(): get_viewport().get_texture().get_image().save_png("/tmp/halo_longe.png"))
 		rth.call(6.0, func(): get_tree().quit())
+		return
+	if m == "portao":
+		var rtp = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+		var shp = func(nm): get_viewport().get_texture().get_image().save_png("/tmp/po_%s.png" % nm)
+		start_mode("boss")
+		var H: Vector3 = gabriel_arena.HALL
+		var look = func(pos, at):
+			player.global_position = pos; player.velocity = Vector3.ZERO
+			var d = at - (pos + Vector3(0, 1.6, 0)); player.yaw = atan2(-d.x, -d.z); player.pitch = atan2(d.y, Vector2(d.x, d.z).length())
+		rtp.call(2.5, func(): look.call(H + Vector3(0, 1.3, 16), H + Vector3(0, 14, -18)))
+		rtp.call(3.2, shp.bind("1_praca"))
+		rtp.call(3.3, func(): look.call(H + Vector3(0, 7.3, -6), H + Vector3(0, 12, -18)))
+		rtp.call(4.0, shp.bind("2_portao"))
+		rtp.call(4.1, func(): gabriel_arena._set_gate(1.0); look.call(H + Vector3(0, 7.4, -8), Vector3(0, 6, 0)))
+		rtp.call(4.8, shp.bind("3_vista"))
+		rtp.call(5.0, func(): player.frozen = false; gabriel_enter())
+		rtp.call(8.5, func(): look.call(Vector3(0, 2.3, 38), Vector3(0, 8, 0)))
+		rtp.call(9.2, shp.bind("4_arena"))
+		rtp.call(9.3, func(): if G.boss: G.boss.hp = G.boss.max_hp * .49; player.hp = 9999)
+		rtp.call(12.0, func(): player.hp = 9999)
+		rtp.call(16.0, func(): player.hp = 9999)
+		rtp.call(19.5, func(): look.call(Vector3(0, 2.3, 38), Vector3(0, 8, 0)))
+		rtp.call(20.2, shp.bind("5_inferno"))
+		rtp.call(20.3, func(): look.call(Vector3(-6, 2.3, 30), Vector3(4, 0, 8)))
+		rtp.call(21.0, shp.bind("6_corpos"))
+		rtp.call(21.2, func(): print("PORTAO OK corrupt=", gabriel_arena.corrupted, " k=", gabriel_arena.corrupt_k); get_tree().quit())
 		return
 	if m == "escada":
 		var rte = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
@@ -1691,7 +1719,7 @@ func apply_env(name: String) -> void:
 	for k in E:
 		if k != "sun": world_env.set(k, E[k])
 	world_sun.light_energy = E.sun
-	world_sun.light_color = {"arena": Color("ffe2c4"), "lilith": Color("ff5a2a"), "miguel": Color("c8b8ff"), "gabriel": Color("ffd9a8"), "gabriel_hall": Color("ff7a70")}.get(name, Color("fff4e8"))
+	world_sun.light_color = {"arena": Color("ffe2c4"), "lilith": Color("ff5a2a"), "miguel": Color("c8b8ff"), "gabriel": Color("ffd9a8"), "gabriel_hall": Color("ff7a70"), "gabriel_inferno": Color("ff3a20")}.get(name, Color("fff4e8"))
 	# o Átrio das Trombetas tem céu de amanhecer de verdade (degradê), as outras arenas usam cor lisa
 	if name == "gabriel_hall":
 		if _hall_sky == null:
@@ -1706,14 +1734,27 @@ func apply_env(name: String) -> void:
 		world_env.sky = _hall_sky
 		world_env.background_mode = Environment.BG_SKY
 		world_env.fog_sky_affect = .4
+	elif name == "gabriel_inferno":
+		if _hell_sky == null:
+			var hs = ProceduralSkyMaterial.new()
+			hs.sky_top_color = Color("120000")
+			hs.sky_horizon_color = Color("c0180c")
+			hs.sky_curve = .15
+			hs.ground_horizon_color = Color("8a0e06")
+			hs.ground_bottom_color = Color("200101")
+			_hell_sky = Sky.new()
+			_hell_sky.sky_material = hs
+		world_env.sky = _hell_sky
+		world_env.background_mode = Environment.BG_SKY
+		world_env.fog_sky_affect = .3
 	elif name == "gabriel":
 		if _dawn_sky == null:
 			var sm = ProceduralSkyMaterial.new()
-			sm.sky_top_color = Color("2c2f6e")
-			sm.sky_horizon_color = Color("f2a46c")
-			sm.sky_curve = .12
-			sm.ground_horizon_color = Color("e89a6a")
-			sm.ground_bottom_color = Color("a05a58")
+			sm.sky_top_color = Color("5f95d8")
+			sm.sky_horizon_color = Color("fff1dc")
+			sm.sky_curve = .14
+			sm.ground_horizon_color = Color("f6ead8")
+			sm.ground_bottom_color = Color("d4cce0")
 			sm.sun_angle_max = 8.0
 			_dawn_sky = Sky.new()
 			_dawn_sky.sky_material = sm
@@ -1779,7 +1820,9 @@ func miguel_eclipse() -> void:
 	tw.tween_property(world_sun, "light_color", Color("ff6a5a"), 2.0)
 
 func respawn_gabriel() -> void:
-	if G.mode == "boss" and G.boss == null: spawn_enemy("gabriel", Vector3(0, 0, -30))
+	if G.mode == "boss" and G.boss == null:
+		if gabriel_arena: gabriel_arena.purify()
+		spawn_enemy("gabriel", Vector3(0, 0, -30))
 
 func spawn_point() -> Vector3:
 	for i in 20:
