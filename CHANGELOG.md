@@ -1,5 +1,9 @@
 # Histórico de mudanças
 
+## Estátuas gigantes na entrada do Gabriel
+
+- As duas estátuas de anjo da entrada agora têm ~18 m (antes ~10 m), com as asas passando do topo das torres.
+
 ## Gesso branco, estátuas maiores e sangue novo
 
 - Paredes, pisos e colunas do Gabriel e do trono de Deus agora usam gesso pintado branco (Poliigon PlasterPainted 7664:

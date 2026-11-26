@@ -852,18 +852,18 @@ func _hall_statue(p: Vector3, sx: int) -> void:
 		# anjo de pé com as asas abertas (modelo novo)
 		var st: Node3D = load("res://estatua/anjo_estatua.glb").instantiate()
 		st.position = p + Vector3(0, -.25, 0)
-		st.scale = Vector3.ONE * 10.5
+		st.scale = Vector3.ONE * 18.0
 		st.rotation.y = -PI / 2 - sx * .3   # de frente para quem sobe a escada
 		add_child(st)
 		# gesso pintado branco (mesma textura das paredes e colunas)
-		var gm = CM.marble(Color(1, 1, 1), .14)
+		var gm = CM.marble(Color(1, 1, 1), .08)
 		for mi in st.find_children("*", "MeshInstance3D", true, false):
 			for si in mi.mesh.get_surface_count(): mi.set_surface_override_material(si, gm)
 		hall_marbles.append(gm)
 		_blood_tears(st)
 		var sb = StaticBody3D.new(); sb.collision_layer = 1; sb.collision_mask = 0
-		var cs = CollisionShape3D.new(); var cy = CylinderShape3D.new(); cy.radius = 2.6; cy.height = 9.6; cs.shape = cy
-		sb.add_child(cs); sb.position = p + Vector3(0, 4.6, 0)
+		var cs = CollisionShape3D.new(); var cy = CylinderShape3D.new(); cy.radius = 4.2; cy.height = 16.0; cs.shape = cy
+		sb.add_child(cs); sb.position = p + Vector3(0, 7.8, 0)
 		add_child(sb)
 		return
 	_hall_statue_old(p, sx)

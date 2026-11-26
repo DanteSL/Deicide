@@ -914,7 +914,7 @@ func _autotest(m: String) -> void:
 		rte.call(5.9, she.bind("anjos"))
 		var pc2 = Camera3D.new(); pc2.fov = 60
 		rte.call(6.0, func():
-			world.add_child(pc2); pc2.global_position = H + Vector3(-10.0, 11.0, 5.0); pc2.look_at(H + Vector3(-12.6, 11.6, -2.2), Vector3.UP); pc2.make_current())
+			world.add_child(pc2); pc2.global_position = H + Vector3(0, 4.0, 30.0); pc2.look_at(H + Vector3(0, 12.0, -4.0), Vector3.UP); pc2.make_current())
 		rte.call(6.7, func(): player.cam.make_current(); pc2.queue_free())
 		rte.call(6.6, she.bind("anjo_perto"))
 		rte.call(6.65, func(): look.call(H + Vector3(0, .4, 31), H + Vector3(0, 1.0, 20)); player.frozen = false; Input.action_press("fwd"))
