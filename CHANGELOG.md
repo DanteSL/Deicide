@@ -1,5 +1,10 @@
 # Histórico de mudanças
 
+## Mortes explosivas
+
+- Todo inimigo comum explode em pedaços ao morrer, de qualquer jeito: as peças do corpo voam, giram, quicam e deixam
+  manchas de sangue no chão e nas paredes, com carne, ossos e um jato de sangue. O tempo congela como no aparo.
+
 ## Configurações de vídeo
 
 - Nova tela de configurações com abas **Vídeo / Jogo / Áudio**: modo de tela (janela, janela sem borda, tela cheia),

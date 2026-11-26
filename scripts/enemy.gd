@@ -184,11 +184,9 @@ func die(src: String, head: bool) -> void:
 		G.emit("metal", c, 12, 12, .22, 1.4)
 		G.emit("spark", c, 16, 14, .08, .5)
 	elif ceif:
-		G.emit("white", c + Vector3(0, .4, 0), 26, 10, .2, 1.4, Vector3(0, 3, 0), 6)
-		G.emit("gib", c, 9, 12, .22, 1.4)
-	else:
-		G.emit("gib", c, 22 if kind == "brute" else 11, 12, .26, 1.6)
-	G.emit("blood", c, 26, 14, .14, 1.0)
+		G.emit("white", c + Vector3(0, .4, 0), 18, 10, .2, 1.4, Vector3(0, 3, 0), 6)
+	# explode em pedaços, voa sangue e o tempo congela por um instante
+	if G.main and G.main.gibs: G.main.gibs.explode(self, src)
 	if G.player and G.player.global_position.distance_to(c) < 7.0:
 		G.heal(40 if kind == "brute" else 20)
 	G.on_kill(self, src, head)

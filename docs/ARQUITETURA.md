@@ -15,6 +15,7 @@ cria a arena, as luzes, o HUD, os menus e o jogador. Isso facilita mudar tudo pe
 | `weapons.gd` | Viewmodel e lógica do revólver, escopeta e soco/aparar; troca de armas, recargas e animações (giro, recuo, balanço). |
 | `extra_weapons.gd` | As outras 6 armas: modelos, projéteis no mundo e botão direito de cada uma. |
 | `enemy.gd` | Inimigos comuns (`CharacterBody3D`): IA, dano, morte, e a IA corpo a corpo da Ceifadora. |
+| `gibs.gd` | Mortes explosivas: o inimigo se parte em pedaços que voam, quicam e deixam manchas de sangue; congela o tempo como no aparo. |
 | `ceifadora.gd` | Esqueleto da Ceifadora animado por código: andar de passarela, asas, poses-chave dos golpes e cinemática inversa dos braços. |
 | `gabriel.gd` | Chefe Gabriel: modelo, asas em dois segmentos, máquina de estados dos ataques e efeitos. |
 | `deus.gd` | Chefe Deus: animação original tocada em trechos, crista de mãos, fases, sangue/inundação e ataques. |

@@ -19,6 +19,7 @@ var _mus_us = 0
 var _muffle = 0.0
 var world_env: Environment
 var build_root: Node3D
+var gibs: Node
 var arena_root: Node3D
 var trono: Node3D
 var level := "arena"
@@ -67,6 +68,8 @@ func _ready() -> void:
 	trono.set_script(preload("res://scripts/trono.gd"))
 	trono.build(self)
 	build_root = world
+	gibs = preload("res://scripts/gibs.gd").new()
+	add_child(gibs)
 	_build_audio()
 	_build_hud()
 	_build_menus()
@@ -460,6 +463,28 @@ func _autotest(m: String) -> void:
 		return
 	if m == "ceif":
 		_ceif_test()
+		return
+	if m == "gibs":
+		start_mode("train")
+		var rtg = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+		var shg = func(nm): get_viewport().get_texture().get_image().save_png("/tmp/gib_%s.png" % nm)
+		rtg.call(1.2, func():
+			player.global_position = Vector3(0, 1.2, 20)
+			player.yaw = 0.0; player.pitch = -.12
+			for e in G.enemies.duplicate():
+				if is_instance_valid(e) and e.alive: e.global_position = Vector3(e.global_position.x * .5, e.global_position.y, 8.0 + abs(e.global_position.x) * .1))
+		rtg.call(2.0, func():
+			print("inimigos ", G.enemies.size())
+			for e in G.enemies.duplicate():
+				if is_instance_valid(e) and e.alive and e.kind != "drone": G.hurt_enemy(e, 9999, "punch", e.center(), false); break)
+		rtg.call(2.05, shg.bind("0_congela"))
+		rtg.call(2.45, shg.bind("1_voando"))
+		rtg.call(2.9, func():
+			for e in G.enemies.duplicate():
+				if is_instance_valid(e) and e.alive: G.hurt_enemy(e, 9999, "rev", e.center(), false))
+		rtg.call(3.3, shg.bind("2_varios"))
+		rtg.call(4.6, shg.bind("3_chao"))
+		rtg.call(5.0, func(): print("GIBS OK pedaços=", gibs.gibs.size(), " manchas=", gibs.splats.size(), " ts=", Engine.time_scale); get_tree().quit())
 		return
 	if m == "halo":
 		start_mode("deus")
@@ -1348,6 +1373,7 @@ func die() -> void:
 
 func reset() -> void:
 	_store_record()
+	if gibs: gibs.clear()
 	for e in G.enemies:
 		if is_instance_valid(e): e.queue_free()
 	G.enemies.clear()
