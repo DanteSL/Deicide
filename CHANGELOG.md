@@ -1,5 +1,10 @@
 # Histórico de mudanças
 
+## Chão de lava na arena da Lilith
+
+- O chão da ilha, os rochedos e a base do trono usam a textura de rocha de lava enviada pelo autor (tornada contínua para repetir sem emendas).
+- Um shader próprio faz as rachaduras vermelhas da textura brilharem e pulsarem; no Inferno elas ficam muito mais fortes.
+
 ## Nova chefe: Lilith, a Rainha do Abismo
 
 - Modelo enviado pelo autor separado em partes (2 asas, 2 braços, cabeça) e animado por código: asas de morcego batendo,

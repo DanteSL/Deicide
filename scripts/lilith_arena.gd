@@ -10,6 +10,7 @@ var t := 0.0
 var inferno := 0.0
 var m_rock: StandardMaterial3D
 var m_rock2: StandardMaterial3D
+var m_floor: Material
 var m_obs: StandardMaterial3D
 var m_bone: StandardMaterial3D
 var m_iron: StandardMaterial3D
@@ -22,6 +23,30 @@ var lava_y0 := -1.6
 var chains: Array = []
 var falls: Array = []
 var lights: Array = []
+
+## rocha de lava resfriada (textura enviada pelo jogador): as rachaduras vermelhas brilham e pulsam
+const FLOOR_SHADER := """
+shader_type spatial;
+uniform sampler2D tex : source_color, filter_linear_mipmap, repeat_enable;
+uniform float glow = 1.5;
+uniform float time_s = 0.0;
+uniform float scale = 0.09;
+varying vec3 wp;
+varying vec3 wn;
+void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz); }
+vec3 tri(vec3 p, vec3 n){
+	vec3 b = pow(abs(n), vec3(4.0)); b /= (b.x + b.y + b.z);
+	return texture(tex, p.yz * scale).rgb * b.x + texture(tex, p.xz * scale).rgb * b.y + texture(tex, p.xy * scale).rgb * b.z;
+}
+void fragment(){
+	vec3 c = tri(wp, wn);
+	float m = clamp((c.r - c.g - .15) * 2.5, 0.0, 1.0);
+	float flick = .85 + .15 * sin(time_s * 2.3 + wp.x * .4 + wp.z * .3);
+	ALBEDO = c * (1.0 - m * .6);
+	EMISSION = vec3(1.0, .32, .05) * m * glow * flick;
+	ROUGHNESS = .9;
+}
+"""
 
 const LAVA_SHADER := """
 shader_type spatial;
@@ -54,6 +79,12 @@ func _noise_tex(freq: float, seed_: int, c0: Color, c1: Color) -> NoiseTexture2D
 func _mats() -> void:
 	m_rock = StandardMaterial3D.new()
 	m_rock.albedo_texture = _noise_tex(.02, 13, Color("0e0808"), Color("3a2420"))
+	# chão da ilha: rocha de lava resfriada com as rachaduras em brasa (textura enviada pelo jogador)
+	if ResourceLoader.exists("res://lilith/lava_rocha.jpg"):
+		m_floor = ShaderMaterial.new()
+		var fsh = Shader.new(); fsh.code = FLOOR_SHADER
+		m_floor.shader = fsh
+		m_floor.set_shader_parameter("tex", load("res://lilith/lava_rocha.jpg"))
 	m_rock.uv1_triplanar = true; m_rock.uv1_world_triplanar = true; m_rock.uv1_scale = Vector3.ONE * .07
 	m_rock.roughness = .95
 	m_rock2 = m_rock.duplicate(); m_rock2.albedo_color = Color(.7, .6, .6)
@@ -99,8 +130,9 @@ func build(_m: Node) -> void:
 	fall_mat.set_shader_parameter("scale", 6.0)
 	fall_mat.set_shader_parameter("flow", Vector2(0, -.9))
 	# ilha de rocha
-	_cyl(R, R + 2, 3.0, m_rock, Vector3(0, -1.5, 0), true, 14)
-	_cyl(R + 3, R - 6, 10, m_rock2, Vector3(0, -8.0, 0), false, 14)
+	if m_floor == null: m_floor = m_rock
+	_cyl(R, R + 2, 3.0, m_floor, Vector3(0, -1.5, 0), true, 14)
+	_cyl(R + 3, R - 6, 10, m_floor, Vector3(0, -8.0, 0), false, 14)
 	# lago de lava em volta (e por baixo)
 	var pm = PlaneMesh.new(); pm.size = Vector2(500, 500)
 	lava = _mesh(pm, lava_mat, Vector3(0, lava_y0, 0))
@@ -161,10 +193,10 @@ func build(_m: Node) -> void:
 		var a = i * TAU / 7.0 + .3
 		var p = Vector3(cos(a), 0, sin(a)) * rng.randf_range(28, 34)
 		var hh = rng.randf_range(3, 6)
-		_cyl(rng.randf_range(1.2, 2.0), rng.randf_range(2.2, 3.2), hh, m_rock, p + Vector3(0, hh * .5, 0), true, 7)
+		_cyl(rng.randf_range(1.2, 2.0), rng.randf_range(2.2, 3.2), hh, m_floor, p + Vector3(0, hh * .5, 0), true, 7)
 	# trono de chifres ao fundo, sobre a lava
 	var tz = -62.0
-	_cyl(9, 12, 6, m_rock, Vector3(0, 1, tz), false, 9)
+	_cyl(9, 12, 6, m_floor, Vector3(0, 1, tz), false, 9)
 	_box(Vector3(8, 14, 2), m_obs, Vector3(0, 11, tz - 2), false)
 	_box(Vector3(9, 1.2, 6), m_obs, Vector3(0, 4.6, tz), false)
 	for sx in [-1, 1]:
@@ -240,6 +272,9 @@ func _process(dt: float) -> void:
 	# fase 2: a lava sobe até a beira da ilha
 	lava.position.y = lerp(lava_y0, -.25, inferno) + sin(t * .7) * .08
 	var pulse = .6 + .4 * sin(t * 2.0)
+	if m_floor is ShaderMaterial:
+		m_floor.set_shader_parameter("glow", (1.3 + .6 * pulse) * (1.0 + inferno * 1.3))
+		m_floor.set_shader_parameter("time_s", t)
 	cracks_mat.albedo_color = Color(1, .3 + .2 * pulse * (1.0 + inferno), .05) * (1.0 + inferno * .6)
 	sigil_mat.albedo_color = Color(.8 + .2 * pulse + inferno * .4, .1 + inferno * .1, .04)
 	for c in chains:
