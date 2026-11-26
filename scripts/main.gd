@@ -808,6 +808,32 @@ func _autotest(m: String) -> void:
 		rth.call(2.6, func(): get_viewport().get_texture().get_image().save_png("/tmp/halo_longe.png"))
 		rth.call(6.0, func(): get_tree().quit())
 		return
+	if m == "escada":
+		var rte = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+		var she = func(nm): get_viewport().get_texture().get_image().save_png("/tmp/es_%s.png" % nm)
+		start_mode("boss")
+		var H: Vector3 = gabriel_arena.HALL
+		rte.call(1.5, func(): player.global_position = H + Vector3(0, 1.5, 4); player.velocity = Vector3.ZERO; player.yaw = 0.0; player.pitch = .25)
+		rte.call(2.0, func(): Input.action_press("fwd"))
+		for j in 5: rte.call(2.4 + j * .8, func(): print("GAB t=", j, " y=", snapped(player.global_position.y - H.y, .01), " z=", snapped(player.global_position.z - H.z, .01)))
+		rte.call(4.0, she.bind("subindo"))
+		rte.call(5.0, func(): Input.action_release("fwd"))
+		var look = func(pos, at):
+			player.global_position = pos; player.velocity = Vector3.ZERO
+			var d = at - (pos + Vector3(0, 1.6, 0)); player.yaw = atan2(-d.x, -d.z); player.pitch = atan2(d.y, Vector2(d.x, d.z).length())
+		rte.call(5.3, func(): look.call(H + Vector3(0, 1.3, 15), H + Vector3(0, 8, -4)))
+		rte.call(5.9, she.bind("anjos"))
+		rte.call(6.0, func(): look.call(H + Vector3(4, 7.3, -5), H + Vector3(13.5, 10, -3.5)))
+		rte.call(6.6, she.bind("anjo_perto"))
+		# trono de Deus
+		rte.call(7.5, func(): start_mode("deus"))
+		rte.call(10.5, func(): G.state = "play"; player.frozen = false; player.dead = false; player.global_position = Vector3(4.6, 1.2, -38); player.velocity = Vector3.ZERO; player.yaw = 0.0; player.pitch = .3)
+		rte.call(11.0, func(): G.state = "play"; player.frozen = false)
+		rte.call(10.8, func(): Input.action_press("fwd"))
+		for j in 6: rte.call(11.2 + j * .8, func(): print("TRONO t=", j, " y=", snapped(player.global_position.y, .01), " z=", snapped(player.global_position.z, .01)))
+		rte.call(12.0, she.bind("trono_sobe"))
+		rte.call(16.2, func(): Input.action_release("fwd"); print("ESCADA OK"); get_tree().quit())
+		return
 	if m == "trono":
 		start_mode("deus")
 		var rtt = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)

@@ -1,5 +1,14 @@
 # Histórico de mudanças
 
+## Escadas sem pulo e anjos novos na entrada do Gabriel
+
+- Escadaria do Pórtico da Balança (entrada do Gabriel): cada degrau tinha 40 cm e o jogador só sobe ~35 cm sozinho,
+  então era preciso ir pulando. Agora há uma rampa de colisão invisível por cima dos degraus e dá para subir andando.
+- Trono de Deus: o altar era feito de blocos de 1,6 m. Ganhou duas escadarias de mármore com frisos dourados
+  (20 degraus cada), uma de cada lado do rio de sangue, também com rampa de colisão.
+- Os dois anjos ajoelhados da entrada do Gabriel foram trocados por uma estátua de anjo de pé com as asas abertas
+  (malha simplificada de ~1 milhão para 70 mil vértices, em mármore fosco).
+
 ## Anjo Caído: braço direito separado de vez
 
 - Na caminhada o cotovelo ficava colado na cintura e o antebraço saía do quadril, parecendo grudado na coxa.

@@ -531,6 +531,8 @@ func _entrance() -> void:
 		var zc = -.47 - k * .93
 		_box(Vector3(14, top, .93), white_m, _h(Vector3(0, top * .5, zc)))
 		_box(Vector3(14.2, .06, .1), m_red, _h(Vector3(0, top - .03, zc + .47)), false)
+	# rampa invisível por cima dos degraus: sobe andando, sem precisar pular
+	_ramp(_h(Vector3(0, 1.2, .93)), _h(Vector3(0, 7.2, -13.02)), 14.0)
 	# patamar de cima
 	_box(Vector3(26, 7.2, 18), white_m, _h(Vector3(0, 3.6, -23)))
 	# --- blocos laterais com os anjos ---
@@ -689,7 +691,47 @@ func _balance(p: Vector3) -> void:
 		_mesh(dish, m_gold, Vector3(0, -1.25, 0), Vector3.ZERO, pan)
 		pans.append({"n": pan, "s": sx})
 
+## rampa de colisão (sem malha): a face de cima vai de a até b (a embaixo/na frente, b em cima/atrás)
+func _ramp(a: Vector3, b: Vector3, width: float) -> void:
+	var d = b - a
+	var L = Vector2(d.z, d.y).length()
+	var ang = atan2(d.y, -d.z)
+	var th = .6
+	var sb = StaticBody3D.new(); sb.collision_layer = 1; sb.collision_mask = 0
+	var cs = CollisionShape3D.new(); var bs = BoxShape3D.new(); bs.size = Vector3(width, th, L); cs.shape = bs
+	sb.add_child(cs)
+	var nrm = Vector3(0, cos(ang), sin(ang))
+	sb.position = (a + b) * .5 - nrm * th * .5
+	sb.rotation = Vector3(ang, 0, 0)
+	add_child(sb)
+
 func _hall_statue(p: Vector3, sx: int) -> void:
+	if ResourceLoader.exists("res://estatua/anjo_estatua.glb"):
+		# anjo de pé com as asas abertas (modelo novo)
+		var st: Node3D = load("res://estatua/anjo_estatua.glb").instantiate()
+		st.position = p + Vector3(0, -.25, 0)
+		st.scale = Vector3.ONE * 7.6
+		st.rotation.y = -PI / 2 - sx * .3   # de frente para quem sobe a escada
+		add_child(st)
+		# mármore fosco (sem o brilho metálico que deixava a estátua granulada)
+		for mi in st.find_children("*", "MeshInstance3D", true, false):
+			for si in mi.mesh.get_surface_count():
+				var m0 = mi.mesh.surface_get_material(si)
+				if m0 is StandardMaterial3D:
+					var m: StandardMaterial3D = m0.duplicate()
+					m.metallic = 0.0; m.metallic_texture = null
+					m.roughness = .75; m.roughness_texture = null
+					m.normal_scale = .6
+					m.albedo_color = Color(1.0, .96, .92)
+					mi.set_surface_override_material(si, m)
+		var sb = StaticBody3D.new(); sb.collision_layer = 1; sb.collision_mask = 0
+		var cs = CollisionShape3D.new(); var cy = CylinderShape3D.new(); cy.radius = 1.9; cy.height = 7.0; cs.shape = cy
+		sb.add_child(cs); sb.position = p + Vector3(0, 3.3, 0)
+		add_child(sb)
+		return
+	_hall_statue_old(p, sx)
+
+func _hall_statue_old(p: Vector3, sx: int) -> void:
 	if not ResourceLoader.exists("res://anjo/anjo.glb") or M == null or M.get("trono") == null: return
 	var inst: Node3D = load("res://anjo/anjo.glb").instantiate()
 	inst.position = p

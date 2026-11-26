@@ -648,6 +648,15 @@ func _altar() -> void:
 		var front = -46.0 - i * 2.6
 		blk(0, i * 1.6, front - d * .5, w, 1.6, d, m_marble)
 		blk(0, (i + 1) * 1.6 - .05, front - .2, w + .1, .12, .45, m_gold, false)
+	# escadarias de verdade dos dois lados do rio de sangue (20 degraus de 40 cm) + rampa de colisão
+	for sx in [-1, 1]:
+		var cx = sx * 4.6
+		for j in 20:
+			var top = .4 * (j + 1)
+			var zc = -43.4 - .65 * j - .325
+			blk(cx, 0, zc, 4.2, top, .65, m_marble, false)
+			blk(cx, top - .04, zc + .3, 4.3, .08, .08, m_gold, false)
+		_ramp(Vector3(cx, 0, -43.4), Vector3(cx, 8.0, -56.4), 4.2)
 	_stair_river()
 	pool(0, -43.5, 5.5, .04, .6)
 	# trono
@@ -680,6 +689,20 @@ func _altar() -> void:
 		cyl(sx * 5.6, ALTAR_TOP, -61.3, .5, .8, 3.0, m_gold, false)
 		_flame(Vector3(sx * 5.6, ALTAR_TOP + 3.6, -61.3), 1.0)
 	_creek()
+
+## rampa de colisão invisível: a face de cima vai de a (embaixo/frente) até b (em cima/atrás)
+func _ramp(a: Vector3, b: Vector3, width: float) -> void:
+	var d = b - a
+	var L = Vector2(d.z, d.y).length()
+	var ang = atan2(d.y, -d.z)
+	var th = .6
+	var sb = StaticBody3D.new(); sb.collision_layer = 1; sb.collision_mask = 0
+	var cs = CollisionShape3D.new(); var bs = BoxShape3D.new(); bs.size = Vector3(width, th, L); cs.shape = bs
+	sb.add_child(cs)
+	var nrm = Vector3(0, cos(ang), sin(ang))
+	sb.position = (a + b) * .5 - nrm * th * .5
+	sb.rotation = Vector3(ang, 0, 0)
+	add_child(sb)
 
 # ---------------- cascata de sangue na escada do altar ----------------
 func _stair_river() -> void:
