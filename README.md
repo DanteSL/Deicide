@@ -107,7 +107,7 @@ Deicide/
 ## Créditos
 
 - Estátuas do corredor da Sala do Trono: modelo **"AngelStatue"**, de Zsky.
-- Braços do jogador: modelo **"Human hand"**, de Nouri Mohamed (curvado e retexturizado no jogo). Confira a licença original antes de publicar.
+- Braços do jogador e animação de respiração/pegada: arquivo `fps_test` enviado pelo autor (esqueleto no padrão do manequim da Unreal). Confira a licença do modelo antes de publicar.
 
 - **"Throne of Ash and Gold"** (batalha final contra Deus): composta por DanteSL.
 

@@ -1,10 +1,11 @@
 # Histórico de mudanças
 
-## Braços
+## Braços animados
 
-- O personagem agora tem braços de verdade: pele branca, quase de mármore, com rachaduras de sangue que brilham.
-- Aparecem em todas as armas: na pistola (mão no cabo), na escopeta (mão na bomba e ao recarregar), nas espadas aladas e no soco.
-  Lança-foguetes, pregadora, rail, arpão e lança-granadas ganharam também a mão esquerda segurando o cano.
+- Saiu a mão branca com rachaduras. No lugar entram os braços do arquivo `fps_test` (modelo + animação enviados pelo autor).
+- A animação roda em loop (respiração e pegada da pistola) e as mãos seguem a arma por IK de dois ossos (`scripts/fp_ik.gd`):
+  pistola com as duas mãos, mão esquerda no cano/bomba nas armas longas, mão pegando cartucho na recarga da escopeta,
+  as duas mãos nas espadas aladas e o soco com a mão esquerda.
 
 ## Pistola
 

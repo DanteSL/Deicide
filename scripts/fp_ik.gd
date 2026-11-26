@@ -1,0 +1,93 @@
+extends SkeletonModifier3D
+# Braços em primeira pessoa: a animação (respiração + pegada da pistola) roda normalmente
+# e aqui as duas mãos são levadas até os pontos de pegada da arma atual (IK de dois ossos).
+
+var W: Node # weapons.gd
+var rig: Node3D # raiz do modelo dos braços
+var bones = {}
+var aim_r: Node3D = null # alvos (Node3D) da mão direita/esquerda; null = pose da animação
+var aim_l: Node3D = null
+var mode_l := "" # "pistol" (envolve a mão direita), "barrel" (segura o cano), "hand", "punch"
+
+func setup() -> void:
+	var sk := get_skeleton()
+	for side in ["r", "l"]:
+		bones[side] = [sk.find_bone("upperarm_" + side), sk.find_bone("lowerarm_" + side), sk.find_bone("hand_" + side)]
+
+func _process_modification_with_delta(_dt: float) -> void:
+	var sk := get_skeleton()
+	if sk == null or bones.is_empty() or W == null: return
+	W.fp_targets(self)
+	var skg: Transform3D = sk.global_transform
+	var inv := skg.affine_inverse()
+	var hr: Transform3D = skg * sk.get_bone_global_pose(bones.r[2])
+	var hl: Transform3D = skg * sk.get_bone_global_pose(bones.l[2])
+	# referencial da "arma" da animação: na mão direita, olhando para a frente do personagem
+	var f0 := Transform3D(rig.global_transform.basis.orthonormalized() * Basis(Vector3.UP, PI), hr.origin)
+	var c_r := f0.affine_inverse() * hr
+	var c_l := f0.affine_inverse() * hl
+	var tr = null
+	var tl = null
+	if aim_r:
+		tr = aim_r.global_transform.orthonormalized() * c_r
+	if aim_l:
+		var g: Transform3D = aim_l.global_transform.orthonormalized()
+		match mode_l:
+			"pistol":
+				tl = g * c_l
+			"barrel":
+				# palma para cima sob o cano, dedos para a frente e para a direita
+				var y := (g.basis * Vector3(.45, .2, -.87)).normalized()
+				var x := (g.basis * Vector3(.55, .85, 0))
+				x = (x - y * x.dot(y)).normalized()
+				# o alvo é o ponto de apoio sob o cano; o osso da mão fica no pulso
+				tl = Transform3D(Basis(x, y, x.cross(y)), g.origin - y * .075 - x * .04)
+			"hand":
+				tl = Transform3D(g.basis * _mirror(c_r.basis), g.origin)
+			"punch":
+				var fwd := -g.basis.z
+				tl = Transform3D(Basis(-g.basis.y, fwd, g.basis.x), g.origin)
+	if tr != null: _solve(sk, bones.r, inv * tr)
+	if tl != null: _solve(sk, bones.l, inv * tl)
+
+# espelha uma pegada da mão direita para a esquerda (eixos do esqueleto espelhados em X)
+func _mirror(b: Basis) -> Basis:
+	var m := Basis(Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1))
+	var x := m * b.x
+	var y := m * b.y
+	var z := m * b.z
+	return Basis(-x, y, z)
+
+func _solve(sk: Skeleton3D, ch: Array, t: Transform3D) -> void:
+	var ua: int = ch[0]; var la: int = ch[1]; var hd: int = ch[2]
+	var A := sk.get_bone_global_pose(ua)
+	var B := sk.get_bone_global_pose(la)
+	var C := sk.get_bone_global_pose(hd)
+	var a := A.origin; var b := B.origin; var c := C.origin
+	var l1 := a.distance_to(b); var l2 := b.distance_to(c)
+	var to := t.origin - a
+	# alvo longe demais: o ombro (fora da tela) avança em direção à arma
+	var over := to.length() - (l1 + l2) * .97
+	if over > 0.0:
+		a += to.normalized() * min(over, .45)
+		sk.set_bone_global_pose(ua, Transform3D(A.basis, a))
+		A = sk.get_bone_global_pose(ua)
+		b = sk.get_bone_global_pose(la).origin
+		to = t.origin - a
+	var d: float = clamp(to.length(), abs(l1 - l2) + .001, (l1 + l2) * .999)
+	var dir := to.normalized()
+	var pole := (b - a) - dir * (b - a).dot(dir)
+	if pole.length() < .0001: pole = Vector3.DOWN
+	pole = pole.normalized()
+	var ca: float = clamp((l1 * l1 + d * d - l2 * l2) / (2.0 * l1 * d), -1.0, 1.0)
+	var b2 := a + dir * (l1 * ca) + pole * (l1 * sqrt(1.0 - ca * ca))
+	var t2 := a + dir * d
+	var q1 := Quaternion((b - a).normalized(), (b2 - a).normalized())
+	sk.set_bone_global_pose(ua, Transform3D(Basis(q1) * A.basis, a))
+	var B1 := sk.get_bone_global_pose(la)
+	var cnow := sk.get_bone_global_pose(hd).origin
+	var q2 := Quaternion((cnow - B1.origin).normalized(), (t2 - B1.origin).normalized())
+	sk.set_bone_global_pose(la, Transform3D(Basis(q2) * B1.basis, B1.origin))
+	var H := sk.get_bone_global_pose(hd)
+	var sc := H.basis.get_scale()
+	sk.set_bone_global_pose(hd, Transform3D(t.basis.orthonormalized().scaled_local(sc), H.origin))

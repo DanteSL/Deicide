@@ -473,8 +473,8 @@ func _autotest(m: String) -> void:
 			rta.call(2.05 + k * .9, func(): get_viewport().get_texture().get_image().save_png("/tmp/arm_%d.png" % k))
 		rta.call(8.6, func(): player.weapons.punch())
 		for j in 5:
-			rta.call(8.62 + j * .05, func(): get_viewport().get_texture().get_image().save_png("/tmp/arm_soco%d.png" % j))
-		rta.call(9.2, func(): print("ARMS OK"); get_tree().quit())
+			rta.call(8.62 + j * .14, func(): get_viewport().get_texture().get_image().save_png("/tmp/arm_soco%d.png" % j))
+		rta.call(9.6, func(): print("ARMS OK"); get_tree().quit())
 		return
 	if m == "gibs":
 		start_mode("train")
