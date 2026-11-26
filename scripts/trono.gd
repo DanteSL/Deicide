@@ -637,7 +637,8 @@ func _throne(tz: float) -> void:
 			g.position = Vector3(px, y, pz + 1.48)
 			g.rotation.z = PI / 4
 			add_child(g)
-			# cravo apontando para fora
+			# cravo apontando para fora (o pilar direito fica coberto pelo manto)
+			if sx > 0: continue
 			var sp = MeshInstance3D.new()
 			var cm = CylinderMesh.new(); cm.top_radius = 0.0; cm.bottom_radius = .35; cm.height = 1.3; cm.radial_segments = 8
 			sp.mesh = cm; sp.material_override = m_gold
@@ -656,13 +657,15 @@ func _throne(tz: float) -> void:
 		cyl(px, top + 5.3, pz, .6, .3, .5, m_gold, false)
 		cyl(px, top + 5.8, pz, 0.0, .55, 3.0, m_gold, false, 8)
 	# manto de veludo caindo do pilar direito até o chão
-	add_child(_drape(Vector3(7.6, B + 34.2, tz - 1.0), 6.5, B + 34.2 - Y))
+	# encostado na face de fora do pilar direito, do topo até o primeiro degrau
+	add_child(_drape(Vector3(7.6 + 1.32, B + 33.0, tz - 1.8), 3.4, (B + 33.0) - (Y + .72)))
 
-## manto: malha com dobras, que alarga e se esparrama no chão
+## manto: malha com dobras pendurada numa face vertical (largura ao longo de z, dobras para fora em +x),
+## que se esparrama sobre o degrau no fim
 func _drape(top: Vector3, w: float, h: float) -> MeshInstance3D:
 	var st = SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var NU = 36
+	var NU = 30
 	var NV = 60
 	var pos = []
 	for j in NV + 1:
@@ -670,30 +673,34 @@ func _drape(top: Vector3, w: float, h: float) -> MeshInstance3D:
 		var row = []
 		for i in NU + 1:
 			var u = float(i) / NU
-			var width = w * (.45 + .9 * v)
-			var x = (u - .5) * width + v * 2.2           # escorrega para fora do trono
-			var fold = sin(u * PI * 7.0 + v * 2.5) * (.18 + .55 * v) + sin(u * PI * 17.0) * .08
+			var width = w * (.85 + .35 * v)
+			var z = (u - .5) * width
+			var fold = (.5 + .5 * sin(u * PI * 6.0 + v * 2.2)) * (.12 + .7 * v) + (.5 + .5 * sin(u * PI * 15.0)) * .06
+			var x = .03 + fold
 			var y = -v * h
-			var z = fold + v * 1.5
-			# no fim, o pano se esparrama no chão para a frente
-			var pool_v = clamp((v - .86) / .14, 0.0, 1.0)
+			var pool_v = clamp((v - .9) / .1, 0.0, 1.0)
 			if pool_v > 0.0:
-				y = -h + .15
-				z += pool_v * 4.5
-				x += (u - .5) * pool_v * 2.0
+				y = -h
+				x += pool_v * 1.0
+				z += (u - .5) * pool_v * 1.2 + pool_v * .6
 			row.append(Vector3(x, y, z))
 		pos.append(row)
 	for j in NV:
 		for i in NU:
 			var a = pos[j][i]; var b = pos[j][i + 1]; var c = pos[j + 1][i]; var d = pos[j + 1][i + 1]
 			for p in [a, c, b, b, c, d]:
-				st.set_uv(Vector2(0, 0))
 				st.add_vertex(p)
 	st.generate_normals()
 	var mi = MeshInstance3D.new()
 	mi.mesh = st.commit()
 	mi.material_override = m_velvet
 	mi.position = top
+	# dobra que passa por cima do topo do pilar
+	var cap = MeshInstance3D.new()
+	var cb = BoxMesh.new(); cb.size = Vector3(2.9, .35, w * .9)
+	cap.mesh = cb; cap.material_override = m_velvet
+	cap.position = Vector3(-1.3, .2, 0)
+	mi.add_child(cap)
 	return mi
 
 func _fountain(x: float, z: float) -> void:
