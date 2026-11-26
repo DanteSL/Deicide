@@ -16,7 +16,8 @@ const BODY_SHADER := """
 shader_type spatial;
 render_mode cull_disabled;
 uniform sampler2D tex : source_color, filter_linear_mipmap;
-uniform vec3 tint = vec3(1.35, 1.3, 1.35);
+uniform vec3 tint = vec3(1.2, 1.25, 1.35);
+uniform float neutral = .45; // tira parte do vermelho que a luz da arena joga nela
 uniform vec3 emis = vec3(.05, 0.0, 0.0);
 uniform float flap = 0.0;   // ângulo atual da batida (rad)
 uniform float lift = 0.0;   // sobe/desce das pontas
@@ -35,7 +36,12 @@ void vertex() {
 }
 void fragment() {
 	vec4 c = texture(tex, UV);
-	ALBEDO = c.rgb * tint;
+	vec3 col = c.rgb * tint;
+	// o mapa tem bastante vermelho; puxa o tecido e a pele para cinza-grafite, mantendo os detalhes vermelhos fortes
+	float red = clamp((c.r - max(c.g, c.b)) * 3.0, 0.0, 1.0);
+	float g = dot(col, vec3(.3, .59, .11));
+	col = mix(col, vec3(g) * vec3(.95, .97, 1.05), neutral * (1.0 - red * .6));
+	ALBEDO = col;
 	EMISSION = emis;
 	ROUGHNESS = .55;
 	METALLIC = .15;
@@ -175,15 +181,15 @@ func setup(pos: Vector3) -> void:
 	ring.rotation.x = -PI / 2
 	add_child(ring)
 	light = OmniLight3D.new()
-	light.light_color = Color(1, .35, .15)
-	light.omni_range = 28
+	light.light_color = Color(1, .86, .74)
+	light.omni_range = 26
 	light.light_energy = 2.0
 	light.position = Vector3(0, 9, 3)
 	add_child(light)
 	# luz fria de recorte pela frente, para a silhueta escura ler no meio do fogo
 	var fill = OmniLight3D.new()
-	fill.light_color = Color(.75, .7, 1.0)
-	fill.light_energy = 1.4
+	fill.light_color = Color(.82, .84, 1.0)
+	fill.light_energy = 2.4
 	fill.omni_range = 22
 	fill.position = Vector3(0, 8, 9)
 	add_child(fill)
@@ -380,7 +386,7 @@ func _anim(dt: float) -> void:
 	ring.position.y = -global_position.y + _floor_y() + .08
 	ring.rotation.y += dt * (.4 + hot)
 	ring_mat.albedo_color.a = .35 + hot * .5
-	light.light_energy = 1.8 + hot * 3.0 + sin(ph * 13.0) * .25
+	light.light_energy = 1.6 + hot * 1.2 + sin(ph * 13.0) * .15
 	embers.amount = 70
 	if not dying:
 		for m in mats:
