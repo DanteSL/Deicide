@@ -492,6 +492,7 @@ func _entrance() -> void:
 	# --- degraus da praça + braseiros verdes ---
 	for k in 3:
 		_box(Vector3(10, .4 * (k + 1), 1.0), white_m, _h(Vector3(0, .2 * (k + 1), 26.5 - k * 1.0)))
+	_ramp(_h(Vector3(0, 0, 28.0)), _h(Vector3(0, 1.2, 25.0)), 10.0)
 	for sx in [-1, 1]:
 		_brazier(_h(Vector3(sx * 5.8, .0, 26.5)), true)
 	# --- praça com mosaico rachado ---
@@ -547,10 +548,6 @@ func _entrance() -> void:
 		# faixas verticais vermelhas na face da torre
 		for xx in [9.4, 19.6]:
 			_box(Vector3(.4, 12, .2), m_red, _h(Vector3(sx * xx, 14, -7.9)), false)
-		# asas vermelhas atrás do anjo
-		for k in 2:
-			var wing = _box(Vector3(3.0, 7.5, .3), m_red, _h(Vector3(sx * 13.5 + (k * 2 - 1) * 2.4, 10.4, -7.75)), false)
-			wing.rotation = Vector3(0, 0, -(k * 2 - 1) * .35)
 		# selo em ferradura com gema verde
 		var tm = TorusMesh.new(); tm.inner_radius = 1.1; tm.outer_radius = 1.45; tm.rings = 32; tm.ring_segments = 6
 		_mesh(tm, m_red, _h(Vector3(sx * 13.5, 17.2, -7.85)), Vector3(PI / 2, 0, 0))
@@ -724,12 +721,48 @@ func _hall_statue(p: Vector3, sx: int) -> void:
 					m.normal_scale = .6
 					m.albedo_color = Color(1.0, .96, .92)
 					mi.set_surface_override_material(si, m)
+		_blood_tears(st)
 		var sb = StaticBody3D.new(); sb.collision_layer = 1; sb.collision_mask = 0
 		var cs = CollisionShape3D.new(); var cy = CylinderShape3D.new(); cy.radius = 1.9; cy.height = 7.0; cs.shape = cy
 		sb.add_child(cs); sb.position = p + Vector3(0, 3.3, 0)
 		add_child(sb)
 		return
 	_hall_statue_old(p, sx)
+
+## a estátua chora sangue: escorre dos olhos pelo rosto e pelo peito e pinga no pedestal
+func _blood_tears(st: Node3D) -> void:
+	var bmat = StandardMaterial3D.new()
+	bmat.albedo_color = Color(.55, 0, .03); bmat.roughness = .1; bmat.metallic = .1
+	bmat.emission_enabled = true; bmat.emission = Color(.25, 0, .02)
+	# coordenadas do modelo (rosto virado para +X, altura 1)
+	for side in [-1.0, 1.0]:
+		var zc = .063 + side * .0075   # olhos (o rosto fica um pouco de lado no modelo)
+		var pts = [Vector3(.147, .636, zc), Vector3(.149, .624, zc + side * .002), Vector3(.148, .612, zc + side * .003),
+			Vector3(.142, .598, zc + side * .004), Vector3(.152, .582, zc + side * .005), Vector3(.165, .562, zc + side * .006)]
+		for i in pts.size() - 1:
+			var a: Vector3 = pts[i]; var b: Vector3 = pts[i + 1]
+			var d = b - a
+			var mi = MeshInstance3D.new()
+			var bx = BoxMesh.new(); bx.size = Vector3(.004, d.length() + .003, .0042 - i * .0003)
+			mi.mesh = bx; mi.material_override = bmat
+			mi.position = (a + b) * .5
+			mi.rotation.z = atan2(d.x, -d.y)
+			st.add_child(mi)
+		# gota na ponta
+		var gm = MeshInstance3D.new(); var sp = SphereMesh.new(); sp.radius = .004; sp.height = .009
+		gm.mesh = sp; gm.material_override = bmat; gm.position = pts[-1]
+		st.add_child(gm)
+		# pingos caindo no pedestal
+		var pt = CPUParticles3D.new()
+		pt.amount = 6; pt.lifetime = 1.1
+		pt.direction = Vector3(0, -1, 0); pt.spread = 4
+		pt.initial_velocity_min = .2; pt.initial_velocity_max = .5
+		pt.gravity = Vector3(0, -9.8, 0)
+		var dm = SphereMesh.new(); dm.radius = .035; dm.height = .12; dm.radial_segments = 5; dm.rings = 3
+		dm.material = bmat
+		pt.mesh = dm
+		pt.position = pts[-1] + Vector3(.004, -.004, 0)
+		st.add_child(pt)
 
 func _hall_statue_old(p: Vector3, sx: int) -> void:
 	if not ResourceLoader.exists("res://anjo/anjo.glb") or M == null or M.get("trono") == null: return

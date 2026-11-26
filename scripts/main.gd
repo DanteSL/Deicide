@@ -823,8 +823,11 @@ func _autotest(m: String) -> void:
 			var d = at - (pos + Vector3(0, 1.6, 0)); player.yaw = atan2(-d.x, -d.z); player.pitch = atan2(d.y, Vector2(d.x, d.z).length())
 		rte.call(5.3, func(): look.call(H + Vector3(0, 1.3, 15), H + Vector3(0, 8, -4)))
 		rte.call(5.9, she.bind("anjos"))
-		rte.call(6.0, func(): look.call(H + Vector3(4, 7.3, -5), H + Vector3(13.5, 10, -3.5)))
+		rte.call(6.0, func(): player.frozen = true; look.call(H + Vector3(-12.3, 9.6, -.6), H + Vector3(-13.2, 10.6, -2.5)))
 		rte.call(6.6, she.bind("anjo_perto"))
+		rte.call(6.65, func(): look.call(H + Vector3(0, .4, 31), H + Vector3(0, 1.0, 20)); player.frozen = false; Input.action_press("fwd"))
+		rte.call(7.2, func(): print("PRACA y=", snapped(player.global_position.y - H.y, .01), " z=", snapped(player.global_position.z - H.z, .01)))
+		rte.call(7.45, func(): Input.action_release("fwd"); print("PRACA y=", snapped(player.global_position.y - H.y, .01), " z=", snapped(player.global_position.z - H.z, .01)))
 		# trono de Deus
 		rte.call(7.5, func(): start_mode("deus"))
 		rte.call(10.5, func(): G.state = "play"; player.frozen = false; player.dead = false; player.global_position = Vector3(4.6, 1.2, -38); player.velocity = Vector3.ZERO; player.yaw = 0.0; player.pitch = .3)

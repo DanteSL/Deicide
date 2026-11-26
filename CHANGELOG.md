@@ -1,5 +1,11 @@
 # Histórico de mudanças
 
+## Entrada do Gabriel: degraus da praça, anjos chorando sangue
+
+- Os três degraus da chegada (entre os braseiros verdes) também ganharam rampa de colisão: dá para subir andando.
+- As estátuas de anjo choram sangue: dois fios escorrem dos olhos pelo rosto até o pescoço e pingam no pedestal.
+- Removidas as placas vermelhas (antigas "asas") que ficavam atrás das estátuas.
+
 ## Escadas sem pulo e anjos novos na entrada do Gabriel
 
 - Escadaria do Pórtico da Balança (entrada do Gabriel): cada degrau tinha 40 cm e o jogador só sobe ~35 cm sozinho,
