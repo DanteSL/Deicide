@@ -232,7 +232,11 @@ func _hall() -> void:
 		blk(-45.9, y, -18, .3, 1.0, 132, m_gold, false)
 		blk(45.9, y, -18, .3, 1.0, 132, m_gold, false)
 		blk(0, y, -83.9, 92, 1.0, .3, m_gold, false)
-		blk(0, y, DOOR_Z - 1.1, 92, 1.0, .3, m_gold, false)
+		if y > 21.0:
+			blk(0, y, DOOR_Z - 1.1, 92, 1.0, .3, m_gold, false)
+		else:  # no chão, o friso para no portão
+			blk(-26.9, y, DOOR_Z - 1.1, 38.2, 1.0, .3, m_gold, false)
+			blk(26.9, y, DOOR_Z - 1.1, 38.2, 1.0, .3, m_gold, false)
 	# moldura do portão
 	blk(-7.8, 0, DOOR_Z - 1.2, 1.6, 22, .8, m_gold, false)
 	blk(7.8, 0, DOOR_Z - 1.2, 1.6, 22, .8, m_gold, false)
@@ -252,9 +256,9 @@ func _hall() -> void:
 			quad(Vector3(sx * 45.85, 30, z), Vector2(5, 15), banner, Vector3(0, -sx * PI / 2, 0))
 			blk(sx * 45.6, 37.4, z, .4, .4, 6, m_gold, false)
 	# piso: tapete de sangue até o altar, frisos de ouro, anel central
-	blk(0, 0, -1, 7, .06, 94, m_carpet, false)
+	blk(0, 0, 0.25, 7, .06, 96.5, m_carpet, false)
 	for sx in [-1, 1]:
-		blk(sx * 3.7, 0, -1, .4, .08, 94, m_gold, false)
+		blk(sx * 3.7, 0, 0.25, .4, .08, 96.5, m_gold, false)
 	for s in [[0, -46, 92, .5], [0, 46, 92, .5]]:
 		blk(s[0], 0, s[1] - .6, s[2], .05, s[3], m_gold, false)
 	var ring = MeshInstance3D.new()
@@ -316,7 +320,9 @@ func _corridor() -> void:
 	for sx in [-1, 1]:
 		var f = flat(Vector3(sx * 8.2, .04, 80), Vector2(1.2, 64), m_blood_flow)
 		f.rotation.y = PI
-	blk(0, 0, 80, 4, .05, 64, m_carpet, false)
+	blk(0, 0, 80, 7, .06, 65, m_carpet, false)
+	for sx in [-1, 1]:
+		blk(sx * 3.7, 0, 80, .4, .08, 65, m_gold, false)
 	# arcos dourados no teto
 	for z in range(54, 112, 9):
 		blk(0, 22.6, z, 18, 1.2, .8, m_gold, false)

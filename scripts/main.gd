@@ -10,8 +10,10 @@ var vm_root: Node3D
 var player: CharacterBody3D
 var world_light: OmniLight3D
 const MUS := {"menu": "res://musica/menu.ogg", "coro": "res://musica/combate_coro.ogg", "furia": "res://musica/combate_furia.ogg",
-	"gabriel": "res://sfx/gabriel_theme.ogg", "deus": "res://musica/deus.ogg", "sangue": "res://musica/deus_sangue.ogg"}
-const MUS_GROUP := {"coro": ["coro", "furia"], "furia": ["coro", "furia"], "deus": ["deus", "sangue"], "sangue": ["deus", "sangue"]}
+	"gabriel": "res://sfx/gabriel_theme.ogg", "deus": "res://musica/deus.ogg", "sangue": "res://musica/deus_sangue.ogg",
+	"final": "res://musica/final.ogg", "final_sangue": "res://musica/final_sangue.ogg"}
+const MUS_GROUP := {"coro": ["coro", "furia"], "furia": ["coro", "furia"], "deus": ["deus", "sangue"], "sangue": ["deus", "sangue"],
+	"final": ["final", "final_sangue"], "final_sangue": ["final", "final_sangue"]}
 var mus = {}
 var mus_w = {}
 var _mus_us = 0
@@ -462,7 +464,9 @@ func _autotest(m: String) -> void:
 		rtt.call(1.5, sht.bind("0corredor"))
 		rtt.call(1.6, func(): player.global_position = Vector3(0, 1.2, 57))
 		rtt.call(5.8, sht.bind("1porta"))
-		rtt.call(6.0, func(): player.global_position = Vector3(0, 1.2, 40))
+		rtt.call(5.85, func(): view.call(Vector3(-2.5, 1.7, 52), Vector3(0, .5, 40), ""))
+		rtt.call(5.95, sht.bind("1b_soleira"))
+		rtt.call(6.0, func(): player.cam.make_current(); player.global_position = Vector3(0, 1.2, 40))
 		rtt.call(6.6, sht.bind("2salao_jogador"))
 		rtt.call(6.7, func(): view.call(Vector3(0, 30, 44), Vector3(0, 8, -50), ""))
 		rtt.call(7.0, sht.bind("3geral"))
@@ -1585,7 +1589,10 @@ func _upd_music() -> void:
 		tgt.menu = .25 if trono.stage == "cut" else .85
 		if G.state == "paused": tgt.menu *= .4
 	elif started:
-		if boss_ok and G.boss.kind == "deus":
+		if boss_ok and G.boss.kind == "deus" and level == "trono" and mus.final.stream != null:
+			tgt.final = 1.0
+			tgt.final_sangue = 1.0 if G.boss.ph2 else 0.0
+		elif boss_ok and G.boss.kind == "deus":
 			tgt.deus = 1.0
 			tgt.sangue = 1.0 if G.boss.ph2 else 0.0
 		elif boss_ok:
@@ -1602,7 +1609,7 @@ func _upd_music() -> void:
 		var p: AudioStreamPlayer = mus[k]
 		if p.stream == null: continue
 		var w: float = mus_w[k]
-		var up: float = 2.5 if k == "furia" else 1.2
+		var up: float = 2.5 if k == "furia" else (2.0 if k == "final_sangue" else 1.2)
 		var down: float = .35 if k == "furia" else 1.0
 		w = move_toward(w, tgt[k], (up if tgt[k] > w else down) * dt)
 		mus_w[k] = w
