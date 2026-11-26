@@ -1,5 +1,11 @@
 # Histórico de mudanças
 
+## Anjo Caído: braço solto da coxa
+
+- A pele da coxa e a placa do quadril estavam presas ao braço direito (a mão encostava na coxa na pose original)
+  e esticavam como uma membrana quando ela movia o braço. Agora ficam presas à perna e ao quadril,
+  e as poucas faces que fundiam o braço ao corpo foram cortadas.
+
 ## Anjo Caído vira a inimiga padrão
 
 - O Anjo Caído substitui a Ceifadora em todo lugar (ondas, ondas de boss e treino).
