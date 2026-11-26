@@ -1,5 +1,13 @@
 # Histórico de mudanças
 
+## Lilith: tecido vermelho com física
+
+- Os panos longos da Lilith (da cintura para baixo, sem as pernas de armadura) agora usam o tecido trançado
+  vermelho "Plain Red Dimout" (cor, rugosidade e relevo), com um leve brilho acetinado nas dobras.
+- Física de tecido: uma mola acompanha a velocidade dela, então os panos arrastam para trás quando ela avança,
+  sobem quando ela desce, voam no Mergulho Infernal e balançam e assentam quando ela para. Ondas descem pelo
+  pano o tempo todo, mais rápidas quanto mais ela se move.
+
 ## Estátuas gigantes na entrada do Gabriel
 
 - As duas estátuas de anjo da entrada agora têm ~18 m (antes ~10 m), com as asas passando do topo das torres.

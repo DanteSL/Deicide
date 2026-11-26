@@ -24,7 +24,35 @@ uniform float lift = 0.0;   // sobe/desce das pontas
 uniform float wings = 1.0;  // 1 no corpo, 0 nas outras partes
 uniform float leg_t = 0.0;  // tempo do balanço das pernas
 uniform float leg_amp = 1.0;
+// física do tecido: deslocamento de mola (espaço do modelo) + ondas que descem pelo pano
+uniform vec3 cloth_off = vec3(0.0);
+uniform float cloth_t = 0.0;
+uniform float cloth_amp = 1.0;
+// tecido vermelho trançado (Plain Red Dimout) nos panos
+uniform sampler2D fab_tex : source_color, filter_linear_mipmap, repeat_enable;
+uniform sampler2D fab_rough : hint_roughness_gray, filter_linear_mipmap, repeat_enable;
+uniform sampler2D fab_nrm : hint_normal, filter_linear_mipmap, repeat_enable;
+uniform float fab_scale = 22.0;
+varying float cw;
+varying vec3 lp;
+varying vec3 ln;
 void vertex() {
+	lp = VERTEX;
+	ln = NORMAL;
+	// panos = abaixo da cintura, menos o miolo das pernas de armadura
+	float leg = 1.0 - smoothstep(.045, .085, abs(VERTEX.x - .015));
+	cw = (1.0 - smoothstep(.40, .56, VERTEX.y)) * (1.0 - leg * .9) * wings;
+	if (cw > 0.0) {
+		float k = clamp((.56 - VERTEX.y) / .56, 0.0, 1.0);
+		float kk = k * k;
+		// arrasto e balanço de mola (mais forte na barra do pano)
+		VERTEX += cloth_off * kk * cw * 1.3;
+		// ondas descendo pelo tecido, mais rápidas quando ela se move
+		float w1 = sin(cloth_t * 3.1 - VERTEX.y * 16.0 + VERTEX.x * 9.0);
+		float w2 = sin(cloth_t * 4.7 - VERTEX.y * 27.0 - VERTEX.x * 13.0 + 1.7);
+		VERTEX.z += (w1 * .022 + w2 * .008) * k * cw * cloth_amp;
+		VERTEX.x += sin(cloth_t * 2.3 - VERTEX.y * 11.0 + VERTEX.z * 8.0) * .011 * k * cw * cloth_amp;
+	}
 	float ax = abs(VERTEX.x);
 	float s = sign(VERTEX.x);
 	float w = smoothstep(.09, .42, ax) * clamp((-VERTEX.z + .01) / .07, 0.0, 1.0) * smoothstep(.3, .52, VERTEX.y) * wings;
@@ -53,14 +81,35 @@ void fragment() {
 	float red = clamp((c.r - max(c.g, c.b)) * 3.0, 0.0, 1.0);
 	float g = dot(col, vec3(.3, .59, .11));
 	col = mix(col, vec3(g) * vec3(.95, .97, 1.05), neutral * (1.0 - red * .6));
+	// tecido: só nos panos (não na fumaça azulada nem nos enfeites brilhantes)
+	float lum = dot(c.rgb, vec3(.3, .59, .11));
+	float smoke = smoothstep(.0, .06, c.b - c.r) * smoothstep(.18, .3, lum);
+	float fab = clamp(cw * 1.4, 0.0, 1.0) * (1.0 - smoke) * (1.0 - smoothstep(.45, .6, lum));
+	vec2 fuv = (abs(ln.x) > abs(ln.z) ? vec2(lp.z, lp.y) : vec2(lp.x, lp.y)) * fab_scale;
+	vec3 fc = texture(fab_tex, fuv).rgb;
+	// mantém as dobras e sombras do modelo, troca a cor pelo tecido
+	vec3 fabcol = fc * (lum * 1.9 + .12);
+	col = mix(col, fabcol, fab * .85);
 	ALBEDO = col;
 	EMISSION = emis;
-	ROUGHNESS = .55;
-	METALLIC = .15;
+	ROUGHNESS = mix(.55, texture(fab_rough, fuv).r * .9, fab);
+	METALLIC = mix(.15, .0, fab);
+	SPECULAR = mix(.5, .35, fab);
+	// brilho acetinado que corre pelas dobras
+	ANISOTROPY = .35 * fab;
+	ANISOTROPY_FLOW = vec2(0.0, 1.0);
+	NORMAL_MAP = mix(vec3(.5, .5, 1.0), texture(fab_nrm, fuv).rgb, fab);
+	NORMAL_MAP_DEPTH = 1.2;
 	RIM = .45;
 	RIM_TINT = .15;
 }
 """
+var FAB = [load("res://lilith/seda_cor.jpg"), load("res://lilith/seda_r.jpg"), load("res://lilith/seda_n.jpg")]
+# física do tecido (mola)
+var cl_off := Vector3.ZERO
+var cl_vel := Vector3.ZERO
+var cl_prev := Vector3.ZERO
+var cl_t := 0.0
 const ATTACKS := ["claw", "crosses", "brimstone", "kiss", "dive", "rift", "souls"]
 
 var kind = "lilith"
@@ -128,6 +177,7 @@ func setup(pos: Vector3) -> void:
 			var m = ShaderMaterial.new()
 			m.shader = bsh
 			m.set_shader_parameter("tex", tex)
+			m.set_shader_parameter("fab_tex", FAB[0]); m.set_shader_parameter("fab_rough", FAB[1]); m.set_shader_parameter("fab_nrm", FAB[2])
 			m.set_shader_parameter("wings", 1.0 if String(mi.name).begins_with("body") or String(mi.get_parent().name).begins_with("body") else 0.0)
 			mi.set_surface_override_material(si, m)
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -373,7 +423,23 @@ func _anim(dt: float) -> void:
 	# batida: as pontas vão para trás e para a frente e sobem/descem; recolhidas, ficam para trás
 	var fl: float = amp * s + A.spread * .15 - fold * .55 + flinch * .15
 	var li: float = sin(wph + .6) * (.1 + A.flap * .25) * (1.0 - fold * .7) + A.spread * .1
+	# ---- tecido: arrasto contra o movimento + mola com sobra (balança e assenta) ----
+	var wp: Vector3 = model.global_position
+	var v: Vector3 = (wp - cl_prev) / max(dt, .001) if cl_prev != Vector3.ZERO else Vector3.ZERO
+	cl_prev = wp
+	if v.length() > 60.0: v = Vector3.ZERO
+	var vl: Vector3 = model.global_transform.basis.inverse() * v   # já dividido pela escala
+	var tgt: Vector3 = -vl * 1.6 + Vector3(0, -vl.y * .4, 0)
+	tgt += Vector3(swing * -.03, 0, 0) + Vector3(0, 0, -A.lean * .04)
+	tgt = tgt.limit_length(.11)
+	cl_vel += ((tgt - cl_off) * 38.0 - cl_vel * 5.5) * dt
+	cl_off += cl_vel * dt
+	var spd = v.length()
+	cl_t += dt * (1.0 + min(spd, 25.0) * .09 + A.flap * .6)
 	for m in mats:
+		m.set_shader_parameter("cloth_off", cl_off)
+		m.set_shader_parameter("cloth_t", cl_t)
+		m.set_shader_parameter("cloth_amp", 1.0 + min(spd, 25.0) * .07 + A.flap * .5 + (.8 if att == "dive" else 0.0))
 		m.set_shader_parameter("leg_t", phase)
 		m.set_shader_parameter("leg_amp", 1.0 + A.flap * .6 + (.6 if att == "dive" else 0.0))
 		m.set_shader_parameter("flap", fl)
