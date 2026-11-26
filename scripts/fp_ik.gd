@@ -14,6 +14,10 @@ var free_r: Node3D = null # alvo livre da mão direita (giro no dedo)
 var free_rw := 0.0
 var finger_w := 0.0 # abre a mão direita (dedos e polegar esticados)
 var index_r = []
+var index_pt := Vector3.ZERO # meio do indicador direito (global), usado no giro
+var index_ok := false
+var ib2 := -1
+var ib3 := -1
 var GRIP_FWD := .075
 var GRIP_PALM := .03
 var GRIP_UP := .0 # "pistol" (envolve a mão direita), "barrel" (segura o cano), "hand", "punch"
@@ -24,7 +28,8 @@ func setup() -> void:
 		bones[side] = [sk.find_bone("upperarm_" + side), sk.find_bone("lowerarm_" + side), sk.find_bone("hand_" + side)]
 	for nm in ["index_01_r", "index_02_r", "index_03_r", "middle_01_r", "middle_02_r", "middle_03_r", "ring_01_r", "ring_02_r", "ring_03_r", "pinky_01_r", "pinky_02_r", "pinky_03_r", "thumb_01_r", "thumb_02_r", "thumb_03_r"]:
 		var b = sk.find_bone(nm)
-		if b >= 0: index_r.append(b)
+		if b >= 0 and nm != "index_01_r": index_r.append(b)
+	ib2 = sk.find_bone("index_02_r"); ib3 = sk.find_bone("index_03_r")
 
 func _process_modification_with_delta(_dt: float) -> void:
 	var sk := get_skeleton()
@@ -83,6 +88,9 @@ func _process_modification_with_delta(_dt: float) -> void:
 			var q0: Quaternion = sk.get_bone_pose_rotation(b)
 			var q1: Quaternion = sk.get_bone_rest(b).basis.get_rotation_quaternion()
 			sk.set_bone_pose_rotation(b, q0.slerp(q1, clamp(finger_w, 0.0, 1.0)))
+	if ib2 >= 0 and ib3 >= 0:
+		index_pt = skg * ((sk.get_bone_global_pose(ib2).origin + sk.get_bone_global_pose(ib3).origin) * .5)
+		index_ok = true
 	if tl != null: _solve(sk, bones.l, inv * tl, ib * Vector3(-.8, -1, .25))
 
 # espelha uma pegada da mão direita para a esquerda (eixos do esqueleto espelhados em X)

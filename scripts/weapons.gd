@@ -103,12 +103,12 @@ var grips = {} # id da arma -> {"r": Node3D, "l": Node3D, "lmode": String}
 var fist_grip: Node3D
 var rl_marker: Node3D # mão esquerda na recarga da pistola
 var rl_w := 0.0
-# giro da pistola na palma: a arma deita de lado sobre a mão aberta e gira em volta do eixo vertical
-const SPIN_PIVOT := Vector3(0, .0, -.07)
+# giro de pistoleiro: mão aberta, só o indicador dobrado dentro do guarda-mato, a arma roda em volta dele
+const SPIN_PIVOT := Vector3(0, -.012, .01)
 var spin_w := 0.0
 var spin_r: Node3D
 var spin_l: Node3D
-var SPIN_OFS := Vector3(0, -.05, .025) # do centro da arma deitada até o centro da palma
+const SPIN_HAND := Vector3(.22, -.25, -.56) # onde a mão aberta fica durante o giro (espaço da câmera)
 var rack := 0.0
 var load_grip: Node3D
 
@@ -166,7 +166,7 @@ func _setup_arms() -> void:
 		if grips.has(k) and md.has("body"):
 			grips[k].l = _marker(md.body, SUPPORT[k])
 	rl_marker = _marker(rev.root, Vector3.ZERO)
-	spin_r = _marker(rev.root, Vector3.ZERO)
+	spin_r = _marker(root, SPIN_HAND)
 	spin_l = _marker(rev.root, Vector3(-.17, -.3, .2))
 	spin_l.basis = Basis(Vector3(1, 0, 0), Vector3(0, 0, 1), Vector3(0, -1, 0)) # palma para trás, dedos para cima
 	arms = load("res://maos/maos.glb").instantiate()
@@ -1045,7 +1045,7 @@ func _process(dt: float) -> void:
 		rev.steel.emission = Color(.25, .9, 1.0) * (charge * 1.2 if charging else 0.0)
 		# no giro a pistola deita de lado sobre a palma e roda em volta do eixo vertical
 		var sa: float = c_ang if charging else ang
-		rev.pivot.basis = Basis(Vector3.UP, sa) * Basis(Vector3(0, 0, 1), PI * .5 * clamp(spin_w * 1.3, 0.0, 1.0))
+		rev.pivot.rotation = Vector3(sa, 0, 0)
 		rev.hammer.rotation.x = .6 * (1 - hammer)
 		drum_a += (drum_t - drum_a) * (1.0 - exp(-25 * dt))
 		if rev.has("pistol"):
@@ -1062,11 +1062,11 @@ func _process(dt: float) -> void:
 			var spinning: bool = (s < 1 or charging) and not rv_reloading
 			spin_w += ((1.0 if spinning else 0.0) - spin_w) * (1.0 - exp(-(16.0 if spinning else 9.0) * dt))
 			if spin_r:
-				# mão aberta, palma para cima, dedos para a frente, logo abaixo do centro da arma
-				var fd := Vector3(-.1, .05, -1).normalized()
-				var palm := Vector3(0, 1, .1)
+				# dedos para cima, palma virada para a arma (esquerda): o indicador dobrado aponta para ela
+				var fd := Vector3(.05, 1, -.45).normalized()
+				var palm := Vector3(-1, .1, .7)
 				palm = (palm - fd * palm.dot(fd)).normalized()
-				spin_r.transform = Transform3D(Basis(fd.cross(palm).normalized(), palm, -fd).orthonormalized(), SPIN_PIVOT + SPIN_OFS)
+				spin_r.transform = Transform3D(Basis(fd.cross(palm).normalized(), palm, -fd).orthonormalized(), SPIN_HAND + Vector3(bx + sway.x, by + sway.y, 0))
 			if rl_marker and rv_reloading:
 				var ps = _pistol_reload_pose(rv_t)
 				var fwd: Vector3 = ps[2]
@@ -1100,6 +1100,10 @@ func _process(dt: float) -> void:
 			sg.shell.visible = sg_phase == "load" and (v < .58 or v > .8)
 	rot = X.pose(IDS[cur], w, dt, rot, Time.get_ticks_msec() / 1000.0)
 	w.root.basis = Basis.from_euler(rot, EULER_ORDER_XYZ)
+	# no giro, o guarda-mato da pistola fica preso ao indicador da mão aberta
+	if cur == 0 and spin_w > .001 and arms_ik and arms_ik.index_ok:
+		var pg: Vector3 = rev.pivot.global_position
+		w.root.global_position += (arms_ik.index_pt - pg) * clamp(spin_w * 1.4, 0.0, 1.0)
 	var pu = punch_t
 	var ext = 0.0
 	if pu < 1:
