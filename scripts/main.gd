@@ -642,6 +642,30 @@ func _autotest(m: String) -> void:
 		rts.call(2.0, func(): st.on = true; wp.start_spin(3, 2.4, "x"))
 		rts.call(9.0, func(): print("SPIN OK k=", st.k); get_tree().quit())
 		return
+	if m == "asas":
+		start_mode("lilith")
+		var rta = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+		var pc = Camera3D.new(); pc.fov = 50
+		world.add_child(pc)
+		for i in 300: rta.call(i * .2, func(): player.hp = 100000.0; player.dead = false; if G.boss: G.boss.cd = 99.0)
+		var views = [Vector3(0, 6, 11), Vector3(11, 6, 2), Vector3(-8, 6, -9), Vector3(0, 6, 11)]
+		for i in 8:
+			rta.call(4.5 + i * .35, func():
+				hud.visible = false
+				var b = G.boss
+				if b == null: return
+				b.global_position = Vector3(0, b.BASE_Y, -10)
+				b.rotation.y = 0.0
+				var v: Vector3 = views[i % 4]
+				player.global_position = b.global_position + v
+				player.velocity = Vector3.ZERO
+				var d = b.global_position + Vector3(0, 8, 0) - (player.global_position + Vector3(0, 1.6, 0))
+				player.yaw = atan2(-d.x, -d.z); player.pitch = atan2(d.y, Vector2(d.x, d.z).length())
+				pass)
+			rta.call(4.65 + i * .35, func(): get_viewport().get_texture().get_image().save_png("/tmp/as_%d.png" % i))
+		rta.call(3.6, func(): if G.boss: G.boss.T.flap = 1.0)
+		rta.call(7.5, func(): print("ASAS OK"); get_tree().quit())
+		return
 	if m == "lilith":
 		start_mode("lilith")
 		var rtq = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)

@@ -10,6 +10,39 @@ extends Node3D
 
 const MSC := 13.0
 const BASE_Y := 1.6
+## as asas fazem parte do corpo: um shader dobra os vértices das costas (mais forte na ponta,
+## nada na raiz), então elas batem presas ao corpo, sem se soltar
+const BODY_SHADER := """
+shader_type spatial;
+render_mode cull_disabled;
+uniform sampler2D tex : source_color, filter_linear_mipmap;
+uniform vec3 tint = vec3(1.35, 1.3, 1.35);
+uniform vec3 emis = vec3(.05, 0.0, 0.0);
+uniform float flap = 0.0;   // ângulo atual da batida (rad)
+uniform float lift = 0.0;   // sobe/desce das pontas
+uniform float wings = 1.0;  // 1 no corpo, 0 nas outras partes
+void vertex() {
+	float ax = abs(VERTEX.x);
+	float s = sign(VERTEX.x);
+	float w = smoothstep(.09, .42, ax) * clamp((-VERTEX.z + .01) / .07, 0.0, 1.0) * smoothstep(.3, .52, VERTEX.y) * wings;
+	float dx = ax - .08;
+	if (dx > 0.0 && w > 0.0) {
+		float a = flap * w;
+		VERTEX.x = s * (.08 + dx * cos(a));
+		VERTEX.z -= dx * sin(a);
+		VERTEX.y += dx * lift * w;
+	}
+}
+void fragment() {
+	vec4 c = texture(tex, UV);
+	ALBEDO = c.rgb * tint;
+	EMISSION = emis;
+	ROUGHNESS = .55;
+	METALLIC = .15;
+	RIM = .45;
+	RIM_TINT = .15;
+}
+"""
 const ATTACKS := ["claw", "crosses", "brimstone", "kiss", "dive", "rift", "souls"]
 
 var kind = "lilith"
@@ -69,18 +102,14 @@ func setup(pos: Vector3) -> void:
 	add_child(model)
 	_index(model)
 	var tex = load("res://lilith/lilith_cor.jpg") if ResourceLoader.exists("res://lilith/lilith_cor.jpg") else null
+	var bsh = Shader.new(); bsh.code = BODY_SHADER
 	for mi in _meshes(model):
 		var mesh: Mesh = mi.mesh
 		for si in mesh.get_surface_count():
-			var m = StandardMaterial3D.new()
-			m.albedo_texture = tex
-			m.roughness = .55
-			m.metallic = .15
-			m.cull_mode = BaseMaterial3D.CULL_DISABLED
-			m.rim_enabled = true; m.rim = .45; m.rim_tint = .15
-			m.emission_enabled = true
-			m.emission = Color(.05, .0, .0)
-			m.albedo_color = Color(1.35, 1.3, 1.35)
+			var m = ShaderMaterial.new()
+			m.shader = bsh
+			m.set_shader_parameter("tex", tex)
+			m.set_shader_parameter("wings", 1.0 if String(mi.name).begins_with("body") or String(mi.get_parent().name).begins_with("body") else 0.0)
 			mi.set_surface_override_material(si, m)
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			mats.append(m)
@@ -294,7 +323,7 @@ func _upd_death(dt: float) -> void:
 	T.fold = .7 * k; T.raise = 1.0; T.spread = 1.0 - k; T.lean = -.5 * k; T.nod = -.7 * k; T.glow = 1.0
 	_anim(dt * (1.0 - k * .6))
 	model.position += Vector3(G.rnd(-1, 1), G.rnd(-1, 1), 0) * .12 * k
-	for m in mats: m.emission = Color(.25, .02, .01).lerp(Color(2.5, .5, .1), k * (.6 + .4 * G.rng.randf()))
+	for m in mats: m.set_shader_parameter("emis", Vector3(.25, .02, .01).lerp(Vector3(2.5, .5, .1), k * (.6 + .4 * G.rng.randf())))
 	if die_t >= 2.4 and not fired.has("boom"):
 		fired.boom = true
 		G.blast(center(), 1.6, ad.get("src", "parry"))
@@ -302,12 +331,11 @@ func _upd_death(dt: float) -> void:
 		G.emit("fire", center(), 80, 28, .4, 1.2)
 		G.flash = 1.0
 		G.main.banner("RAINHA BANIDA", "O ABISMO SE CALA" if G.mode == "lilith" else "")
-		for m in mats: m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		if G.main.has_method("respawn_lilith") and G.mode == "lilith":
 			G.later(9.0, G.main.respawn_lilith)
 	if die_t >= 2.4:
 		var f = clamp((die_t - 2.4) / 1.2, 0.0, 1.0)
-		for m in mats: m.albedo_color = Color(.4, .05, .05, 1.0 - f)
+		model.scale = Vector3.ONE * MSC * max(.01, 1.0 - f)
 		global_position.y -= dt * 6.0 * f
 		if f >= 1: queue_free()
 
@@ -322,13 +350,13 @@ func _anim(dt: float) -> void:
 		G.snd("flapbig", -10 + A.flap * 4, .55)
 	var s = sin(wph)
 	var fold: float = A.fold
-	var amp: float = (.12 + A.flap * .35) * (1.0 - fold * .7)
-	for side in [1.0, -1.0]:
-		var w: Node3D = N.get("wingL" if side > 0 else "wingR")
-		if w:
-			w.rotation = Vector3(sin(wph + .4) * .06,
-				side * (fold * .9 - A.spread * .2 - flinch * .2),
-				side * (amp * s + A.spread * .2 - fold * .3 + flinch * .1))
+	var amp: float = (.1 + A.flap * .3) * (1.0 - fold * .7)
+	# batida: as pontas vão para trás e para a frente e sobem/descem; recolhidas, ficam para trás
+	var fl: float = amp * s + A.spread * .15 - fold * .55 + flinch * .15
+	var li: float = sin(wph + .6) * (.1 + A.flap * .25) * (1.0 - fold * .7) + A.spread * .1
+	for m in mats:
+		m.set_shader_parameter("flap", fl)
+		m.set_shader_parameter("lift", li)
 	var ph = phase
 	# braço erguido (esquerdo dela): ergue a cruz e conjura
 	var al: Node3D = N.get("armL")
@@ -356,7 +384,7 @@ func _anim(dt: float) -> void:
 	embers.amount = 70
 	if not dying:
 		for m in mats:
-			m.emission = Color(2.2, .5, .3) if flash > 0 else Color(.05 + hot * .12, .0, .0)
+			m.set_shader_parameter("emis", Vector3(2.2, .5, .3) if flash > 0 else Vector3(.05 + hot * .12, .0, .0))
 
 var _fy := 0.0
 func _floor_y() -> float:

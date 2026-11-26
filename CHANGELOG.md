@@ -1,5 +1,11 @@
 # Histórico de mudanças
 
+## Asas da Lilith presas ao corpo
+
+- As asas deixaram de ser peças soltas giradas (que pareciam flutuar e levavam junto pedaços de fumaça e enfeites).
+  Agora fazem parte do corpo e um shader dobra os vértices das costas: nada se mexe na raiz, a ponta bate mais forte,
+  para trás e para a frente e subindo/descendo; recolhidas, ficam para trás.
+
 ## Chão de lava na arena da Lilith
 
 - O lago em volta da ilha (e as cachoeiras das paredes) usam a textura de lava derretida enviada pelo autor:
