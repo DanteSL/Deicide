@@ -708,7 +708,7 @@ func _corridor_decor() -> void:
 	for i in spots.size():
 		var sx: int = spots[i][0]
 		var z: float = spots[i][1]
-		_statue(Vector3(sx * 6.4, 0, z), sx, i)
+		_statue(Vector3(sx * 6.3, 0, z), sx, i)
 		_painting(Vector3(sx * 8.93, 13.2, z), sx, i)
 
 func _seg(parent: Node3D, mesh: Mesh, pos: Vector3, rot: Vector3, mat: Material = null) -> Node3D:
@@ -759,88 +759,99 @@ func _blob(parent: Node3D, pos: Vector3, scl: Vector3, mat: Material = null) -> 
 
 var m_statue: StandardMaterial3D
 
-## anjo de mármore ajoelhado, torcido em agonia, chorando sangue, num pedestal
+const STATUE_SHADER := """
+shader_type spatial;
+// mármore branco com sangue escorrendo: filetes que descem do rosto e dos ombros, mãos ensanguentadas e base manchada
+uniform float seed = 0.0;
+varying vec3 op;
+void vertex() { op = VERTEX; }
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p) {
+	vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+float fbm(vec2 p) { float v = 0.0; float a = .5; for (int i = 0; i < 4; i++) { v += a * noise(p); p *= 2.07; a *= .5; } return v; }
+void fragment() {
+	float n = fbm(op.xz * 2.2 + vec2(op.y * 1.6, seed));
+	vec3 marble = mix(vec3(.78, .76, .73), vec3(.97, .95, .92), smoothstep(.25, .75, n));
+	float ang = atan(op.z, op.x) / 6.2832 + .5;
+	float k = 30.0;
+	float colf = ang * k + seed * 7.0;
+	float col = floor(colf);
+	float cx = abs(fract(colf) - .5);
+	float on = step(.5, hash(vec2(col, seed)));
+	float front = smoothstep(-.4, .5, op.z);
+	float s0 = 4.05 - hash(vec2(col + 3.0, seed)) * 1.1;
+	float len = .4 + hash(vec2(col + 9.0, seed)) * 2.3;
+	float t = clamp((s0 - op.y) / len, 0.0, 1.0);
+	float wdt = (.09 + .12 * hash(vec2(col + 5.0, seed))) * (1.0 - .55 * t);
+	float run = on * front * step(op.y, s0) * step(s0 - len, op.y) * step(cx, wdt);
+	float drop = on * front * step(length(vec2(cx * 2.0, (op.y - (s0 - len)) * 5.0)), wdt * 2.4);
+	float hands = (1.0 - smoothstep(.35, .55, length(vec2(op.x * 1.2, (op.y - 3.2) * 1.0)) + (noise(op.xy * 9.0) - .5) * .3)) * step(.15, op.z);
+	float base = (1.0 - smoothstep(1.25, 1.6, op.y)) * step(1.2, op.y) * step(.45, fbm(op.xz * 4.0 + seed));
+	float m = clamp(max(max(run, drop), max(hands, base)), 0.0, 1.0);
+	vec3 bl = mix(vec3(.48, .012, .025), vec3(.13, .0, .008), noise(op.xy * 11.0));
+	ALBEDO = mix(marble, bl, m);
+	ROUGHNESS = mix(.38, .07, m);
+	SPECULAR = mix(.5, .9, m);
+}
+"""
+var _statue_sh: Shader
+var _anjo_scene: PackedScene
+
+## anjo de mármore ajoelhado com a espada (modelo enviado pelo jogador), chorando sangue, de frente para quem entra
 func _statue(p: Vector3, sx: int, idx: int) -> void:
-	if m_statue == null:
-		m_statue = m_marble.duplicate()
-		m_statue.albedo_color = Color(1.0, .98, .95)
-		m_statue.roughness = .3
+	if _anjo_scene == null:
+		if not ResourceLoader.exists("res://anjo/anjo.glb"): return
+		_anjo_scene = load("res://anjo/anjo.glb")
+		_statue_sh = Shader.new(); _statue_sh.code = STATUE_SHADER
+	var inst: Node3D = _anjo_scene.instantiate()
+	inst.position = p
+	inst.rotation.y = sx * .25   # levemente voltado para o meio do corredor
+	add_child(inst)
+	var steel = StandardMaterial3D.new(); steel.albedo_color = Color(.22, .2, .21); steel.metallic = .8; steel.roughness = .3
+	var sm = ShaderMaterial.new(); sm.shader = _statue_sh; sm.set_shader_parameter("seed", float(idx) * 1.7 + .3)
+	for mi in _find_all_meshes(inst):
+		var mesh: Mesh = mi.mesh
+		for si in mesh.get_surface_count():
+			var mat = mesh.surface_get_material(si)
+			var nm = String(mat.resource_name) if mat else ""
+			var m: Material = sm
+			if nm.contains("PilarScreen"): m = m_gold
+			elif nm.contains("Pilar"): m = m_marble2
+			elif nm.contains("Red"): m = _gem_mat()
+			elif nm.contains("Gray"): m = steel
+			mi.set_surface_override_material(si, m)
+	# colisão do pedestal + anjo (caixa simples)
+	var sb = StaticBody3D.new(); sb.collision_layer = 1; sb.collision_mask = 0
+	var cs = CollisionShape3D.new(); var bs = BoxShape3D.new(); bs.size = Vector3(2.8, 4.2, 3.9)
+	cs.shape = bs; cs.position = Vector3(0, 2.1, 0)
+	sb.add_child(cs); inst.add_child(sb)
+	# sangue na frente do pedestal e no chão
 	var r = RandomNumberGenerator.new(); r.seed = 700 + idx
+	var fz = Vector3(sin(inst.rotation.y), 0, cos(inst.rotation.y))
+	stain(p + fz * 1.99 + Vector3(0, .7, 0), fz, 1.8, 1.3)
+	pool(p.x + fz.x * 2.6, p.z + fz.z * 2.6 + r.randf_range(-.4, .4), r.randf_range(.9, 1.4), .05)
+	# gotas pingando do rosto e da espada
 	var red = glow(Color(.6, 0, .03))
-	# pedestal
-	blk(p.x, 0, p.z, 2.1, 1.5, 2.1, m_marble2)
-	blk(p.x, 1.4, p.z, 2.3, .22, 2.3, m_gold, false)
-	blk(p.x, .05, p.z, 2.3, .2, 2.3, m_gold, false)
-	stain(Vector3(p.x - sx * 1.06, .85, p.z), Vector3(-sx, 0, 0), 1.6, 1.3)
-	pool(p.x - sx * 1.6, p.z + r.randf_range(-.6, .6), r.randf_range(.9, 1.4), .05)
-	var root = Node3D.new()
-	root.position = Vector3(p.x, 1.62, p.z)
-	root.rotation.y = (PI / 2 if sx < 0 else -PI / 2) + r.randf_range(-.35, .35)   # de frente para o meio do corredor
-	add_child(root)
-	# quadril e pernas ajoelhadas (coxas descem até o joelho no chão, canelas vão para trás)
-	var pelvis = Node3D.new(); pelvis.position = Vector3(0, 1.05, 0); root.add_child(pelvis)
-	_blob(pelvis, Vector3(0, 0, 0), Vector3(.62, .38, .42))
-	for side in [-1, 1]:
-		var lift = .25 if (side == 1 and idx % 2 == 0) else 0.0   # uma perna apoiada à frente em algumas
-		var thigh = _bone(pelvis, Vector3(side * .19, 0, 0), Vector3(PI - .35 - lift * 1.2, 0, side * .06), 1.0, .17, .14)
-		var shin = _bone(thigh, Vector3(0, 1.0, 0), Vector3(1.75 if lift == 0.0 else 1.2, 0, 0), .95, .13, .09)
-		_blob(shin, Vector3(0, .98, .06), Vector3(.13, .1, .26))
-	# coluna arqueada para trás e torcida em espiral
-	var twist = r.randf_range(.17, .24) * (1 if idx % 2 else -1)
-	var spine: Node3D = pelvis
-	var pos = Vector3(0, .12, 0)
-	for k in 5:
-		var rad = .27 + .05 * sin(float(k) / 4.0 * PI)
-		spine = _bone(spine, pos, Vector3(-.1, twist, r.randf_range(-.05, .05)), .3, rad, rad * .97)
-		pos = Vector3(0, .3, 0)
-	var chest = Node3D.new(); chest.position = Vector3(0, .3, 0); chest.rotation = Vector3(-.15, twist, 0); spine.add_child(chest)
-	_blob(chest, Vector3(0, .1, 0), Vector3(.9, .5, .48))
-	# pescoço e cabeça jogada para trás, boca aberta, olhos chorando sangue
-	var neck = _bone(chest, Vector3(0, .3, 0), Vector3(-.55, twist * 1.5, r.randf_range(-.25, .25)), .3, .1, .09)
-	var head = Node3D.new(); head.position = Vector3(0, .42, .02); head.rotation = Vector3(-.5, 0, 0); neck.add_child(head)
-	_blob(head, Vector3.ZERO, Vector3(.4, .5, .44))
-	for ex in [-.09, .09]:
-		_blob(head, Vector3(ex, .05, .19), Vector3(.08, .05, .04), glow(Color(.05, 0, 0)))
-		_db(head, Vector3(ex, -.09, .2), Vector3(.025, .22, .02), red)
-	_blob(head, Vector3(0, -.13, .19), Vector3(.1, .14, .05), glow(Color(.03, 0, 0)))
-	# braços: um erguido arranhando o ar, o outro cravando os dedos no rosto
-	var up_side = 1 if idx % 2 else -1
-	for side in [-1, 1]:
-		var shoulder = Node3D.new(); shoulder.position = Vector3(side * .44, .22, 0); chest.add_child(shoulder)
-		var upper: Node3D
-		var fore: Node3D
-		if side == up_side:
-			upper = _bone(shoulder, Vector3.ZERO, Vector3(r.randf_range(-.4, .1), 0, -side * 2.6), .7, .1, .085)
-			fore = _bone(upper, Vector3(0, .7, 0), Vector3(r.randf_range(-.5, -.2), 0, side * .35), .62, .08, .06)
-		else:
-			upper = _bone(shoulder, Vector3.ZERO, Vector3(-1.2, 0, -side * .5), .65, .1, .085)
-			fore = _bone(upper, Vector3(0, .65, 0), Vector3(-2.0, 0, side * .5), .58, .08, .06)
-		var hand = Node3D.new(); hand.position = Vector3(0, .62, 0); fore.add_child(hand)
-		_blob(hand, Vector3(0, .07, 0), Vector3(.17, .2, .08))
-		for fi in 4:
-			_bone(hand, Vector3(-.06 + fi * .04, .15, 0), Vector3(r.randf_range(-.9, -.2), 0, (fi - 1.5) * .15), .17, .018, .012)
-	# asas: inteiras em umas, quebradas em outras
-	for side in [-1, 1]:
-		var broken = (idx + (0 if side < 0 else 1)) % 3 == 0
-		var w = Node3D.new()
-		w.position = Vector3(side * .2, .15, -.22)
-		w.rotation = Vector3(.3 if not broken else 1.3, side * .4, -side * (.5 if not broken else -.4))
-		chest.add_child(w)
-		for fi in 5:
-			var f = _bone(w, Vector3(side * .12 * fi, -.05 * fi, -.02 * fi), Vector3(0, 0, -side * (.25 + fi * .18)), 1.5 - fi * .16, .07, .025)
-			(f.get_child(0) as MeshInstance3D).scale = Vector3(1.6, 1, .35)
-	# gotas de sangue caindo dos olhos
-	var pt = CPUParticles3D.new()
-	pt.amount = 6; pt.lifetime = 1.6
-	pt.direction = Vector3(0, -1, 0); pt.spread = 5
-	pt.initial_velocity_min = .2; pt.initial_velocity_max = .4
-	pt.gravity = Vector3(0, -9.8, 0)
-	var dm = SphereMesh.new(); dm.radius = .045; dm.height = .14; dm.radial_segments = 5; dm.rings = 3
-	dm.material = red
-	pt.mesh = dm
-	pt.local_coords = false
-	head.add_child(pt)
-	pt.position = Vector3(0, -.2, .22)
+	for src in [Vector3(0, 3.7, .55), Vector3(0, 1.9, .95)]:
+		var pt = CPUParticles3D.new()
+		pt.amount = 5; pt.lifetime = 1.4
+		pt.direction = Vector3(0, -1, 0); pt.spread = 5
+		pt.initial_velocity_min = .2; pt.initial_velocity_max = .4
+		pt.gravity = Vector3(0, -9.8, 0)
+		var dm = SphereMesh.new(); dm.radius = .045; dm.height = .14; dm.radial_segments = 5; dm.rings = 3
+		dm.material = red
+		pt.mesh = dm
+		pt.local_coords = false
+		pt.position = src
+		inst.add_child(pt)
+
+func _find_all_meshes(n: Node) -> Array:
+	var out = []
+	if n is MeshInstance3D: out.append(n)
+	for c in n.get_children(): out += _find_all_meshes(c)
+	return out
 
 ## quadro grotesco com moldura preta e dourada
 func _painting(p: Vector3, sx: int, idx: int) -> void:

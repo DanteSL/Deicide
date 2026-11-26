@@ -106,6 +106,8 @@ Deicide/
 
 ## Créditos
 
+- Estátuas do corredor da Sala do Trono: modelo **"AngelStatue"**, de Zsky.
+
 - **"Throne of Ash and Gold"** (batalha final contra Deus): composta por DanteSL.
 
 - Design, direção e modelos 3D de origem: **DanteSL**
