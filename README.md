@@ -107,6 +107,8 @@ Deicide/
 ## Créditos
 
 - Estátuas do corredor da Sala do Trono: modelo **"AngelStatue"**, de Zsky.
+- Fontes da Sala do Trono: modelo de fonte enviado pelo autor (`fonte.zip`).
+- Fontes de texto da barra dos chefes: Cinzel e Cinzel Decorative (SIL Open Font License, em `fontes_ui/OFL.txt`).
 - Braços do jogador e animação de respiração/pegada: arquivo `fps_test` enviado pelo autor (esqueleto no padrão do manequim da Unreal). Confira a licença do modelo antes de publicar.
 
 - **"Throne of Ash and Gold"** (batalha final contra Deus): composta por DanteSL.

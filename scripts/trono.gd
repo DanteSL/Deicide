@@ -1262,42 +1262,65 @@ func _drape(top: Vector3, w: float, h: float) -> MeshInstance3D:
 	mi.add_child(cap)
 	return mi
 
+const FONTE_SCALE := 7.8
 func _fountain(x: float, z: float) -> void:
-	cyl(x, 0, z, 4.2, 4.6, 1.3, m_marble2)
-	var rim = MeshInstance3D.new()
-	var tm = TorusMesh.new(); tm.inner_radius = 3.95; tm.outer_radius = 4.35; tm.rings = 40
-	rim.mesh = tm; rim.material_override = m_gold
-	rim.position = Vector3(x, 1.32, z)
-	add_child(rim)
-	disc(Vector3(x, 1.18, z), 3.95, m_blood_still)
-	cyl(x, 1.3, z, .65, .9, 2.6, m_marble2)
-	cyl(x, 3.9, z, 1.9, 1.1, .7, m_gold, false)
-	disc(Vector3(x, 4.58, z), 1.75, m_blood_still)
-	# jorro central
-	var pt = CPUParticles3D.new()
-	pt.amount = 70
-	pt.lifetime = 1.5
-	pt.direction = Vector3(0, 1, 0); pt.spread = 14
-	pt.initial_velocity_min = 5.0; pt.initial_velocity_max = 6.5
-	pt.gravity = Vector3(0, -9.8, 0)
-	pt.scale_amount_min = .7; pt.scale_amount_max = 1.3
-	var dm = SphereMesh.new(); dm.radius = .09; dm.height = .26; dm.radial_segments = 5; dm.rings = 3
+	# modelo de fonte enviado pelo jogador: mármore e ouro, a água vira sangue (as moedas foram tiradas)
+	if not ResourceLoader.exists("res://fonte/fonte.glb"):
+		return
+	var f: Node3D = load("res://fonte/fonte.glb").instantiate()
+	f.position = Vector3(x, 0, z)
+	f.scale = Vector3.ONE * FONTE_SCALE
+	f.rotation.y = PI / 8.0
+	add_child(f)
+	var m_bl = bm(3, 4.0 + x * .01 + z * .003, .35)
+	for mi in f.find_children("*", "MeshInstance3D", true, false):
+		var mesh: Mesh = mi.mesh
+		for si in mesh.get_surface_count():
+			var mt = mesh.surface_get_material(si)
+			var nm = String(mt.resource_name) if mt else ""
+			var nmat: Material = m_marble
+			match nm:
+				"mat22": nmat = m_marble
+				"mat15", "mat16": nmat = m_gold
+				"mat24": nmat = m_bl
+			mi.set_surface_override_material(si, nmat)
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# colisão da bacia
+	var sb = StaticBody3D.new()
+	sb.collision_layer = 1; sb.collision_mask = 0
+	var cs = CollisionShape3D.new()
+	var sh = CylinderShape3D.new(); sh.radius = 4.4; sh.height = 1.6
+	cs.shape = sh
+	cs.position = Vector3(0, .8, 0)
+	sb.add_child(cs)
+	sb.position = Vector3(x, 0, z)
+	add_child(sb)
+	var top := FONTE_SCALE * .6
+	var dm = SphereMesh.new(); dm.radius = .07; dm.height = .2; dm.radial_segments = 5; dm.rings = 3
 	dm.material = glow(Color(.65, .01, .03))
+	# jorro no alto
+	var pt = CPUParticles3D.new()
+	pt.amount = 50
+	pt.lifetime = 1.0
+	pt.direction = Vector3(0, 1, 0); pt.spread = 12
+	pt.initial_velocity_min = 2.5; pt.initial_velocity_max = 3.5
+	pt.gravity = Vector3(0, -9.8, 0)
+	pt.scale_amount_min = .7; pt.scale_amount_max = 1.2
 	pt.mesh = dm
-	pt.position = Vector3(x, 4.7, z)
+	pt.position = Vector3(x, top - .1, z)
 	add_child(pt)
 	spouts.append(pt)
-	# transbordo da bacia de cima
+	# respingos na superfície da bacia
 	var pt2 = CPUParticles3D.new()
-	pt2.amount = 50; pt2.lifetime = .8
+	pt2.amount = 30; pt2.lifetime = .5
 	pt2.emission_shape = CPUParticles3D.EMISSION_SHAPE_RING
-	pt2.emission_ring_radius = 1.8; pt2.emission_ring_inner_radius = 1.7; pt2.emission_ring_height = .05
+	pt2.emission_ring_radius = 1.6; pt2.emission_ring_inner_radius = 1.0; pt2.emission_ring_height = .05
 	pt2.emission_ring_axis = Vector3.UP
-	pt2.direction = Vector3(0, -1, 0); pt2.spread = 5
-	pt2.initial_velocity_min = .3; pt2.initial_velocity_max = .8
+	pt2.direction = Vector3(0, 1, 0); pt2.spread = 35
+	pt2.initial_velocity_min = .6; pt2.initial_velocity_max = 1.4
 	pt2.gravity = Vector3(0, -9.8, 0)
 	pt2.mesh = dm
-	pt2.position = Vector3(x, 4.5, z)
+	pt2.position = Vector3(x, 1.25, z)
 	add_child(pt2)
 
 func _bloodfall(side: int, z: float) -> void:

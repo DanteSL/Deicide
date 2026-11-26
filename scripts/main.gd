@@ -522,6 +522,32 @@ func _autotest(m: String) -> void:
 		rtg.call(4.6, shg.bind("3_chao"))
 		rtg.call(5.0, func(): print("GIBS OK pedaços=", gibs.gibs.size(), " manchas=", gibs.splats.size(), " ts=", Engine.time_scale); get_tree().quit())
 		return
+	if m == "bossbar":
+		start_mode("boss")
+		var rtb = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+		rtb.call(5.0, func(): if G.boss: G.boss.hp = G.boss.max_hp * .62)
+		rtb.call(5.3, func(): if G.boss: G.boss.hp = G.boss.max_hp * .55)
+		rtb.call(5.5, func(): get_viewport().get_texture().get_image().save_png("/tmp/bb_gabriel.png"))
+		rtb.call(5.6, func(): ui.boss.set_boss("deus"))
+		rtb.call(6.4, func(): if G.boss: G.boss.hp = G.boss.max_hp * .25)
+		rtb.call(7.2, func(): get_viewport().get_texture().get_image().save_png("/tmp/bb_deus.png"))
+		rtb.call(7.4, func(): print("BOSSBAR OK vis=", ui.boss.visible); get_tree().quit())
+		return
+	if m == "fonte":
+		start_mode("deus")
+		var rtf = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+		var tp = trono.global_position
+		var poses = [[Vector3(-13, 7, 31), Vector3(-24, 1.5, 20)], [Vector3(-24, 3.5, 29), Vector3(-24, 2.5, 20)], [Vector3(10, 9, 0), Vector3(24, 1, -18)]]
+		rtf.call(1.0, func(): trono.set_process(false); if G.boss: G.boss.visible = false)
+		for k in poses.size():
+			rtf.call(2.0 + k * .6, func():
+				trono.cam.fov = 60
+				trono.cam.global_position = tp + poses[k][0]
+				trono.cam.look_at(tp + poses[k][1], Vector3.UP)
+				trono.cam.make_current())
+			rtf.call(2.4 + k * .6, func(): get_viewport().get_texture().get_image().save_png("/tmp/fonte_%d.png" % k))
+		rtf.call(4.2, func(): print("FONTE OK"); get_tree().quit())
+		return
 	if m == "halo":
 		start_mode("deus")
 		G.fov_base = 100.0
@@ -1076,32 +1102,13 @@ func _build_hud() -> void:
 	ui.bs = _lbl("", 20)
 	ui.bs.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	ban.add_child(ui.bs)
-	var boss = VBoxContainer.new()
-	boss.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	boss.position = Vector2(-410, 64)
-	boss.custom_minimum_size = Vector2(820, 0)
-	boss.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# barra do chefe estilizada (scripts/boss_bar.gd), um modelo para cada chefe
+	var boss = preload("res://scripts/boss_bar.gd").new()
+	boss.anchor_right = 1.0
+	boss.offset_top = 8; boss.offset_bottom = 160
 	boss.visible = false
 	hud.add_child(boss)
 	ui.boss = boss
-	var bn = _lbl("Gabriel", 26, Color("efe6da"), 5)
-	ui.bname = bn
-	bn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	boss.add_child(bn)
-	var bback = ColorRect.new()
-	bback.color = Color(.08, .02, .02, .85)
-	bback.custom_minimum_size = Vector2(820, 10)
-	boss.add_child(bback)
-	var bdmg = ColorRect.new()
-	bdmg.color = Color("e0c070")
-	bdmg.size = Vector2(820, 10)
-	bback.add_child(bdmg)
-	var bfill = ColorRect.new()
-	bfill.color = Color("b0221a")
-	bfill.size = Vector2(820, 10)
-	bback.add_child(bfill)
-	ui.bdmg = bdmg
-	ui.bfill = bfill
 	# aviso do terminal
 	ui.prompt = _lbl("[E]  TERMINAL DE ARSENAL", 20, Color("46ff8c"), 3)
 	ui.prompt.set_anchors_preset(Control.PRESET_CENTER)
@@ -1244,8 +1251,7 @@ func _upd_hud(dt: float) -> void:
 		if b_hold > 0: b_hold -= dt
 		else: b_dmg_w += (wv - b_dmg_w) * (1.0 - exp(-4 * dt))
 		b_dmg_w = max(b_dmg_w, wv)
-		ui.bfill.size.x = 8.2 * wv
-		ui.bdmg.size.x = 8.2 * b_dmg_w
+		ui.boss.set_hp(wv / 100.0, b_dmg_w / 100.0)
 	else:
 		ui.boss.visible = false
 		b_dmg_w = 100; b_last = 100
@@ -1419,7 +1425,7 @@ func spawn_deus_cine() -> void:
 	G.boss = dn
 	G.enemies.append(dn)
 	trono.deus = dn
-	if ui.has("bname"): ui.bname.text = "Deus"
+	if ui.has("boss"): ui.boss.set_boss("deus")
 
 func respawn_deus() -> void:
 	if G.mode == "deus" and G.boss == null: spawn_enemy("deus", Vector3(0, 0, -30))
@@ -1447,7 +1453,7 @@ func spawn_enemy(kind: String, at = null, dummy := false) -> void:
 		dn.setup(p if at != null else Vector3(0, 0, -30))
 		G.boss = dn
 		G.enemies.append(dn)
-		if ui.has("bname"): ui.bname.text = "Deus"
+		if ui.has("boss"): ui.boss.set_boss("deus")
 		banner("DEUS", "AQUELE QUE TUDO VÊ")
 		G.snd("angel", -2, .45)
 		G.flash = .8
@@ -1460,7 +1466,7 @@ func spawn_enemy(kind: String, at = null, dummy := false) -> void:
 		g.setup(p)
 		G.boss = g
 		G.enemies.append(g)
-		if ui.has("bname"): ui.bname.text = "Gabriel"
+		if ui.has("boss"): ui.boss.set_boss("gabriel")
 		banner("GABRIEL", "O ARAUTO DE MUITOS OLHOS")
 		G.snd("angel", -4)
 		G.flash = .6

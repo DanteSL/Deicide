@@ -1,5 +1,16 @@
 # Histórico de mudanças
 
+## Barra dos chefes e fontes novas
+
+- **Barra dos chefes** redesenhada (`scripts/boss_bar.gd`), com moldura em cápsula, 10 segmentos, pontas curvas,
+  rastro de dano e um modelo por chefe:
+  - **Deus**: moldura púrpura, espinhos negros abertos, olho coroado com raios dourados e lágrima de sangue,
+    sangue pingando da barra.
+  - **Gabriel**: moldura de marfim e ouro, asas abertas, auréola e espada descendo pela barra.
+  - Nome em Cinzel Decorative com espaçamento e filetes dourados; título abaixo da barra; tremor ao levar dano.
+- **Fontes de sangue** da Sala do Trono trocadas pelo modelo enviado pelo autor: mármore e ouro, toda a água vira
+  sangue (bacia, cortinas da bacia de cima e o jorro), sem as moedas e sem o piso do modelo.
+
 ## HUD nova e recargas com as mãos
 
 - **HUD nova** (`scripts/hud2.gd`): emblema de vida com hexagrama e anel, barra de sangue com rastro de dano,
