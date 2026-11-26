@@ -103,12 +103,12 @@ var grips = {} # id da arma -> {"r": Node3D, "l": Node3D, "lmode": String}
 var fist_grip: Node3D
 var rl_marker: Node3D # mão esquerda na recarga da pistola
 var rl_w := 0.0
-# giro da pistola no dedo: pivô no guarda-mato, mão direita com o indicador esticado, mão esquerda solta
+# giro da pistola no polegar: pivô no guarda-mato, mão direita aberta, mão esquerda solta
 const SPIN_PIVOT := Vector3(0, -.012, .0)
 var spin_w := 0.0
 var spin_r: Node3D
 var spin_l: Node3D
-var SPIN_OFS := Vector3(.0, .0, .0)
+var SPIN_OFS := Vector3(-.07, -.03, .015) # do polegar até o centro da palma
 var rack := 0.0
 var load_grip: Node3D
 
@@ -1060,11 +1060,11 @@ func _process(dt: float) -> void:
 			var spinning: bool = (s < 1 or charging) and not rv_reloading
 			spin_w += ((1.0 if spinning else 0.0) - spin_w) * (1.0 - exp(-(16.0 if spinning else 9.0) * dt))
 			if spin_r:
-				# o indicador atravessa o guarda-mato (eixo X do giro); palma para baixo
-				var fd := Vector3(-1, 0, -.2).normalized()
-				var palm := Vector3(0, -1, .15).normalized()
+				# mão aberta, palma para cima, dedos para a frente: o polegar atravessa o guarda-mato (eixo X do giro)
+				var fd := Vector3(-.15, .1, -1).normalized()
+				var palm := Vector3(-.15, 1, .25)
 				palm = (palm - fd * palm.dot(fd)).normalized()
-				spin_r.transform = Transform3D(Basis(fd.cross(palm).normalized(), palm, -fd).orthonormalized(), SPIN_PIVOT - fd * .085 + SPIN_OFS)
+				spin_r.transform = Transform3D(Basis(fd.cross(palm).normalized(), palm, -fd).orthonormalized(), SPIN_PIVOT + SPIN_OFS)
 			if rl_marker and rv_reloading:
 				var ps = _pistol_reload_pose(rv_t)
 				var fwd: Vector3 = ps[2]

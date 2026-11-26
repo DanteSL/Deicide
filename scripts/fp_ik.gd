@@ -12,7 +12,7 @@ var free_l: Node3D = null # alvo livre da mão esquerda (recargas): palma = +Y d
 var free_w := 0.0
 var free_r: Node3D = null # alvo livre da mão direita (giro no dedo)
 var free_rw := 0.0
-var finger_w := 0.0 # estica o indicador direito
+var finger_w := 0.0 # abre a mão direita (dedos e polegar esticados)
 var index_r = []
 var GRIP_FWD := .075
 var GRIP_PALM := .03
@@ -22,7 +22,7 @@ func setup() -> void:
 	var sk := get_skeleton()
 	for side in ["r", "l"]:
 		bones[side] = [sk.find_bone("upperarm_" + side), sk.find_bone("lowerarm_" + side), sk.find_bone("hand_" + side)]
-	for nm in ["index_01_r", "index_02_r", "index_03_r"]:
+	for nm in ["index_01_r", "index_02_r", "index_03_r", "middle_01_r", "middle_02_r", "middle_03_r", "ring_01_r", "ring_02_r", "ring_03_r", "pinky_01_r", "pinky_02_r", "pinky_03_r", "thumb_01_r", "thumb_02_r", "thumb_03_r"]:
 		var b = sk.find_bone(nm)
 		if b >= 0: index_r.append(b)
 
