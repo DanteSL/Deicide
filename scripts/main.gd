@@ -542,6 +542,40 @@ func _autotest(m: String) -> void:
 		rtg.call(6.5, shg.bind("4_corpos"))
 		rtg.call(7.0, func(): print("GIBS OK corpos=", gibs.corpses.size(), " gotas=", gibs.globs.size(), " sangue=", G.blood, " manchas=", gibs.splats.size(), " ts=", Engine.time_scale); get_tree().quit())
 		return
+	if m == "fotos_miguel" or m == "fotos_gabriel":
+		var gab = m == "fotos_gabriel"
+		start_mode("boss" if gab else "miguel")
+		var rtf = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+		var shf = func(nm): get_viewport().get_texture().get_image().save_png("/tmp/foto_%s.png" % nm)
+		for i in 400: rtf.call(i * .1, func():
+			player.hp = 100000.0; player.dead = false
+			if G.boss and G.state == "play":
+				if not gab:
+					G.boss.cd = 99.0 if not G.boss.get("hold_atk") else G.boss.cd
+				var d = G.boss.center() - (player.global_position + Vector3(0, 1.6, 0))
+				player.yaw = atan2(-d.x, -d.z)
+				player.pitch = atan2(d.y, Vector2(d.x, d.z).length()) + (.05 if gab else .0))
+		if gab:
+			rtf.call(6.0, func(): player.global_position = Vector3(0, 1.2, 30))
+			rtf.call(7.0, func(): if G.boss: G.boss._attack("beam"))
+			rtf.call(8.2, shf.bind("gabriel"))
+			rtf.call(10.0, func(): if G.boss: G.boss._end(false); G.boss._attack("orbs"))
+			rtf.call(11.6, shf.bind("gabriel2"))
+			rtf.call(12.5, func(): get_tree().quit())
+		else:
+			rtf.call(6.0, func(): if G.boss: G.boss.global_position = Vector3(0, G.boss.BASE_Y, -10); player.global_position = Vector3(0, 1.2, 8))
+			rtf.call(6.1, func(): hud.visible = false)
+			rtf.call(6.5, shf.bind("miguel"))
+			rtf.call(6.6, func(): player.global_position = Vector3(-4, 1.2, 14))
+			rtf.call(7.1, func(): hud.visible = true; G.boss.cd = 0.0; G.boss._attack("eyes"))
+			rtf.call(8.05, shf.bind("miguel_olhos"))
+			rtf.call(9.5, func(): G.boss._end(false); G.boss._attack("cross"))
+			rtf.call(10.4, shf.bind("miguel_cruz"))
+			rtf.call(11.0, func(): G.boss._end(false); G.boss.hp = G.boss.max_hp * .45)
+			rtf.call(14.2, func(): G.boss._end(false); G.boss._attack("rosary"))
+			rtf.call(15.4, shf.bind("miguel_eclipse"))
+			rtf.call(16.0, func(): get_tree().quit())
+		return
 	if m == "jab":
 		start_mode("train")
 		var rtj = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
