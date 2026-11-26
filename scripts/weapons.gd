@@ -108,7 +108,7 @@ const SPIN_PIVOT := Vector3(0, -.012, .01)
 var spin_w := 0.0
 var spin_r: Node3D
 var spin_l: Node3D
-const SPIN_HAND := Vector3(.22, -.25, -.56) # onde a mão aberta fica durante o giro (espaço da câmera)
+const SPIN_HAND := Vector3(.3, -.15, -.68) # onde a mão aberta fica durante o giro (espaço da câmera)
 var rack := 0.0
 var load_grip: Node3D
 
@@ -394,7 +394,6 @@ func _build() -> void:
 	rev.fl = _flash_quad(.22, rev.muzzle)
 	mk(Vector3(.075, .07, .09), glove, Vector3(.005, -.092, .078), rev.root, Vector3(-.3, 0, 0))
 	mk(Vector3(.08, .08, .42), sleeve, Vector3(.025, -.183, .285), rev.root, Vector3(.45, 0, 0))
-	mk(Vector3(.084, .03, .05), gold, Vector3(.025, -.133, .115), rev.root, Vector3(.45, 0, 0))
 	rev.rest = Vector3(.17, -.15, -.5)
 	rev.kz = .09; rev.kr = .5; rev.lr = .25
 	# ---- escopeta ----
@@ -1063,8 +1062,8 @@ func _process(dt: float) -> void:
 			spin_w += ((1.0 if spinning else 0.0) - spin_w) * (1.0 - exp(-(16.0 if spinning else 9.0) * dt))
 			if spin_r:
 				# dedos para cima, palma virada para a arma (esquerda): o indicador dobrado aponta para ela
-				var fd := Vector3(.05, 1, -.45).normalized()
-				var palm := Vector3(-1, .1, .7)
+				var fd := Vector3(.1, 1, -.25).normalized()
+				var palm := Vector3(-1, 0, .55)
 				palm = (palm - fd * palm.dot(fd)).normalized()
 				spin_r.transform = Transform3D(Basis(fd.cross(palm).normalized(), palm, -fd).orthonormalized(), SPIN_HAND + Vector3(bx + sway.x, by + sway.y, 0))
 			if rl_marker and rv_reloading:
