@@ -79,14 +79,12 @@ func setup(k: String, pos: Vector3, is_dummy := false) -> void:
 			shape.shape = cap
 			shape.position.y = 1.85
 		_:
-			hp = 70; r = 0.5; h = 2.2; speed = 5.2
-			ceif = preload("res://scripts/ceifadora.gd").new()
-			vis.add_child(ceif)
-			ceif.build()
-			mats = ceif.mats
-			cap.radius = 0.5; cap.height = 2.3
+			# inimiga padrão: Anjo Caído
+			hp = 90; r = 0.6; h = 2.8; speed = 5.0
+			_build_caida()
+			cap.radius = 0.6; cap.height = 2.8
 			shape.shape = cap
-			shape.position.y = 1.15
+			shape.position.y = 1.4
 	add_child(shape)
 	max_hp = hp
 	position = pos
@@ -496,8 +494,8 @@ func _upd_ceif(dt: float, dx: float, dz: float, dist: float, nx: float, nz: floa
 	C.apply_all(params)
 
 # ---------------- Anjo Caído: desfila, golpeia com o cajado e salta cravando o cajado no chão ----------------
-const CAIDA_ATK := {"ataque": {"dur": 44.0 / 30.0, "hit": 23.0 / 30.0, "dmg": 20.0},
-	"salto": {"dur": 58.0 / 30.0, "up": 14.0 / 30.0, "hit": 36.0 / 30.0, "dmg": 26.0}}
+const CAIDA_ATK := {"ataque": {"dur": 44.0 / 30.0, "hit": 23.0 / 30.0, "dmg": 14.0},
+	"salto": {"dur": 58.0 / 30.0, "up": 14.0 / 30.0, "hit": 36.0 / 30.0, "dmg": 18.0}}
 
 func _caida_front(d: float) -> Vector3:
 	return global_position + Vector3(sin(rotation.y), 0, cos(rotation.y)) * d
@@ -518,7 +516,7 @@ func _upd_caida(dt: float, dx: float, dz: float, dist: float, nx: float, nz: flo
 		if cd <= 0.0 and abs(p.y - global_position.y) < 3.0:
 			if dist < 3.4:
 				_caida_start("ataque")
-			elif dist > 5.0 and dist < 13.0 and G.rng.randf() < .6:
+			elif dist > 5.0 and dist < 13.0 and G.rng.randf() < .35:
 				_caida_start("salto")
 			else:
 				cd = .4

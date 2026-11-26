@@ -1,5 +1,10 @@
 # Histórico de mudanças
 
+## Anjo Caído vira a inimiga padrão
+
+- O Anjo Caído substitui a Ceifadora em todo lugar (ondas, ondas de boss e treino).
+- Ajustado para inimigo comum: 90 de vida, golpe de 14 e salto de 18 de dano, salta com menos frequência.
+
 ## Nova inimiga: Anjo Caído
 
 - Inimiga de elite com modelo e esqueleto próprios (Mixamo) e três animações feitas no Blender:

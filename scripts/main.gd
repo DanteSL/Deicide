@@ -389,7 +389,7 @@ func _caida_test() -> void:
 	G.enemies.clear()
 	G.clear_timers()
 	player.global_position = Vector3(0, 1, 20)
-	spawn_enemy("caida", Vector3(0, 0.5, 2))
+	spawn_enemy("husk", Vector3(0, 0.5, 2))
 	_aim_e = G.enemies.back()
 	G.fov_base = 50.0
 	var rt = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
@@ -1639,7 +1639,7 @@ func reset() -> void:
 	elif G.mode == "deus":
 		spawn_deus_cine()
 	elif G.mode == "train":
-		for d in [["husk", -8, 12], ["husk", 0, 8], ["husk", 8, 12], ["brute", 0, -8], ["caida", -6, -14], ["drone", -14, 4], ["drone", 14, 4]]:
+		for d in [["husk", -8, 12], ["husk", 0, 8], ["husk", 8, 12], ["brute", 0, -8], ["drone", -14, 4], ["drone", 14, 4]]:
 			spawn_enemy(d[0], Vector3(d[1], 0, d[2]), true)
 		banner("TREINO", "ALVOS INFINITOS")
 
@@ -1843,7 +1843,6 @@ func _start_wave() -> void:
 	for i in 2 + wave * 2: queue.append("husk")
 	for i in wave: queue.append("drone")
 	for i in (int((wave - 1) / 2.0) if wave >= 3 else 0): queue.append("brute")
-	for i in (1 + int((wave - 3) / 3.0) if wave >= 3 else 0): queue.append("caida")
 	queue.shuffle()
 	banner("ONDA %d" % wave, "%d INIMIGOS" % queue.size())
 	G.snd("wave", -6)
