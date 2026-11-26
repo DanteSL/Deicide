@@ -564,34 +564,38 @@ func _altar() -> void:
 	_creek()
 
 # ---------------- córrego de sangue em volta do trono ----------------
-## nasce em duas bocas douradas na base do trono, contorna a frente e despenca escada abaixo
+## nasce em duas bocas douradas na base do trono, contorna a frente fazendo curvas e despenca escada abaixo.
+## Cada braço é um caminho contínuo (retas + arcos); sangue, leito e meio-fios são gerados ao longo dele.
 func _creek() -> void:
 	var Y = ALTAR_TOP
 	var lx = 7.9        # pernas laterais
 	var zb = -64.2      # nascente (junto à base do trono)
-	var zf = -58.4      # trecho da frente
+	var zf = -58.6      # trecho da frente
 	var zo = -56.35     # borda do altar (onde começa o rio da escada)
 	var W = 1.3
-	var segs = [  # [centro x, centro z, comprimento, rotação y do fluxo, horizontal?]
-		[-lx, (zb + zf) * .5, zf - zb, 0.0, false],
-		[lx, (zb + zf) * .5, zf - zb, 0.0, false],
-		[-lx * .5, zf, lx, PI / 2, true],
-		[lx * .5, zf, lx, -PI / 2, true],
-		[0.0, (zf + zo) * .5, zo - zf, 0.0, false],
-	]
-	for i in segs.size():
-		var sg = segs[i]
-		var horiz: bool = sg[4]
-		var sx = (sg[2] + W) if horiz else W
-		var sz = W if horiz else sg[2]
-		# leito e meio-fios dourados
-		blk(sg[0], Y - .02, sg[1], sx + .3, .06, sz + .3, m_gold_dark, false)
-		for side in [-1, 1]:
-			if horiz: blk(sg[0], Y, sg[1] + side * (W * .5 + .12), sx + .2, .22, .22, m_gold, false)
-			elif i < 2: blk(sg[0] + side * (W * .5 + .12), Y, sg[1], .22, .22, sz, m_gold, false)
-			else: blk(sg[0] + side * (W * .5 + .12), Y, sg[1], .22, .22, sz, m_gold, false)
-		var f = flat(Vector3(sg[0], Y + .07, sg[1]), Vector2(W * .95, sg[2] + (W if horiz else 0.0)), bm(0, 20.0 + i, .5, Vector2(1, sg[2] * .5)))
-		f.rotation.y = sg[3]
+	var R1 = 2.6        # curva da lateral para a frente
+	var R2 = 1.7        # curva da frente para a descida
+	var CW = .24        # largura do meio-fio
+	for sx in [-1, 1]:
+		var pts = []
+		pts.append(Vector2(sx * lx, zb))
+		_arc(pts, Vector2(sx * (lx - R1), zf - R1), R1, PI if sx < 0 else 0.0, PI / 2, 14)
+		_arc(pts, Vector2(sx * R2, zf + R2), R2, -PI / 2, PI if sx > 0 else 0.0, 10, true)
+		pts.append(Vector2(0, zo))
+		pts = _resample(pts, .2)
+		var n_arc2 = 0  # índice onde começa a última curva (o meio-fio de dentro para ali)
+		for i in pts.size():
+			if abs(pts[i].x) <= R2 + .01 and pts[i].y >= zf - .01:
+				n_arc2 = i; break
+		var y_off = .07 + (.006 if sx > 0 else 0.0)
+		add_child(_ribbon(pts, W, Y + y_off, bm(0, 21.0 + sx, .5, Vector2.ONE), true))
+		add_child(_ribbon(pts, W + .5, Y + .015, m_gold_dark, false))
+		# meio-fio de fora (lado da escada): o caminho inteiro; de dentro: só até a última curva
+		var outer = sx  # o lado esquerdo do braço esquerdo é o de dentro; o de fora é o direito (negativo)
+		add_child(_curb(pts, outer * (W * .5 + CW * .5), CW, Y))
+		add_child(_curb(pts.slice(0, n_arc2 + 1), -outer * (W * .5 + CW * .5), CW, Y))
+	# meio-fio do encontro, do lado do trono
+	blk(0, Y, zf - (W * .5 + CW * .5), 2 * R2, .22, CW, m_gold, false)
 	# as bocas de onde o sangue brota
 	for sx in [-1, 1]:
 		var x = sx * lx
@@ -623,6 +627,81 @@ func _creek() -> void:
 	sp.mesh = dm2
 	sp.position = Vector3(0, Y + .1, zo)
 	add_child(sp)
+
+func _arc(pts: Array, c: Vector2, r: float, a0: float, a1: float, n: int, ccw := false) -> void:
+	# acrescenta um arco de a0 a a1 pelo caminho mais curto
+	var d = wrapf(a1 - a0, -PI, PI)
+	for i in n + 1:
+		var a = a0 + d * float(i) / n
+		pts.append(c + Vector2(cos(a), sin(a)) * r)
+
+func _resample(pts: Array, step: float) -> Array:
+	var out = [pts[0]]
+	for i in range(1, pts.size()):
+		var a: Vector2 = out[out.size() - 1]
+		var b: Vector2 = pts[i]
+		var L = a.distance_to(b)
+		if L < 1e-4: continue
+		var k = int(ceil(L / step))
+		for j in range(1, k + 1): out.append(a.lerp(b, float(j) / k))
+	return out
+
+func _left(pts: Array, i: int) -> Vector2:
+	var a: Vector2 = pts[max(0, i - 1)]
+	var b: Vector2 = pts[min(pts.size() - 1, i + 1)]
+	var d = (b - a).normalized()
+	return Vector2(d.y, -d.x)
+
+## faixa ao longo do caminho (uv.x atravessa, uv.y segue o comprimento)
+func _ribbon(pts: Array, w: float, y: float, mat: Material, uv := true) -> MeshInstance3D:
+	var st = SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var s = 0.0
+	var prev = []
+	for i in pts.size():
+		if i > 0: s += (pts[i] as Vector2).distance_to(pts[i - 1])
+		var l = _left(pts, i) * w * .5
+		var L3 = Vector3(pts[i].x + l.x, y, pts[i].y + l.y)
+		var R3 = Vector3(pts[i].x - l.x, y, pts[i].y - l.y)
+		var cur = [L3, R3, s * .5]
+		if i > 0:
+			for v in [[prev[0], 0.0, prev[2]], [prev[1], 1.0, prev[2]], [cur[0], 0.0, cur[2]], [cur[0], 0.0, cur[2]], [prev[1], 1.0, prev[2]], [cur[1], 1.0, cur[2]]]:
+				st.set_normal(Vector3.UP)
+				st.set_uv(Vector2(v[1], v[2] / 4.0))
+				st.add_vertex(v[0])
+		prev = cur
+	var mi = MeshInstance3D.new()
+	mi.mesh = st.commit()
+	mi.material_override = mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
+
+var _gold2: StandardMaterial3D
+
+## meio-fio dourado contínuo, deslocado 'off' para a esquerda do caminho
+func _curb(pts: Array, off: float, w: float, y0: float, h := .22) -> MeshInstance3D:
+	var st = SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var prev = []
+	for i in pts.size():
+		var l = _left(pts, i)
+		var c = pts[i] + l * off
+		var a = c + l * w * .5
+		var b = c - l * w * .5
+		var cur = [Vector3(a.x, y0, a.y), Vector3(a.x, y0 + h, a.y), Vector3(b.x, y0 + h, b.y), Vector3(b.x, y0, b.y)]
+		if i > 0:
+			for f in [[0, 1], [1, 2], [2, 3]]:
+				var p0 = prev[f[0]]; var p1 = prev[f[1]]; var q0 = cur[f[0]]; var q1 = cur[f[1]]
+				for v in [p0, p1, q0, q0, p1, q1]: st.add_vertex(v)
+		prev = cur
+	st.generate_normals()
+	var mi = MeshInstance3D.new()
+	mi.mesh = st.commit()
+	if _gold2 == null:
+		_gold2 = m_gold.duplicate()
+		_gold2.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mi.material_override = _gold2
+	return mi
 
 # ---------------- trono detalhado ----------------
 var m_velvet: StandardMaterial3D
