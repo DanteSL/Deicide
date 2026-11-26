@@ -103,12 +103,12 @@ var grips = {} # id da arma -> {"r": Node3D, "l": Node3D, "lmode": String}
 var fist_grip: Node3D
 var rl_marker: Node3D # mão esquerda na recarga da pistola
 var rl_w := 0.0
-# giro da pistola no polegar: pivô no guarda-mato, mão direita aberta, mão esquerda solta
-const SPIN_PIVOT := Vector3(0, -.012, .0)
+# giro da pistola na palma: a arma deita de lado sobre a mão aberta e gira em volta do eixo vertical
+const SPIN_PIVOT := Vector3(0, .0, -.07)
 var spin_w := 0.0
 var spin_r: Node3D
 var spin_l: Node3D
-var SPIN_OFS := Vector3(-.07, -.03, .015) # do polegar até o centro da palma
+var SPIN_OFS := Vector3(0, -.05, .025) # do centro da arma deitada até o centro da palma
 var rack := 0.0
 var load_grip: Node3D
 
@@ -1043,7 +1043,9 @@ func _process(dt: float) -> void:
 			w.root.position += Vector3(-rb * .06, rb * .05, 0)
 		rev.drum.position = rev.drum_base + rev.drum_open * open
 		rev.steel.emission = Color(.25, .9, 1.0) * (charge * 1.2 if charging else 0.0)
-		rev.pivot.rotation = Vector3(c_ang if charging else ang, 0, 0)
+		# no giro a pistola deita de lado sobre a palma e roda em volta do eixo vertical
+		var sa: float = c_ang if charging else ang
+		rev.pivot.basis = Basis(Vector3.UP, sa) * Basis(Vector3(0, 0, 1), PI * .5 * clamp(spin_w * 1.3, 0.0, 1.0))
 		rev.hammer.rotation.x = .6 * (1 - hammer)
 		drum_a += (drum_t - drum_a) * (1.0 - exp(-25 * dt))
 		if rev.has("pistol"):
@@ -1060,9 +1062,9 @@ func _process(dt: float) -> void:
 			var spinning: bool = (s < 1 or charging) and not rv_reloading
 			spin_w += ((1.0 if spinning else 0.0) - spin_w) * (1.0 - exp(-(16.0 if spinning else 9.0) * dt))
 			if spin_r:
-				# mão aberta, palma para cima, dedos para a frente: o polegar atravessa o guarda-mato (eixo X do giro)
-				var fd := Vector3(-.15, .1, -1).normalized()
-				var palm := Vector3(-.15, 1, .25)
+				# mão aberta, palma para cima, dedos para a frente, logo abaixo do centro da arma
+				var fd := Vector3(-.1, .05, -1).normalized()
+				var palm := Vector3(0, 1, .1)
 				palm = (palm - fd * palm.dot(fd)).normalized()
 				spin_r.transform = Transform3D(Basis(fd.cross(palm).normalized(), palm, -fd).orthonormalized(), SPIN_PIVOT + SPIN_OFS)
 			if rl_marker and rv_reloading:
