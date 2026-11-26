@@ -473,15 +473,15 @@ func _autotest(m: String) -> void:
 			player.yaw = atan2(-d.x, -d.z)
 			player.pitch = atan2(d.y, Vector2(d.x, d.z).length()))
 		rth.call(1.8, func(): get_viewport().get_texture().get_image().save_png("/tmp/halo_perto.png"))
-		var poses = [[Vector3(0, 26, -50), Vector3(0, 7, -60.5)], [Vector3(-11, 14, -52), Vector3(-6, 7, -59)], [Vector3(3, 12.5, -51), Vector3(0, 7, -57.5)], [Vector3(20, 9.6, -66), Vector3(8, 20, -72)], [Vector3(14, 9.6, -60), Vector3(8, 9, -72)], [Vector3(-14, 9.6, -52), Vector3(-2, 20, -72)], [Vector3(16, 9.6, -50), Vector3(4, 14, -72)], [Vector3(30, 1.2, 10), Vector3(20, 0, 22)], [Vector3(-38, 1.2, 0), Vector3(-46, 2, 14)], [Vector3(0, 1.2, 70), Vector3(-9, 4, 84)], [Vector3(36, 1.2, -60), Vector3(46, 0, -82)]]
+		var poses = [[Vector3(-3.0, 3.6, 60.0), Vector3(-6.4, 3.4, 58)], [Vector3(3.0, 3.6, 69.5), Vector3(6.4, 3.4, 67)], [Vector3(2.0, 12.5, 67), Vector3(8.9, 13.2, 67)], [Vector3(0, 6, 60), Vector3(0, 11, 47)], [Vector3(-2, 12.5, 76), Vector3(-8.9, 13.2, 76)], [Vector3(4, 7, -38), Vector3(0, 3, -50)]]
 		if G.boss: G.boss.visible = false
 		for k in poses.size():
 			rth.call(3.0 + k * .5, func():
-				player.global_position = poses[k][0]
-				var d = poses[k][1] - (poses[k][0] + Vector3(0, 1.6, 0))
-				player.yaw = atan2(-d.x, -d.z)
-				player.pitch = atan2(d.y, Vector2(d.x, d.z).length()))
-			rth.call(3.08 + k * .5, func(): get_viewport().get_texture().get_image().save_png("/tmp/sangue_%d.png" % k))
+				trono.cam.fov = 60
+				trono.cam.global_position = poses[k][0]
+				trono.cam.look_at(poses[k][1], Vector3.UP)
+				trono.cam.make_current())
+			rth.call(3.2 + k * .5, func(): get_viewport().get_texture().get_image().save_png("/tmp/sangue_%d.png" % k))
 		rth.call(2.0, func(): player.global_position = Vector3(0, 1.2, 10); player.yaw = 0.0; player.pitch = .18)
 		rth.call(2.6, func(): get_viewport().get_texture().get_image().save_png("/tmp/halo_longe.png"))
 		rth.call(6.0, func(): get_tree().quit())

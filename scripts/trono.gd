@@ -417,10 +417,8 @@ func _corridor() -> void:
 			if hm: _hand(hm, Vector3(sx * 8.7, 9.5, z + 4.5), sx)
 	for z in [62, 80, 98]:
 		light(Vector3(0, 12, z), Color(1, .35, .25), 1.4, 16)
-	# sobre o portão, uma fileira de mãos
-	if hm:
-		for i in 7:
-			_hand(hm, Vector3(-6 + i * 2, 21.5, DOOR_Z + 1.3), 0, i)
+	_door_frame()
+	_corridor_decor()
 
 func _hand_mesh() -> Mesh:
 	if not ResourceLoader.exists("res://deus/mao.glb"): return null
@@ -484,38 +482,160 @@ func _door() -> void:
 		sb.collision_layer = 1; sb.collision_mask = 0
 		pv.add_child(sb)
 		var mi = MeshInstance3D.new()
-		var bm = BoxMesh.new(); bm.size = Vector3(7, 21, .9)
-		mi.mesh = bm; mi.material_override = m_gold
+		var bm_ = BoxMesh.new(); bm_.size = Vector3(7, 21, .9)
+		mi.mesh = bm_; mi.material_override = m_gold_dark
 		sb.add_child(mi)
 		var cs = CollisionShape3D.new()
-		var bs = BoxShape3D.new(); bs.size = bm.size
+		var bs = BoxShape3D.new(); bs.size = bm_.size
 		cs.shape = bs
 		sb.add_child(cs)
 		sb.position = Vector3(s * 3.5, 10.5, 0)
-		# relevos: painéis, cravos e meia auréola com olho
-		for py in [3.0, 9.5, 16.0]:
-			var pn = MeshInstance3D.new()
-			var pb = BoxMesh.new(); pb.size = Vector3(5.2, 4.8, .2)
-			pn.mesh = pb; pn.material_override = m_gold_dark
-			pn.position = Vector3(0, py - 10.5, .5)
-			sb.add_child(pn)
-			var pn2 = pn.duplicate(); pn2.position.z = -.5; sb.add_child(pn2)
-		for i in 6:
-			var st_ = MeshInstance3D.new()
-			var ss = SphereMesh.new(); ss.radius = .25; ss.height = .5
-			st_.mesh = ss; st_.material_override = m_gold
-			st_.position = Vector3(-s * 3.1, -9 + i * 3.6, .55)
-			sb.add_child(st_)
-	# olho no centro do portão (metade em cada folha)
-	var eye_m = glow(Color(1, .15, .08))
-	for pair in [[door_l, 1], [door_r, -1]]:
-		var e = MeshInstance3D.new()
-		var cm = CylinderMesh.new(); cm.top_radius = 1.6; cm.bottom_radius = 1.6; cm.height = .2; cm.radial_segments = 20
-		e.mesh = cm; e.material_override = eye_m
-		e.rotation.x = PI / 2
-		e.position = Vector3(pair[1] * 6.3, 10.5, .58)
-		e.scale = Vector3(.45, 1, .9)
-		pair[0].add_child(e)
+		for f in [1, -1]:
+			_leaf_face(sb, s, f)
+
+func _db(parent: Node3D, pos: Vector3, size: Vector3, mat: Material, rz := 0.0) -> MeshInstance3D:
+	var m = MeshInstance3D.new()
+	var b = BoxMesh.new(); b.size = size
+	m.mesh = b; m.material_override = mat
+	m.position = pos; m.rotation.z = rz
+	parent.add_child(m)
+	return m
+
+func _ring_at(parent: Node3D, pos: Vector3, r: float, tube: float, mat: Material) -> MeshInstance3D:
+	var m = MeshInstance3D.new()
+	var t = TorusMesh.new(); t.inner_radius = r - tube; t.outer_radius = r + tube; t.rings = 32; t.ring_segments = 8
+	m.mesh = t; m.material_override = mat
+	m.rotation.x = PI / 2
+	m.position = pos
+	parent.add_child(m)
+	return m
+
+## relevos de uma face da folha (f = +1 corredor, -1 salão); s indica para que lado fica o centro do portão
+func _leaf_face(sb: Node3D, s: int, f: int) -> void:
+	var z = f * .5
+	var g = m_gold
+	# moldura externa
+	_db(sb, Vector3(0, 10.1, z), Vector3(6.8, .4, .14), g)
+	_db(sb, Vector3(0, -10.1, z), Vector3(6.8, .4, .14), g)
+	_db(sb, Vector3(-3.2, 0, z), Vector3(.4, 20.6, .14), g)
+	_db(sb, Vector3(3.2, 0, z), Vector3(.4, 20.6, .14), g)
+	# arco: quarto de círculo centrado no meio do portão
+	var cx = s * 3.5
+	var cy = 3.6
+	var R = 5.4
+	var n = 12
+	for i in n:
+		var a0 = PI / 2 + (s * 1.0) * (float(i) / n) * PI / 2
+		var a1 = PI / 2 + (s * 1.0) * (float(i + 1) / n) * PI / 2
+		var am = (a0 + a1) * .5
+		var px = cx - s * abs(cos(am)) * R
+		var py = cy + sin(am) * R
+		var seg = _db(sb, Vector3(px, py, z * 1.02), Vector3(.34, R * PI / 2 / n + .05, .16), g)
+		seg.rotation.z = am
+	_db(sb, Vector3(cx - s * R, cy - 6.4, z * 1.02), Vector3(.34, 12.8, .16), g)
+	# medalhão com raios de sol e rubi
+	var mc = Vector3(cx - s * 2.75, -1.2, z * 1.06)
+	_ring_at(sb, mc, 1.75, .26, g)
+	_ring_at(sb, mc, 1.25, .1, g)
+	var disc_ = MeshInstance3D.new()
+	var cm = CylinderMesh.new(); cm.top_radius = 1.5; cm.bottom_radius = 1.5; cm.height = .08; cm.radial_segments = 24
+	disc_.mesh = cm; disc_.material_override = m_gold_dark
+	disc_.rotation.x = PI / 2; disc_.position = mc - Vector3(0, 0, f * .04)
+	sb.add_child(disc_)
+	for k in 16:
+		var a = k * TAU / 16
+		var ray = _db(sb, mc + Vector3(cos(a), sin(a), 0) * .78, Vector3(.1, .62 if k % 2 == 0 else .4, .1), g)
+		ray.rotation.z = a - PI / 2
+	var boss = MeshInstance3D.new()
+	var sp = SphereMesh.new(); sp.radius = .42; sp.height = .6
+	boss.mesh = sp; boss.material_override = _gem_mat()
+	boss.position = mc + Vector3(0, 0, f * .1)
+	sb.add_child(boss)
+	# volutas acima e abaixo do medalhão
+	for k in [-1, 1]:
+		_ring_at(sb, Vector3(mc.x + k * .9, 2.6, z * 1.04), .55, .1, g)
+		_ring_at(sb, Vector3(mc.x + k * .9, -5.4, z * 1.04), .5, .1, g)
+	_db(sb, Vector3(mc.x, 2.0, z * 1.03), Vector3(.18, 2.0, .12), g)
+	_db(sb, Vector3(mc.x, -4.6, z * 1.03), Vector3(.18, 2.0, .12), g)
+	# painel inferior e flor no alto do arco
+	_db(sb, Vector3(mc.x, -8.0, z * 1.01), Vector3(3.6, 2.6, .1), m_gold_dark)
+	_db(sb, Vector3(mc.x, -8.0, z * 1.03), Vector3(3.0, .2, .1), g)
+	_ring_at(sb, Vector3(mc.x, 6.2, z * 1.04), .45, .1, g)
+	# cravos ao longo da emenda
+	for k in 9:
+		var st = MeshInstance3D.new()
+		var ss = SphereMesh.new(); ss.radius = .17; ss.height = .34
+		st.mesh = ss; st.material_override = g
+		st.position = Vector3(s * 3.32, -9.4 + k * 2.35, z * 1.1)
+		sb.add_child(st)
+
+var _gem: StandardMaterial3D
+func _gem_mat() -> StandardMaterial3D:
+	if _gem == null:
+		_gem = StandardMaterial3D.new()
+		_gem.albedo_color = Color("b0101a")
+		_gem.roughness = .12
+		_gem.metallic_specular = 1.0
+		_gem.emission_enabled = true; _gem.emission = Color(.35, 0, .02)
+	return _gem
+
+## moldura do portão do lado do corredor: colunas, pedestais com máscaras, entablamento e palmeta
+func _door_frame() -> void:
+	var zf = DOOR_Z + 1.0   # face da parede no corredor
+	for sx in [-1, 1]:
+		var x = sx * 8.1
+		# pedestal com máscara de anjo chorando sangue
+		blk(x, 0, zf + .8, 1.9, 3.2, 1.6, m_gold)
+		blk(x, 3.2, zf + .8, 2.1, .3, 1.8, m_gold, false)
+		blk(x, .5, zf + 1.62, 1.3, 2.0, .06, m_gold_dark, false)
+		var head = MeshInstance3D.new()
+		var hs = SphereMesh.new(); hs.radius = .48; hs.height = .96
+		head.mesh = hs; head.material_override = m_gold
+		head.scale = Vector3(1, 1.2, .55)
+		head.position = Vector3(x, 1.6, zf + 1.68)
+		add_child(head)
+		for ex in [-.17, .17]:
+			blk(x + ex, 1.72, zf + 1.92, .17, .08, .04, glow(Color(.08, 0, 0)), false)
+			blk(x + ex, 1.1, zf + 1.92, .06, .62, .03, glow(Color(.55, 0, .02)), false)
+		# fuste canelado com anéis
+		cyl(x, 3.5, zf + .8, .62, .66, 15.8, m_gold)
+		for k in 10:
+			var a = k * TAU / 10
+			blk(x + cos(a) * .64, 3.6, zf + .8 + sin(a) * .64, .1, 15.6, .1, m_gold_dark, false)
+		for y in [8.0, 13.5]:
+			var r = MeshInstance3D.new()
+			var tm = TorusMesh.new(); tm.inner_radius = .6; tm.outer_radius = .86; tm.rings = 24
+			r.mesh = tm; r.material_override = m_gold
+			r.position = Vector3(x, y, zf + .8)
+			add_child(r)
+		# capitel
+		cyl(x, 19.3, zf + .8, .95, .62, .8, m_gold, false)
+		blk(x, 20.0, zf + .8, 2.0, .3, 1.8, m_gold, false)
+	# entablamento: arquitrave, friso com dentículos e volutas, cornija
+	blk(0, 20.2, zf + .75, 19.4, 1.0, 1.5, m_gold, false)
+	blk(0, 21.2, zf + .7, 18.8, 1.5, 1.4, m_gold_dark, false)
+	for i in 32:
+		blk(-9.0 + i * .58, 22.15, zf + 1.45, .32, .4, .16, m_gold, false)
+	for i in 8:
+		var r = MeshInstance3D.new()
+		var tm = TorusMesh.new(); tm.inner_radius = .26; tm.outer_radius = .4; tm.rings = 16
+		r.mesh = tm; r.material_override = m_gold
+		r.rotation.x = PI / 2
+		r.position = Vector3(-7.7 + i * 2.2, 21.45, zf + 1.42)
+		add_child(r)
+	blk(0, 22.7, zf + .8, 19.8, .5, 1.8, m_gold, false)
+	blk(0, 23.2, zf + .85, 20.0, .55, 2.0, m_gold, false)
+	# palmeta no centro, sobre o vão
+	var pc = Vector3(0, 19.0, zf + .35)
+	for i in 9:
+		var a = PI / 2 + (i - 4) * .3
+		var leaf = blk(pc.x + cos(a) * .9, pc.y + sin(a) * .9 - .45, pc.z, .26, 1.5, .2, m_gold, false)
+		leaf.rotation.z = a - PI / 2
+	var gem = MeshInstance3D.new()
+	var gs = SphereMesh.new(); gs.radius = .38; gs.height = .6
+	gem.mesh = gs; gem.material_override = _gem_mat()
+	gem.position = pc + Vector3(0, -.2, .2)
+	add_child(gem)
 
 func _altar() -> void:
 	# altar em 5 degraus, topo em y = 8
@@ -525,12 +645,7 @@ func _altar() -> void:
 		var front = -46.0 - i * 2.6
 		blk(0, i * 1.6, front - d * .5, w, 1.6, d, m_marble)
 		blk(0, (i + 1) * 1.6 - .05, front - .2, w + .1, .12, .45, m_gold, false)
-	# rio de sangue descendo os degraus
-	var top_front = -46.0 - 4 * 2.6
-	var run = -(top_front + 46.0)
-	var L = sqrt(ALTAR_TOP * ALTAR_TOP + run * run)
-	var riv = quad(Vector3(0, ALTAR_TOP * .5 + .12, -46.0 - run * .5), Vector2(3.4, L + .6), m_blood_fall)
-	riv.rotation = Vector3(atan2(-run, ALTAR_TOP), 0, 0)
+	_stair_river()
 	pool(0, -43.5, 5.5, .04, .6)
 	# trono
 	var tz = -71.0
@@ -562,6 +677,298 @@ func _altar() -> void:
 		cyl(sx * 5.6, ALTAR_TOP, -61.3, .5, .8, 3.0, m_gold, false)
 		_flame(Vector3(sx * 5.6, ALTAR_TOP + 3.6, -61.3), 1.0)
 	_creek()
+
+# ---------------- cascata de sangue na escada do altar ----------------
+func _stair_river() -> void:
+	var W = 2.4
+	for i in range(4, -1, -1):
+		var front = -46.0 - i * 2.6
+		# espelho do degrau: o sangue cai pela frente
+		var riser = quad(Vector3(0, i * 1.6 + .8, front + .03), Vector2(W, 1.66), bm(0, 40.0 + i, 1.5, Vector2(1, .7)))
+		# piso do degrau de baixo: o sangue corre até a próxima queda
+		if i > 0:
+			var prev_front = -46.0 - (i - 1) * 2.6
+			flat(Vector3(0, i * 1.6 + .03, (front + prev_front) * .5), Vector2(W, 2.62), bm(0, 50.0 + i, .7, Vector2(1, 1.3)))
+		var pt = CPUParticles3D.new()
+		pt.amount = 12; pt.lifetime = .5
+		pt.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+		pt.emission_box_extents = Vector3(W * .4, .02, .1)
+		pt.direction = Vector3(0, .8, 1); pt.spread = 35
+		pt.initial_velocity_min = .8; pt.initial_velocity_max = 1.8
+		pt.gravity = Vector3(0, -9.8, 0)
+		var dm = SphereMesh.new(); dm.radius = .05; dm.height = .14; dm.radial_segments = 5; dm.rings = 3
+		dm.material = glow(Color(.6, .01, .03))
+		pt.mesh = dm
+		pt.position = Vector3(0, i * 1.6 + .08, front + .25)
+		add_child(pt)
+
+# ---------------- corredor: estátuas retorcidas e quadros grotescos ----------------
+func _corridor_decor() -> void:
+	var spots = [[-1, 58.0], [1, 67.0], [-1, 76.0], [1, 85.0], [-1, 94.0], [1, 103.0]]
+	for i in spots.size():
+		var sx: int = spots[i][0]
+		var z: float = spots[i][1]
+		_statue(Vector3(sx * 6.4, 0, z), sx, i)
+		_painting(Vector3(sx * 8.93, 13.2, z), sx, i)
+
+func _seg(parent: Node3D, mesh: Mesh, pos: Vector3, rot: Vector3, mat: Material = null) -> Node3D:
+	var n = Node3D.new()
+	n.position = pos
+	n.rotation = rot
+	parent.add_child(n)
+	if mesh:
+		var m = MeshInstance3D.new()
+		m.mesh = mesh
+		m.material_override = mat if mat else m_marble
+		n.add_child(m)
+	return n
+
+func _sc(n: Node3D, v: Vector3) -> void:
+	(n.get_child(0) as Node3D).scale = v
+
+func _cylm(r0: float, r1: float, h: float) -> CylinderMesh:
+	var c = CylinderMesh.new(); c.top_radius = r0; c.bottom_radius = r1; c.height = h; c.radial_segments = 10; c.rings = 1
+	return c
+
+## osso: articulação em 'pos' com rotação 'rot'; a peça vai da articulação até (0, length, 0)
+func _bone(parent: Node3D, pos: Vector3, rot: Vector3, length: float, r0: float, r1: float, mat: Material = null) -> Node3D:
+	var j = Node3D.new()
+	j.position = pos
+	j.rotation = rot
+	parent.add_child(j)
+	if length > 0.0:
+		var m = MeshInstance3D.new()
+		var c = CylinderMesh.new(); c.bottom_radius = r0; c.top_radius = r1; c.height = length; c.radial_segments = 12; c.rings = 2
+		m.mesh = c; m.material_override = mat if mat else m_statue
+		m.position = Vector3(0, length * .5, 0)
+		j.add_child(m)
+		# junta arredondada
+		var ball = MeshInstance3D.new()
+		var sp = SphereMesh.new(); sp.radius = r0 * 1.02; sp.height = r0 * 2.04; sp.radial_segments = 10; sp.rings = 6
+		ball.mesh = sp; ball.material_override = m.material_override
+		j.add_child(ball)
+	return j
+
+func _blob(parent: Node3D, pos: Vector3, scl: Vector3, mat: Material = null) -> MeshInstance3D:
+	var m = MeshInstance3D.new()
+	var sp = SphereMesh.new(); sp.radius = .5; sp.height = 1.0; sp.radial_segments = 14; sp.rings = 8
+	m.mesh = sp; m.material_override = mat if mat else m_statue
+	m.position = pos; m.scale = scl
+	parent.add_child(m)
+	return m
+
+var m_statue: StandardMaterial3D
+
+## anjo de mármore ajoelhado, torcido em agonia, chorando sangue, num pedestal
+func _statue(p: Vector3, sx: int, idx: int) -> void:
+	if m_statue == null:
+		m_statue = m_marble.duplicate()
+		m_statue.albedo_color = Color(1.0, .98, .95)
+		m_statue.roughness = .3
+	var r = RandomNumberGenerator.new(); r.seed = 700 + idx
+	var red = glow(Color(.6, 0, .03))
+	# pedestal
+	blk(p.x, 0, p.z, 2.1, 1.5, 2.1, m_marble2)
+	blk(p.x, 1.4, p.z, 2.3, .22, 2.3, m_gold, false)
+	blk(p.x, .05, p.z, 2.3, .2, 2.3, m_gold, false)
+	stain(Vector3(p.x - sx * 1.06, .85, p.z), Vector3(-sx, 0, 0), 1.6, 1.3)
+	pool(p.x - sx * 1.6, p.z + r.randf_range(-.6, .6), r.randf_range(.9, 1.4), .05)
+	var root = Node3D.new()
+	root.position = Vector3(p.x, 1.62, p.z)
+	root.rotation.y = (PI / 2 if sx < 0 else -PI / 2) + r.randf_range(-.35, .35)   # de frente para o meio do corredor
+	add_child(root)
+	# quadril e pernas ajoelhadas (coxas descem até o joelho no chão, canelas vão para trás)
+	var pelvis = Node3D.new(); pelvis.position = Vector3(0, 1.05, 0); root.add_child(pelvis)
+	_blob(pelvis, Vector3(0, 0, 0), Vector3(.62, .38, .42))
+	for side in [-1, 1]:
+		var lift = .25 if (side == 1 and idx % 2 == 0) else 0.0   # uma perna apoiada à frente em algumas
+		var thigh = _bone(pelvis, Vector3(side * .19, 0, 0), Vector3(PI - .35 - lift * 1.2, 0, side * .06), 1.0, .17, .14)
+		var shin = _bone(thigh, Vector3(0, 1.0, 0), Vector3(1.75 if lift == 0.0 else 1.2, 0, 0), .95, .13, .09)
+		_blob(shin, Vector3(0, .98, .06), Vector3(.13, .1, .26))
+	# coluna arqueada para trás e torcida em espiral
+	var twist = r.randf_range(.17, .24) * (1 if idx % 2 else -1)
+	var spine: Node3D = pelvis
+	var pos = Vector3(0, .12, 0)
+	for k in 5:
+		var rad = .27 + .05 * sin(float(k) / 4.0 * PI)
+		spine = _bone(spine, pos, Vector3(-.1, twist, r.randf_range(-.05, .05)), .3, rad, rad * .97)
+		pos = Vector3(0, .3, 0)
+	var chest = Node3D.new(); chest.position = Vector3(0, .3, 0); chest.rotation = Vector3(-.15, twist, 0); spine.add_child(chest)
+	_blob(chest, Vector3(0, .1, 0), Vector3(.9, .5, .48))
+	# pescoço e cabeça jogada para trás, boca aberta, olhos chorando sangue
+	var neck = _bone(chest, Vector3(0, .3, 0), Vector3(-.55, twist * 1.5, r.randf_range(-.25, .25)), .3, .1, .09)
+	var head = Node3D.new(); head.position = Vector3(0, .42, .02); head.rotation = Vector3(-.5, 0, 0); neck.add_child(head)
+	_blob(head, Vector3.ZERO, Vector3(.4, .5, .44))
+	for ex in [-.09, .09]:
+		_blob(head, Vector3(ex, .05, .19), Vector3(.08, .05, .04), glow(Color(.05, 0, 0)))
+		_db(head, Vector3(ex, -.09, .2), Vector3(.025, .22, .02), red)
+	_blob(head, Vector3(0, -.13, .19), Vector3(.1, .14, .05), glow(Color(.03, 0, 0)))
+	# braços: um erguido arranhando o ar, o outro cravando os dedos no rosto
+	var up_side = 1 if idx % 2 else -1
+	for side in [-1, 1]:
+		var shoulder = Node3D.new(); shoulder.position = Vector3(side * .44, .22, 0); chest.add_child(shoulder)
+		var upper: Node3D
+		var fore: Node3D
+		if side == up_side:
+			upper = _bone(shoulder, Vector3.ZERO, Vector3(r.randf_range(-.4, .1), 0, -side * 2.6), .7, .1, .085)
+			fore = _bone(upper, Vector3(0, .7, 0), Vector3(r.randf_range(-.5, -.2), 0, side * .35), .62, .08, .06)
+		else:
+			upper = _bone(shoulder, Vector3.ZERO, Vector3(-1.2, 0, -side * .5), .65, .1, .085)
+			fore = _bone(upper, Vector3(0, .65, 0), Vector3(-2.0, 0, side * .5), .58, .08, .06)
+		var hand = Node3D.new(); hand.position = Vector3(0, .62, 0); fore.add_child(hand)
+		_blob(hand, Vector3(0, .07, 0), Vector3(.17, .2, .08))
+		for fi in 4:
+			_bone(hand, Vector3(-.06 + fi * .04, .15, 0), Vector3(r.randf_range(-.9, -.2), 0, (fi - 1.5) * .15), .17, .018, .012)
+	# asas: inteiras em umas, quebradas em outras
+	for side in [-1, 1]:
+		var broken = (idx + (0 if side < 0 else 1)) % 3 == 0
+		var w = Node3D.new()
+		w.position = Vector3(side * .2, .15, -.22)
+		w.rotation = Vector3(.3 if not broken else 1.3, side * .4, -side * (.5 if not broken else -.4))
+		chest.add_child(w)
+		for fi in 5:
+			var f = _bone(w, Vector3(side * .12 * fi, -.05 * fi, -.02 * fi), Vector3(0, 0, -side * (.25 + fi * .18)), 1.5 - fi * .16, .07, .025)
+			(f.get_child(0) as MeshInstance3D).scale = Vector3(1.6, 1, .35)
+	# gotas de sangue caindo dos olhos
+	var pt = CPUParticles3D.new()
+	pt.amount = 6; pt.lifetime = 1.6
+	pt.direction = Vector3(0, -1, 0); pt.spread = 5
+	pt.initial_velocity_min = .2; pt.initial_velocity_max = .4
+	pt.gravity = Vector3(0, -9.8, 0)
+	var dm = SphereMesh.new(); dm.radius = .045; dm.height = .14; dm.radial_segments = 5; dm.rings = 3
+	dm.material = red
+	pt.mesh = dm
+	pt.local_coords = false
+	head.add_child(pt)
+	pt.position = Vector3(0, -.2, .22)
+
+## quadro grotesco com moldura preta e dourada
+func _painting(p: Vector3, sx: int, idx: int) -> void:
+	var root = Node3D.new()
+	root.position = p
+	root.rotation.y = -sx * PI / 2
+	add_child(root)
+	var W = 4.4
+	var H = 5.6
+	var canvas = MeshInstance3D.new()
+	var q = QuadMesh.new(); q.size = Vector2(W, H)
+	canvas.mesh = q
+	var m = StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_texture = ImageTexture.create_from_image(_paint(idx))
+	m.albedo_color = Color(.82, .78, .76)
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	canvas.material_override = m
+	canvas.position.z = .06
+	root.add_child(canvas)
+	var black = StandardMaterial3D.new(); black.albedo_color = Color(.03, .02, .02); black.roughness = .3
+	for e in [[0, H * .5 + .14, W + .56, .28], [0, -H * .5 - .14, W + .56, .28]]:
+		_db(root, Vector3(e[0], e[1], .1), Vector3(e[2], e[3], .16), black)
+	for e in [[W * .5 + .14, 0, .28, H], [-W * .5 - .14, 0, .28, H]]:
+		_db(root, Vector3(e[0], e[1], .1), Vector3(e[2], e[3], .16), black)
+	for e in [[0, H * .5 + .5, W + 1.3, .45], [0, -H * .5 - .5, W + 1.3, .45]]:
+		_db(root, Vector3(e[0], e[1], .14), Vector3(e[2], e[3], .26), m_gold)
+	for e in [[W * .5 + .5, 0, .45, H + 1.3], [-W * .5 - .5, 0, .45, H + 1.3]]:
+		_db(root, Vector3(e[0], e[1], .14), Vector3(e[2], e[3], .26), m_gold)
+	for c in [[1, 1], [1, -1], [-1, 1], [-1, -1]]:
+		var o = MeshInstance3D.new()
+		var sp = SphereMesh.new(); sp.radius = .32; sp.height = .64
+		o.mesh = sp; o.material_override = m_gold
+		o.position = Vector3(c[0] * (W * .5 + .5), c[1] * (H * .5 + .5), .3)
+		root.add_child(o)
+	var cart = _db(root, Vector3(0, H * .5 + .85, .2), Vector3(1.3, .5, .2), m_gold)
+	var gm = MeshInstance3D.new()
+	var gs = SphereMesh.new(); gs.radius = .16; gs.height = .26
+	gm.mesh = gs; gm.material_override = _gem_mat()
+	gm.position = Vector3(0, H * .5 + .85, .33)
+	root.add_child(gm)
+
+# ---- pintura procedural (pixel art 96 x 122) ----
+func _px(img: Image, x: int, y: int, c: Color) -> void:
+	if x >= 0 and y >= 0 and x < img.get_width() and y < img.get_height(): img.set_pixel(x, y, c)
+
+func _ell(img: Image, cx: float, cy: float, rx: float, ry: float, c: Color, jag := 0.0) -> void:
+	for y in range(int(cy - ry - 2), int(cy + ry + 3)):
+		for x in range(int(cx - rx - 2), int(cx + rx + 3)):
+			var dx = (x - cx) / rx; var dy = (y - cy) / ry
+			var j = 1.0 + jag * (sin(atan2(dy, dx) * 7.0 + cx) * .5)
+			if dx * dx + dy * dy <= j * j: _px(img, x, y, c)
+
+func _ln(img: Image, x0: float, y0: float, x1: float, y1: float, w: float, c: Color) -> void:
+	var n = int(max(abs(x1 - x0), abs(y1 - y0))) + 1
+	for i in n + 1:
+		var t = float(i) / n
+		_ell(img, lerp(x0, x1, t), lerp(y0, y1, t), w, w, c)
+
+func _drip(img: Image, x: int, y: int, l: int, c: Color) -> void:
+	for k in l: _px(img, x, y + k, c)
+	_px(img, x - 1, y + l, c); _px(img, x + 1, y + l, c); _px(img, x, y + l + 1, c)
+
+func _paint(idx: int) -> Image:
+	var Wd = 96; var Ht = 122
+	var img = Image.create(Wd, Ht, false, Image.FORMAT_RGBA8)
+	var r = RandomNumberGenerator.new(); r.seed = 31 + idx
+	var bg0 = [Color("2a0806"), Color("120608"), Color("0b0a14"), Color("6a4a14"), Color("140405"), Color("5c4010")][idx]
+	var bg1 = [Color("0c0202"), Color("3a0a0a"), Color("02030a"), Color("b08a38"), Color("050101"), Color("a07a2a")][idx]
+	for y in Ht:
+		for x in Wd:
+			var c: Color = bg0.lerp(bg1, float(y) / Ht)
+			c = c.lightened(r.randf_range(0, .05))
+			img.set_pixel(x, y, c)
+	var pale = Color("d9cdb8"); var blood = Color("8a0a10"); var dark = Color("0a0303"); var gold = Color("e0b04a")
+	match idx:
+		0: # O Olhar: rosto magro com olhos demais, chorando sangue
+			_ell(img, 48, 58, 26, 38, pale.darkened(.1))
+			for e in [[36, 40], [60, 40], [48, 54], [32, 66], [64, 66], [48, 30], [42, 80]]:
+				_ell(img, e[0], e[1], 5, 3, Color.WHITE)
+				_ell(img, e[0], e[1], 2, 2, blood)
+				_drip(img, e[0], e[1] + 3, r.randi_range(6, 24), blood)
+			_ell(img, 48, 92, 7, 3, dark)
+		1: # O Grito: espiral vermelha e uma boca escancarada
+			for k in 260:
+				var a = k * .19
+				var rr = 4 + k * .17
+				_ell(img, 48 + cos(a) * rr, 60 + sin(a) * rr * 1.2, 2, 2, Color("6a1010").lerp(Color("c03018"), float(k % 30) / 30.0))
+			_ell(img, 48, 60, 18, 26, pale)
+			_ell(img, 48, 66, 9, 14, dark)
+			for t in 6: _px(img, 42 + t * 2, 53, Color.WHITE); _px(img, 42 + t * 2, 79, Color.WHITE)
+			_ell(img, 41, 46, 3, 4, dark); _ell(img, 55, 46, 3, 4, dark)
+		2: # Anjo Caído: asas rasgadas, auréola partida, poça de sangue
+			_ell(img, 48, 112, 36, 7, blood)
+			_ln(img, 48, 40, 40, 100, 3, pale); _ln(img, 48, 40, 56, 100, 3, pale)
+			_ell(img, 48, 34, 6, 7, pale)
+			for side in [-1, 1]:
+				for k in 6:
+					_ln(img, 48 + side * 6, 50, 48 + side * (18 + k * 4), 30 + k * 10 + r.randi_range(-3, 3), 1, pale.darkened(.2))
+			for k in 10:
+				var a = -PI + k * .25
+				if k != 5 and k != 6: _px(img, int(48 + cos(a) * 11), int(26 + sin(a) * 4), gold)
+			for k in 8: _drip(img, r.randi_range(36, 60), r.randi_range(60, 96), r.randi_range(4, 14), blood)
+		3: # A Mão: mão pálida com um olho na palma, fundo de ícone dourado
+			_ell(img, 48, 76, 20, 24, pale)
+			for f in 4: _ln(img, 34 + f * 9, 56, 32 + f * 10, 16 + abs(f - 1.5) * 6, 3.5, pale)
+			_ln(img, 28, 80, 14, 60, 4, pale)
+			for f in 4: _ell(img, 32 + f * 10, 17 + abs(f - 1.5) * 6, 2, 2, dark)
+			_ell(img, 48, 78, 9, 5, Color.WHITE)
+			_ell(img, 48, 78, 4, 4, blood); _ell(img, 48, 78, 2, 2, dark)
+			_drip(img, 48, 84, 30, blood)
+		4: # Coroa de Mãos: círculo de mãos em volta de um olho vermelho
+			for k in 12:
+				var a = k * TAU / 12
+				var hx = 48 + cos(a) * 32; var hy = 60 + sin(a) * 38
+				_ell(img, hx, hy, 5, 7, pale.darkened(.15))
+				_ln(img, hx, hy, 48 + cos(a) * 22, 60 + sin(a) * 26, 1, blood)
+			_ell(img, 48, 60, 14, 14, blood.darkened(.3))
+			_ell(img, 48, 60, 10, 6, Color("ffd0a0"))
+			_ell(img, 48, 60, 4, 5, dark)
+		5: # Santo sem Rosto: ícone dourado, manto vermelho, rosto vazio chorando sangue
+			_ell(img, 48, 36, 18, 18, gold.lightened(.2))
+			_ell(img, 48, 38, 12, 14, pale)
+			_ell(img, 48, 40, 7, 9, dark, .3)
+			_ln(img, 48, 54, 26, 118, 6, Color("7a0a12")); _ln(img, 48, 54, 70, 118, 6, Color("7a0a12"))
+			_ell(img, 48, 92, 18, 28, Color("7a0a12"))
+			_drip(img, 44, 44, 40, blood); _drip(img, 52, 44, 32, blood)
+	return img
 
 # ---------------- córrego de sangue em volta do trono ----------------
 ## nasce em duas bocas douradas na base do trono, contorna a frente fazendo curvas e despenca escada abaixo.
