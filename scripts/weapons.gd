@@ -1062,8 +1062,9 @@ func _process(dt: float) -> void:
 			spin_w += ((1.0 if spinning else 0.0) - spin_w) * (1.0 - exp(-(16.0 if spinning else 9.0) * dt))
 			if spin_r:
 				# dedos para cima, palma virada para a arma (esquerda): o indicador dobrado aponta para ela
-				var fd := Vector3(.1, 1, -.25).normalized()
-				var palm := Vector3(-1, 0, .55)
+				# dedos inclinados 60° para a frente e a mão deitada um pouco para a direita
+				var fd := Vector3(.28, .5, -.866).normalized()
+				var palm := Vector3(-1, .4, .1)
 				palm = (palm - fd * palm.dot(fd)).normalized()
 				# a mão acompanha o giro como no vídeo: o pulso dá um tranco a cada volta,
 				# a mão sobe e desce num pequeno círculo e gira um pouco em volta do dedo
