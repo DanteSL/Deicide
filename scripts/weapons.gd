@@ -167,7 +167,7 @@ func _setup_arms() -> void:
 			grips[k].l = _marker(md.body, SUPPORT[k])
 	rl_marker = _marker(rev.root, Vector3.ZERO)
 	spin_r = _marker(root, SPIN_HAND)
-	spin_l = _marker(rev.root, Vector3(-.17, -.3, .2))
+	spin_l = _marker(rev.root, Vector3(-.22, -.55, .3))
 	spin_l.basis = Basis(Vector3(1, 0, 0), Vector3(0, 0, 1), Vector3(0, -1, 0)) # palma para trás, dedos para cima
 	arms = load("res://maos/maos.glb").instantiate()
 	arms.rotation = Vector3(0, PI, 0)
@@ -1065,7 +1065,15 @@ func _process(dt: float) -> void:
 				var fd := Vector3(.1, 1, -.25).normalized()
 				var palm := Vector3(-1, 0, .55)
 				palm = (palm - fd * palm.dot(fd)).normalized()
-				spin_r.transform = Transform3D(Basis(fd.cross(palm).normalized(), palm, -fd).orthonormalized(), SPIN_HAND + Vector3(bx + sway.x, by + sway.y, 0))
+				# a mão acompanha o giro como no vídeo: o pulso dá um tranco a cada volta,
+				# a mão sobe e desce num pequeno círculo e gira um pouco em volta do dedo
+				var sa2: float = c_ang if charging else ang
+				var ph := sa2 + .6
+				var hb := Basis(fd.cross(palm).normalized(), palm, -fd).orthonormalized()
+				hb = Basis(Vector3(1, 0, 0), sin(ph) * .32) * Basis(Vector3(0, 0, 1), sin(ph * 2.0) * .06) * hb
+				var hp := SPIN_HAND + Vector3(bx + sway.x, by + sway.y, 0)
+				hp += Vector3(sin(ph) * .012, cos(ph) * .03 + lift * .05, sin(ph) * .025)
+				spin_r.transform = Transform3D(hb, hp)
 			if rl_marker and rv_reloading:
 				var ps = _pistol_reload_pose(rv_t)
 				var fwd: Vector3 = ps[2]
