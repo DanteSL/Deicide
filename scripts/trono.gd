@@ -708,7 +708,7 @@ func _corridor_decor() -> void:
 	for i in spots.size():
 		var sx: int = spots[i][0]
 		var z: float = spots[i][1]
-		_statue(Vector3(sx * 6.3, 0, z), sx, i)
+		_statue(Vector3(sx * 6.6, 0, z), sx, i)
 		_painting(Vector3(sx * 8.93, 13.2, z), sx, i)
 
 func _seg(parent: Node3D, mesh: Mesh, pos: Vector3, rot: Vector3, mat: Material = null) -> Node3D:
@@ -807,7 +807,7 @@ func _statue(p: Vector3, sx: int, idx: int) -> void:
 		_statue_sh = Shader.new(); _statue_sh.code = STATUE_SHADER
 	var inst: Node3D = _anjo_scene.instantiate()
 	inst.position = p
-	inst.rotation.y = sx * .25   # levemente voltado para o meio do corredor
+	inst.rotation.y = PI / 2 if sx < 0 else -PI / 2   # de frente para o tapete
 	add_child(inst)
 	var steel = StandardMaterial3D.new(); steel.albedo_color = Color(.22, .2, .21); steel.metallic = .8; steel.roughness = .3
 	var sm = ShaderMaterial.new(); sm.shader = _statue_sh; sm.set_shader_parameter("seed", float(idx) * 1.7 + .3)

@@ -473,7 +473,7 @@ func _autotest(m: String) -> void:
 			player.yaw = atan2(-d.x, -d.z)
 			player.pitch = atan2(d.y, Vector2(d.x, d.z).length()))
 		rth.call(1.8, func(): get_viewport().get_texture().get_image().save_png("/tmp/halo_perto.png"))
-		var poses = [[Vector3(-1.5, 3.2, 63.0), Vector3(-6.3, 3.0, 58)], [Vector3(1.5, 3.2, 72.0), Vector3(6.3, 3.0, 67)], [Vector3(0, 4, 100), Vector3(0, 3, 70)], [Vector3(-3.5, 4.0, 61.5), Vector3(-6.3, 3.5, 58.5)], [Vector3(2.5, 2.2, 89.5), Vector3(6.3, 2.6, 85)], [Vector3(0, 3, 50), Vector3(0, 3, 100)]]
+		var poses = [[Vector3(0, 3, 50), Vector3(0, 2.5, 100)], [Vector3(0, 3, 110), Vector3(0, 2.5, 60)], [Vector3(-1, 3.5, 62), Vector3(-6.6, 2.8, 58)], [Vector3(1, 3.5, 71), Vector3(6.6, 2.8, 67)], [Vector3(0, 4, 100), Vector3(0, 3, 70)], [Vector3(0, 4, 100), Vector3(0, 3, 70)]]
 		if G.boss: G.boss.visible = false
 		for k in poses.size():
 			rth.call(3.0 + k * .5, func():
