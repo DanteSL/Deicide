@@ -534,12 +534,7 @@ func _altar() -> void:
 	pool(0, -43.5, 5.5, .04, .6)
 	# trono
 	var tz = -71.0
-	blk(0, ALTAR_TOP, tz + 2, 10, 3.2, 7, m_gold)
-	blk(-5.6, ALTAR_TOP, tz + 2, 1.8, 5.5, 7, m_gold)
-	blk(5.6, ALTAR_TOP, tz + 2, 1.8, 5.5, 7, m_gold)
-	blk(0, ALTAR_TOP, tz - 2.2, 13, 34, 1.8, m_gold)
-	blk(0, ALTAR_TOP + 34, tz - 2.2, 7, 4, 1.8, m_gold, false)
-	blk(0, ALTAR_TOP + 3.2, tz + 2, 7.5, .3, 5.5, m_carpet, false)
+	_throne(tz)
 	# raios de sol atrás do trono
 	var sun_c = Vector3(0, 37, tz - 3.6)
 	for i in 18:
@@ -566,6 +561,140 @@ func _altar() -> void:
 	for sx in [-1, 1]:
 		cyl(sx * 6.5, ALTAR_TOP, -59, .5, .8, 3.0, m_gold, false)
 		_flame(Vector3(sx * 6.5, ALTAR_TOP + 3.6, -59), 1.0)
+
+# ---------------- trono detalhado ----------------
+var m_velvet: StandardMaterial3D
+var m_gem: StandardMaterial3D
+
+func _throne(tz: float) -> void:
+	var Y = ALTAR_TOP
+	m_velvet = StandardMaterial3D.new()
+	m_velvet.albedo_color = Color("6e0a14")
+	m_velvet.roughness = .6
+	m_velvet.rim_enabled = true; m_velvet.rim = .55; m_velvet.rim_tint = .35
+	m_velvet.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m_gem = StandardMaterial3D.new()
+	m_gem.albedo_color = Color("b0101a")
+	m_gem.roughness = .12
+	m_gem.metallic_specular = 1.0
+	m_gem.emission_enabled = true; m_gem.emission = Color(.35, 0, .02)
+	# plataforma em dois degraus, com friso dourado
+	blk(0, Y, tz - .5, 22, .7, 13, m_marble)
+	blk(0, Y + .7, tz - .8, 18, .6, 11, m_marble2)
+	for e in [[0, Y + .66, tz + 6.05, 22.1, .12, .2], [0, Y + 1.26, tz + 4.75, 18.1, .12, .2]]:
+		blk(e[0], e[1], e[2], e[3], e[4], e[5], m_gold, false)
+	var B = Y + 1.3  # base do trono
+	# assento esculpido
+	blk(0, B, tz + 2, 10, 3.0, 7, m_marble2)
+	blk(0, B + 2.7, tz + 2, 10.3, .45, 7.3, m_gold, false)                 # faixa dourada
+	blk(0, B + .6, tz + 5.52, 7.6, 1.6, .12, m_gold_dark, false)           # painel da frente
+	for i in 13:                                                            # greca (faixa ornamental)
+		var x = -4.5 + i * .75
+		blk(x, B + .15, tz + 5.56, .5, .22 if i % 2 else .45, .1, m_gold, false)
+	blk(0, B + 3.0, tz + 2, 8.6, .55, 6.2, m_velvet, false)                 # almofada
+	# apoios de braço com braçadeiras e voluta na ponta
+	for sx in [-1, 1]:
+		blk(sx * 5.6, B, tz + 2, 1.9, 5.2, 7, m_marble)
+		for zz in [tz + .3, tz + 3.4]:
+			blk(sx * 5.6, B + 3.6, zz, 2.1, .9, .5, m_gold, false)
+		var sc = cyl(sx * 5.6, B + 4.6, tz + 5.6, .9, .9, 2.0, m_gold, false)
+		sc.rotation.z = PI / 2
+		sc.position = Vector3(sx * 5.6, B + 4.9, tz + 5.4)
+	# encosto: mármore com moldura de ouro e painel de veludo
+	var bz = tz - 2.4
+	blk(0, B, bz, 12, 30, 1.8, m_marble2)
+	blk(0, B + 4, bz + .95, 9, 22, .12, m_velvet, false)
+	for f in [[0, B + 3.6, 9.8, .5], [0, B + 26.0, 9.8, .5]]:
+		blk(f[0], f[1], bz + 1.0, f[2], f[3], .2, m_gold, false)
+	for sx in [-1, 1]: blk(sx * 4.7, B + 3.6, bz + 1.0, .45, 22.9, .2, m_gold, false)
+	# coroa do encosto em arco escalonado com um olho de rubi
+	for i in 5:
+		blk(0, B + 30 + i * 1.1, bz, 10 - i * 2.0, 1.1, 1.8, m_gold)
+	var eye = MeshInstance3D.new()
+	var es = SphereMesh.new(); es.radius = .9; es.height = 1.2
+	eye.mesh = es; eye.material_override = m_gem
+	eye.position = Vector3(0, B + 31.6, bz + 1.0)
+	add_child(eye)
+	# pilares laterais com losangos, cravos e pináculos
+	for sx in [-1, 1]:
+		var px = sx * 7.6
+		var pz = tz - 1.8
+		blk(px, B, pz, 2.6, 34, 2.6, m_marble)
+		blk(px, B, pz, 3.1, 1.2, 3.1, m_gold, false)
+		blk(px, B + 33, pz, 3.1, 1.0, 3.1, m_gold, false)
+		for k in 7:
+			var y = B + 5.5 + k * 3.8
+			# losango dourado com rubi na face da frente
+			var d = MeshInstance3D.new()
+			var dm = BoxMesh.new(); dm.size = Vector3(1.5, 1.5, .2)
+			d.mesh = dm; d.material_override = m_gold
+			d.position = Vector3(px, y, pz + 1.36)
+			d.rotation.z = PI / 4
+			add_child(d)
+			var g = MeshInstance3D.new()
+			var gm = BoxMesh.new(); gm.size = Vector3(.8, .8, .2)
+			g.mesh = gm; g.material_override = m_gem
+			g.position = Vector3(px, y, pz + 1.48)
+			g.rotation.z = PI / 4
+			add_child(g)
+			# cravo apontando para fora
+			var sp = MeshInstance3D.new()
+			var cm = CylinderMesh.new(); cm.top_radius = 0.0; cm.bottom_radius = .35; cm.height = 1.3; cm.radial_segments = 8
+			sp.mesh = cm; sp.material_override = m_gold
+			sp.position = Vector3(px + sx * 1.9, y, pz)
+			sp.rotation.z = -sx * PI / 2
+			add_child(sp)
+		# pináculo em forma de cetro
+		var top = B + 34
+		cyl(px, top, pz, .95, 1.2, .7, m_gold, false)
+		var ball = MeshInstance3D.new()
+		var bs = SphereMesh.new(); bs.radius = .85; bs.height = 1.7
+		ball.mesh = bs; ball.material_override = m_gold
+		ball.position = Vector3(px, top + 1.5, pz)
+		add_child(ball)
+		cyl(px, top + 2.2, pz, .28, .38, 3.2, m_gold, false)
+		cyl(px, top + 5.3, pz, .6, .3, .5, m_gold, false)
+		cyl(px, top + 5.8, pz, 0.0, .55, 3.0, m_gold, false, 8)
+	# manto de veludo caindo do pilar direito até o chão
+	add_child(_drape(Vector3(7.6, B + 34.2, tz - 1.0), 6.5, B + 34.2 - Y))
+
+## manto: malha com dobras, que alarga e se esparrama no chão
+func _drape(top: Vector3, w: float, h: float) -> MeshInstance3D:
+	var st = SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var NU = 36
+	var NV = 60
+	var pos = []
+	for j in NV + 1:
+		var v = float(j) / NV
+		var row = []
+		for i in NU + 1:
+			var u = float(i) / NU
+			var width = w * (.45 + .9 * v)
+			var x = (u - .5) * width + v * 2.2           # escorrega para fora do trono
+			var fold = sin(u * PI * 7.0 + v * 2.5) * (.18 + .55 * v) + sin(u * PI * 17.0) * .08
+			var y = -v * h
+			var z = fold + v * 1.5
+			# no fim, o pano se esparrama no chão para a frente
+			var pool_v = clamp((v - .86) / .14, 0.0, 1.0)
+			if pool_v > 0.0:
+				y = -h + .15
+				z += pool_v * 4.5
+				x += (u - .5) * pool_v * 2.0
+			row.append(Vector3(x, y, z))
+		pos.append(row)
+	for j in NV:
+		for i in NU:
+			var a = pos[j][i]; var b = pos[j][i + 1]; var c = pos[j + 1][i]; var d = pos[j + 1][i + 1]
+			for p in [a, c, b, b, c, d]:
+				st.set_uv(Vector2(0, 0))
+				st.add_vertex(p)
+	st.generate_normals()
+	var mi = MeshInstance3D.new()
+	mi.mesh = st.commit()
+	mi.material_override = m_velvet
+	mi.position = top
+	return mi
 
 func _fountain(x: float, z: float) -> void:
 	cyl(x, 0, z, 4.2, 4.6, 1.3, m_marble2)
