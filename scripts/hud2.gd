@@ -28,6 +28,15 @@ var pv_tex: TextureRect
 var pv_holder: Node3D
 var pv_cam: Camera3D
 var pv_id := ""
+# frasco de sangue (munição)
+var vial: Control
+var v_lvl := .6
+var v_wave := 0.0
+var v_wave_v := 0.0
+var v_bub: Array = []
+var v_last := 120.0
+var v_gain := 0.0
+var v_drops: Array = []
 
 func _ready() -> void:
 	font = ThemeDB.fallback_font
@@ -45,6 +54,13 @@ func _ready() -> void:
 	ars.offset_top = -164; ars.offset_bottom = -12
 	ars.draw.connect(_draw_arsenal)
 	add_child(ars)
+	vial = Control.new()
+	vial.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vial.anchor_left = 1; vial.anchor_right = 1; vial.anchor_top = 1; vial.anchor_bottom = 1
+	vial.offset_left = -16 - 420 - 104; vial.offset_right = -16 - 420 - 8
+	vial.offset_top = -236; vial.offset_bottom = -8
+	vial.draw.connect(_draw_vial)
+	add_child(vial)
 	_build_preview()
 
 func _build_preview() -> void:
@@ -130,6 +146,34 @@ func _process(dt: float) -> void:
 	pv_holder.rotation.x = sin(t * .5) * .06
 	vit.queue_redraw()
 	ars.queue_redraw()
+	# frasco: nível suave, líquido balança com o movimento e com a perda/ganho
+	var bl: float = st.get("blood", 0.0)
+	var tgt: float = bl / G.BLOOD_MAX
+	if bl > v_last + .5:
+		v_gain = 1.0
+		v_wave_v += .8
+		for i in 2: v_drops.append({"y": -10.0, "x": randf_range(-4, 4), "v": 0.0})
+	elif bl < v_last - .3:
+		v_wave_v -= .5
+	v_last = bl
+	v_lvl += (tgt - v_lvl) * (1.0 - exp(-dt * 6.0))
+	var sway: float = 0.0
+	if G.player: sway = clamp(G.player.look_dx * .02 + G.player.strafe * .3, -1.0, 1.0)
+	v_wave_v += (-v_wave * 40.0 + sway * 6.0) * dt
+	v_wave_v *= exp(-dt * 2.5)
+	v_wave += v_wave_v * dt
+	v_gain = max(0.0, v_gain - dt * 2.0)
+	G.blood_flash = max(0.0, G.blood_flash - dt * 2.0)
+	G.blood_empty = max(0.0, G.blood_empty - dt * 1.2)
+	if randf() < dt * (3.0 + v_lvl * 8.0):
+		v_bub.append({"x": randf_range(-18, 18), "y": 0.0, "r": randf_range(1.2, 3.0), "s": randf_range(18, 40)})
+	for b in v_bub: b.y += b.s * dt
+	v_bub = v_bub.filter(func(b): return b.y < 150.0 * v_lvl)
+	for d in v_drops:
+		d.v += 500 * dt
+		d.y += d.v * dt
+	v_drops = v_drops.filter(func(d): return d.y < 60)
+	vial.queue_redraw()
 
 # ---------- desenho ----------
 func _slant(c: CanvasItem, x: float, y: float, w: float, h: float, col: Color, sk := 10.0) -> void:
@@ -181,7 +225,7 @@ func _draw_vitals() -> void:
 	# barra de vida com rastro de dano
 	var x0 := 118.0
 	var bw := 232.0
-	_text(c, Vector2(x0 + 10, 24), "SANGUE", 11, Color(BONE, .8))
+	_text(c, Vector2(x0 + 10, 24), "VIDA", 11, Color(BONE, .8))
 	_slant(c, x0, 29, bw, 16, BLOOD_D, 8)
 	var gw := bw * clampf(float(st.hp_ghost) / 100.0, 0.0, 1.0)
 	_slant(c, x0, 29, gw, 16, Color(1, .85, .7, .55), 8)
@@ -246,7 +290,11 @@ func _draw_arsenal() -> void:
 	if ammo == 0 and not st.inf: acol = Color(1, .25, .2).lerp(Color.WHITE, .5 + .5 * sin(t * 9))
 	elif low: acol = Color("ffb060")
 	if st.inf:
-		_text(c, Vector2(172, 74), "∞", 36, BONE, HORIZONTAL_ALIGNMENT_RIGHT, 220)
+		if st.get("cost", 0.0) > 0:
+			_text(c, Vector2(172, 74), str(st.get("shots", 0)), 40, BONE if st.get("shots", 0) > 0 else Color(1, .3, .25), HORIZONTAL_ALIGNMENT_RIGHT, 168)
+			_text(c, Vector2(346, 74), "tiros", 13, Color(BONE, .55))
+		else:
+			_text(c, Vector2(172, 74), "∞", 36, BONE, HORIZONTAL_ALIGNMENT_RIGHT, 220)
 	else:
 		_text(c, Vector2(172, 74), str(ammo), 40, acol, HORIZONTAL_ALIGNMENT_RIGHT, 168)
 		_text(c, Vector2(346, 74), "/ %d" % mx, 16, Color(BONE, .55))
@@ -301,3 +349,98 @@ func _draw_arsenal() -> void:
 		_slant_line(c, r.position.x, r.position.y, r.size.x, r.size.y, Color(GOLD, .9 if on else .3), 4, 1.0)
 		_text(c, r.position + Vector2(6, 15), str(i + 1), 9, Color.BLACK if on else Color(GOLD, .7))
 		_text(c, r.position + Vector2(0, 15), sd.short, 11, Color.BLACK if on else Color(BONE, .75), HORIZONTAL_ALIGNMENT_RIGHT, sw - 2)
+
+
+# ---------- frasco de sangue (munição) ----------
+const VW := 96.0
+func _vial_shape(cx: float, top: float, bot: float) -> PackedVector2Array:
+	# ampola: gargalo estreito, ombro e um bulbo em gota
+	var pts := PackedVector2Array()
+	var neck := 9.0
+	var bulb_r := 34.0
+	var bulb_c := bot - bulb_r - 4
+	pts.append(Vector2(cx - neck, top))
+	pts.append(Vector2(cx - neck, top + 26))
+	for i in 25:
+		var a := PI * 1.3 - i / 24.0 * PI * 1.6
+		var r := bulb_r
+		pts.append(Vector2(cx + cos(a) * r * 1.0, bulb_c - sin(a) * r * 1.12))
+	pts.append(Vector2(cx + neck, top + 26))
+	pts.append(Vector2(cx + neck, top))
+	return pts
+
+func _draw_vial() -> void:
+	var c := vial
+	var cx := VW * .5
+	var top := 34.0
+	var bot := 196.0
+	var shape := _vial_shape(cx, top, bot)
+	var empty: bool = st.get("blood", 0.0) < 1.0
+	var warn: float = G.blood_empty
+	# brilho atrás
+	var glow := Color(1, .1, .1, .12 + .25 * v_gain + .3 * warn * (.5 + .5 * sin(t * 20)))
+	c.draw_circle(Vector2(cx, bot - 40), 54, Color(glow, glow.a * .5))
+	c.draw_colored_polygon(shape, Color(.05, .0, .01, .75))
+	# líquido: tudo da forma abaixo da superfície ondulada
+	var ymin := top + 6.0
+	var surf: float = lerp(bot - 4.0, ymin, clampf(v_lvl, 0.0, 1.0))
+	if v_lvl > .003:
+		var liq := PackedVector2Array()
+		for i in 21:
+			var x := cx - 50 + i * 5.0
+			var y := surf + sin(i * .55 + t * 3.0) * 1.4 + (x - cx) * v_wave * .6
+			liq.append(Vector2(x, y))
+		liq.append(Vector2(cx + 50, bot + 10))
+		liq.append(Vector2(cx - 50, bot + 10))
+		var deep := Color(.32, 0, .02).lerp(Color(1, .5, .45), G.blood_flash * .5)
+		var fresh := Color(.78, .03, .06).lerp(Color(1, .6, .55), G.blood_flash * .6)
+		for pg in Geometry2D.intersect_polygons(shape, liq):
+			c.draw_colored_polygon(pg, deep)
+		# camada mais clara perto da superfície
+		var band := PackedVector2Array()
+		for i in 21:
+			var x := cx - 50 + i * 5.0
+			band.append(Vector2(x, surf + sin(i * .55 + t * 3.0) * 1.4 + (x - cx) * v_wave * .6))
+		for i in range(20, -1, -1):
+			var x := cx - 50 + i * 5.0
+			band.append(Vector2(x, surf + 14 + sin(i * .4 + t * 2.0) * 2.0))
+		for pg in Geometry2D.intersect_polygons(shape, band):
+			c.draw_colored_polygon(pg, Color(fresh, .85))
+		# bolhas
+		for b in v_bub:
+			var by: float = bot - 8 - b.y
+			if by > surf + 3:
+				c.draw_arc(Vector2(cx + b.x * (.4 + .6 * clampf((by - top) / (bot - top), 0.0, 1.0)), by), b.r, 0, TAU, 10, Color(1, .5, .45, .55), 1.0, true)
+	# gotas entrando pelo gargalo
+	for d in v_drops:
+		c.draw_circle(Vector2(cx + d.x * .3, top + d.y), 2.6, Color(.9, .05, .08))
+	# vidro: contorno e reflexos
+	var outl := shape.duplicate()
+	outl.append(shape[0])
+	c.draw_polyline(outl, Color(1, .92, .85, .55), 2.0, true)
+	c.draw_line(Vector2(cx - 18, bot - 70), Vector2(cx - 24, bot - 34), Color(1, 1, 1, .35), 3.0, true)
+	c.draw_line(Vector2(cx - 5, top + 4), Vector2(cx - 5, top + 24), Color(1, 1, 1, .3), 2.0, true)
+	# marcas de medida
+	for i in range(1, 4):
+		var y: float = lerp(bot - 4.0, ymin, i / 4.0)
+		if y > top + 30: c.draw_line(Vector2(cx + 14, y), Vector2(cx + 22, y), Color(GOLD, .55), 1.5)
+	# tampa dourada com coroa de espinhos
+	c.draw_rect(Rect2(cx - 13, top - 8, 26, 9), GOLD)
+	c.draw_rect(Rect2(cx - 13, top - 8, 26, 3), Color(1, .9, .6, .7))
+	for i in 5:
+		var x := cx - 12 + i * 6.0
+		c.draw_colored_polygon(PackedVector2Array([Vector2(x - 2.5, top - 8), Vector2(x, top - 18 - (4 if i == 2 else 0)), Vector2(x + 2.5, top - 8)]), GOLD)
+	# cruz invertida no topo
+	c.draw_rect(Rect2(cx - 1.5, top - 34, 3, 14), GOLD)
+	c.draw_rect(Rect2(cx - 5, top - 26, 10, 3), GOLD)
+	# base
+	c.draw_colored_polygon(PackedVector2Array([Vector2(cx - 26, bot + 2), Vector2(cx + 26, bot + 2), Vector2(cx + 34, bot + 14), Vector2(cx - 34, bot + 14)]), GOLD_D)
+	c.draw_line(Vector2(cx - 26, bot + 2), Vector2(cx + 26, bot + 2), GOLD, 2.0)
+	# quantidade
+	var bl: int = int(st.get("blood", 0.0))
+	var tc := BONE.lerp(Color(1, .35, .3), clampf(G.blood_flash, 0.0, 1.0) * .6)
+	if empty: tc = Color(1, .2, .15).lerp(Color.WHITE, .5 + .5 * sin(t * 10))
+	_text(c, Vector2(0, bot - 26), str(bl), 22, tc, HORIZONTAL_ALIGNMENT_CENTER, VW)
+	_text(c, Vector2(0, bot - 10), "SANGUE", 9, Color(GOLD, .9), HORIZONTAL_ALIGNMENT_CENTER, VW)
+	if empty or warn > .05:
+		_text(c, Vector2(-40, top - 40), "SEM SANGUE", 13, Color(1, .2, .15, max(warn, .5 + .5 * sin(t * 8))), HORIZONTAL_ALIGNMENT_CENTER, VW + 80)

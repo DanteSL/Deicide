@@ -14,6 +14,10 @@ var free_r: Node3D = null # alvo livre da mão direita (giro no dedo)
 var free_rw := 0.0
 var finger_w := 0.0 # abre a mão direita (dedos e polegar esticados)
 var index_r = []
+var fist_lw := 0.0
+var FIST_SIGN := 1.0 # fecha a mão esquerda em punho (soco)
+var fingers_l = [] # [[b1,b2,b3], ...]
+var thumb_l = []
 var index_pt := Vector3.ZERO # meio do indicador direito (global), usado no giro
 var index_ok := false
 var ib1 := -1
@@ -30,6 +34,13 @@ func setup() -> void:
 	for nm in ["index_01_r", "index_02_r", "index_03_r", "middle_01_r", "middle_02_r", "middle_03_r", "ring_01_r", "ring_02_r", "ring_03_r", "pinky_01_r", "pinky_02_r", "pinky_03_r", "thumb_01_r", "thumb_02_r", "thumb_03_r"]:
 		var b = sk.find_bone(nm)
 		if b >= 0 and nm != "index_01_r": index_r.append(b)
+	for f in ["index", "middle", "ring", "pinky"]:
+		var ch = []
+		for k in ["01", "02", "03"]: ch.append(sk.find_bone("%s_%s_l" % [f, k]))
+		if ch.min() >= 0: fingers_l.append(ch)
+	for k in ["01", "02", "03"]:
+		var tb = sk.find_bone("thumb_%s_l" % k)
+		if tb >= 0: thumb_l.append(tb)
 	ib1 = sk.find_bone("index_01_r"); ib2 = sk.find_bone("index_02_r"); ib3 = sk.find_bone("index_03_r")
 
 func _process_modification_with_delta(_dt: float) -> void:
@@ -105,6 +116,7 @@ func _process_modification_with_delta(_dt: float) -> void:
 		index_pt = skg * (p3 + (p3 - p2) * .3) # perto da ponta do indicador
 		index_ok = true
 	if tl != null: _solve(sk, bones.l, inv * tl, ib * Vector3(-.8, -1, .25))
+	if fist_lw > 0.0: _fist_l(sk, clamp(fist_lw, 0.0, 1.0))
 
 # espelha uma pegada da mão direita para a esquerda (eixos do esqueleto espelhados em X)
 func _mirror(b: Basis) -> Basis:
@@ -147,3 +159,31 @@ func _solve(sk: Skeleton3D, ch: Array, t: Transform3D, hint: Vector3) -> void:
 	var H := sk.get_bone_global_pose(hd)
 	var sc := H.basis.get_scale()
 	sk.set_bone_global_pose(hd, Transform3D(t.basis.orthonormalized().scaled_local(sc), H.origin))
+
+
+# dobra cada falange em direção à palma (palma da mão esquerda = +X do osso da mão)
+func _fist_l(sk: Skeleton3D, w: float) -> void:
+	var H := sk.get_bone_global_pose(bones.l[2])
+	var palm := -H.basis.x.normalized() * FIST_SIGN
+	var ang := [1.6, 1.8, 1.4]
+	for ch in fingers_l:
+		for k in 3:
+			var b: int = ch[k]
+			var G0 := sk.get_bone_global_pose(b)
+			var by := G0.basis.y.normalized()
+			var ax := by.cross(palm)
+			if ax.length() < .001: continue
+			var q := Quaternion(ax.normalized(), ang[k] * w)
+			sk.set_bone_global_pose(b, Transform3D(Basis(q) * G0.basis, G0.origin))
+			palm = (Basis(q) * palm).normalized() if k == 0 else palm
+	# polegar: atravessa por cima dos dedos dobrados
+	var hy := H.basis.y.normalized()
+	var p0 := -H.basis.x.normalized() * FIST_SIGN
+	for i in thumb_l.size():
+		var b: int = thumb_l[i]
+		var G1 := sk.get_bone_global_pose(b)
+		var ty := G1.basis.y.normalized()
+		var ax2: Vector3 = ty.cross(p0) if i > 0 else ty.cross(hy)
+		if ax2.length() < .001: continue
+		var a2: float = [.5, .6, .5][i]
+		sk.set_bone_global_pose(b, Transform3D(Basis(Quaternion(ax2.normalized(), a2 * w)) * G1.basis, G1.origin))

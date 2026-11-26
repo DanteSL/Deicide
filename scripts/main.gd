@@ -42,6 +42,10 @@ var started = false
 # HUD
 var hud: Control
 var hud2: Control
+var blood_scr: Control
+
+func screen_blood(k: float) -> void:
+	if blood_scr: blood_scr.add(k)
 var ui = {}
 var feed_box: VBoxContainer
 var menu: Control
@@ -511,6 +515,7 @@ func _autotest(m: String) -> void:
 		var rtg = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
 		var shg = func(nm): get_viewport().get_texture().get_image().save_png("/tmp/gib_%s.png" % nm)
 		rtg.call(1.2, func():
+			G.blood = 40.0
 			player.global_position = Vector3(0, 1.2, 20)
 			player.yaw = 0.0; player.pitch = -.12
 			for e in G.enemies.duplicate():
@@ -526,7 +531,30 @@ func _autotest(m: String) -> void:
 				if is_instance_valid(e) and e.alive: G.hurt_enemy(e, 9999, "rev", e.center(), false))
 		rtg.call(3.3, shg.bind("2_varios"))
 		rtg.call(4.6, shg.bind("3_chao"))
-		rtg.call(5.0, func(): print("GIBS OK pedaços=", gibs.gibs.size(), " manchas=", gibs.splats.size(), " ts=", Engine.time_scale); get_tree().quit())
+		rtg.call(6.0, func():
+			blood_scr.clear()
+			if gibs.corpses.size() > 0:
+				var cp: Vector3 = gibs.corpses[0].m.global_position
+				print("corpo ", cp, " rest=", gibs.corpses[0].rest)
+				player.global_position = cp + Vector3(0, 1.0, 5.0)
+				var d = cp - (player.global_position + Vector3(0, 1.6, 0))
+				player.yaw = atan2(-d.x, -d.z); player.pitch = atan2(d.y, Vector2(d.x, d.z).length()))
+		rtg.call(6.5, shg.bind("4_corpos"))
+		rtg.call(7.0, func(): print("GIBS OK corpos=", gibs.corpses.size(), " gotas=", gibs.globs.size(), " sangue=", G.blood, " manchas=", gibs.splats.size(), " ts=", Engine.time_scale); get_tree().quit())
+		return
+	if m == "jab":
+		start_mode("train")
+		var rtj = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+		hud.visible = OS.get_cmdline_user_args().has("--hud")
+		var wp = player.weapons
+		var st = {"k": 0, "on": false}
+		var TS = [.04, .1, .16, .2, .3, .42, .6, .8, .9]
+		get_tree().process_frame.connect(func():
+			if st.on and st.k < TS.size() and wp.jab_t >= TS[st.k]:
+				get_viewport().get_texture().get_image().save_png("/tmp/jab_%d.png" % st.k); st.k += 1)
+		rtj.call(1.0, func(): wp.select_slot(0))
+		rtj.call(2.0, func(): st.on = true; wp.punch())
+		rtj.call(8.0, func(): print("JAB OK k=", st.k); get_tree().quit())
 		return
 	if m == "spin":
 		start_mode("train")
@@ -1079,6 +1107,8 @@ func _build_hud() -> void:
 		hit.add_child(c)
 	ui.hit = hit
 	# vitais e arsenal (HUD nova, desenhada em scripts/hud2.gd)
+	blood_scr = preload("res://scripts/blood_screen.gd").new()
+	hud.add_child(blood_scr)
 	hud2 = preload("res://scripts/hud2.gd").new()
 	hud2.set_anchors_preset(Control.PRESET_FULL_RECT)
 	hud2.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1252,6 +1282,9 @@ func _upd_hud(dt: float) -> void:
 		_:
 			d.inf = true
 	if not d.has("ammo"): d.ammo = 0; d.max = 0; d.kind = ""
+	d.blood = G.blood
+	d.cost = G.BLOOD_COST.get(id, 0.0)
+	if d.inf and d.cost > 0: d.shots = int(G.blood / d.cost)
 	hud2.push(d)
 	var scoped: bool = id == "rail" and w.zoom and X.zb > .7 and G.state == "play"
 	ui.scope.visible = scoped
@@ -1429,6 +1462,8 @@ func reset() -> void:
 	G.blas = 0.0
 	_blas_end(true)
 	G.stats = {"kills": 0, "t": 0.0}
+	G.blood = 120.0
+	if blood_scr: blood_scr.clear()
 	for c in feed_box.get_children(): c.queue_free()
 	if G.mode == "boss":
 		G.later(1.2, respawn_gabriel)

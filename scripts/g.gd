@@ -60,6 +60,27 @@ var blas_on = false
 
 signal style_added(label: String)
 
+## munição de sangue: todas as armas de fogo bebem do mesmo reservatório, enchido com o sangue dos inimigos
+const BLOOD_MAX := 200.0
+const BLOOD_COST := {"rev": 2.0, "sg": 4.0, "sword": 0.0, "rocket": 14.0, "nail": .7, "rail": 12.0, "harp": 6.0, "gren": 8.0}
+var blood := 120.0
+var blood_flash := 0.0
+var blood_empty := 0.0
+
+func blood_can(id: String, mult := 1.0) -> bool:
+	return blood >= BLOOD_COST.get(id, 0.0) * mult - .001
+
+func blood_take(id: String, mult := 1.0) -> void:
+	blood = max(0.0, blood - BLOOD_COST.get(id, 0.0) * mult)
+
+func blood_add(n: float) -> void:
+	blood = min(BLOOD_MAX, blood + n)
+	blood_flash = 1.0
+
+func blood_out() -> void:
+	blood_empty = 1.0
+	snd("click", -4, .7)
+
 var _snd_cache = {}
 var _players: Array = []
 var _tracers: Array = []

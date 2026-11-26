@@ -30,6 +30,7 @@ var flash_t = 0.0
 var sb = 0.0
 var rb = 0.0
 var punch_t = 1.0
+var jab_t := -1.0 # tempo desde o início do jab (-1 = parado)
 var sway = Vector2.ZERO
 var bob_ph = 0.0
 var bob_a = 0.0
@@ -152,7 +153,7 @@ func _setup_arms() -> void:
 		elif par == sg.load_hand:
 			load_grip = _marker(par, pos)
 		elif par == fist:
-			fist_grip = _marker(par, pos)
+			fist_grip = _marker(par, Vector3.ZERO)
 		elif par.get_parent() == X.hands:
 			if not grips.has("sword"): grips.sword = {"lmode": "hand"}
 			grips.sword["r" if par.position.x > 0 else "l"] = _marker(par, pos + Vector3(0, -.02, .03))
@@ -205,12 +206,15 @@ func fp_targets(ik) -> void:
 			ik.free_l = spin_l; ik.free_w = spin_w
 	elif shown and cur == 1:
 		ik.free_l = sg.load_hand; ik.free_w = sb
+	ik.fist_lw = 0.0
 	if fist_grip and fist.visible:
-		ik.aim_l = fist_grip; ik.mode_l = "punch"
+		ik.aim_l = fist_grip; ik.mode_l = "free"
+		ik.free_l = fist_grip; ik.free_w = 1.0
+		ik.fist_lw = jab_fw
 	arms.visible = ik.aim_r != null or ik.aim_l != null
 
 # ponto da mão direita na pistola (ajuste fino sobre a luva antiga)
-const PISTOL_HAND_OFS := Vector3(-.005, .055, -.035)
+const PISTOL_HAND_OFS := Vector3(-.005, .05, .0)
 # onde a mão esquerda segura o cano das armas de duas mãos (no corpo da arma)
 const SUPPORT := {
 	"rocket": Vector3(0, -.05, -.12),
@@ -361,23 +365,31 @@ func _build() -> void:
 	var p_metal = _mat("2e3139", .35, .75)
 	var p_black = _mat("141519", .55, .2)
 	var p_light = _mat("8f949d", .28, .85)
-	p_light.emission_enabled = true
-	p_light.emission = Color.BLACK
-	rev.steel = p_light
 	rev.pistol = true
-	var pist: Node3D = load("res://pistola/pistola.glb").instantiate()
+	# revólver de dois canos (modelo enviado pelo jogador)
+	var p_main = _mat("b8571a", .4, .55) # faixas cobre
+	var p_grey = _mat("3a3d44", .5, .45)
+	var p_white = _mat("9aa0a8", .3, .8)
+	p_white.emission_enabled = true
+	p_white.emission = Color.BLACK
+	rev.steel = p_white
+	var pist: Node3D = load("res://revolver/revolver.glb").instantiate()
 	b.add_child(pist)
 	for mi in _all_meshes(pist):
 		var mesh: Mesh = mi.mesh
 		for si in mesh.get_surface_count():
 			var sm = mesh.surface_get_material(si)
 			var nm = String(sm.resource_name) if sm else ""
-			mi.set_surface_override_material(si, p_light if nm.begins_with("Light") else (p_black if nm.begins_with("Black") else p_metal))
+			var mt: Material = p_black
+			match nm:
+				"Main": mt = p_main
+				"Grey": mt = p_grey
+				"White": mt = p_white
+			mi.set_surface_override_material(si, mt)
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		if String(mi.name).begins_with("Ferrolho"): rev.slide = mi
 	if rev.has("slide"): rev.slide_base = rev.slide.position
 	# pente: fica escondido na empunhadura e cai/entra na recarga
-	rev.drum_base = Vector3(0, -.1, .07)
+	rev.drum_base = Vector3(0, -.05, .085)
 	rev.drum_open = Vector3(0, -.15, .035)
 	rev.drum = Node3D.new()
 	rev.drum.position = rev.drum_base
@@ -389,7 +401,7 @@ func _build() -> void:
 	rev.hammer = Node3D.new()
 	b.add_child(rev.hammer)
 	rev.muzzle = Node3D.new()
-	rev.muzzle.position = Vector3(0, .058, -.38)
+	rev.muzzle.position = Vector3(0, .09, -.35)
 	b.add_child(rev.muzzle)
 	rev.fl = _flash_quad(.22, rev.muzzle)
 	mk(Vector3(.075, .07, .09), glove, Vector3(.005, -.092, .078), rev.root, Vector3(-.3, 0, 0))
@@ -604,7 +616,12 @@ func try_fire() -> void:
 	if cur >= 2:
 		spin_t = 1
 		inspecting = false
+		if not G.blood_can(IDS[cur]):
+			if cd <= 0: G.blood_out(); cd = .3
+			return
+		var cd0 = cd
 		X.fire(IDS[cur])
+		if cd > cd0 + .001: G.blood_take(IDS[cur])
 		return
 	if cur == 0:
 		if rv_reloading: return
@@ -759,7 +776,11 @@ func alt_press() -> void:
 	if G.player.dead: return
 	if cur >= 2:
 		if cur != 2 and draw_t < .6: return
+		if cur != 2 and IDS[cur] != "rail" and not G.blood_can(IDS[cur], 1.5) and not (IDS[cur] in ["rocket", "gren"]):
+			G.blood_out(); return
+		var cd1 = cd
 		X.alt_press(IDS[cur])
+		if cd > cd1 + .001 and IDS[cur] != "rail": G.blood_take(IDS[cur], 1.5)
 		return
 	if cur == 1:
 		if cd > 0 or draw_t < .6: return
@@ -794,8 +815,14 @@ func alt_release() -> void:
 	charge = 0
 
 # ---------------- recargas ----------------
+var rv_fill := 6
 func start_rev_reload() -> void:
 	if cur != 0 or rv_reloading or rv_ammo >= rv_max or charging: return
+	var can: int = min(rv_max - rv_ammo, int(G.blood / G.BLOOD_COST.rev))
+	if can <= 0:
+		G.blood_out(); return
+	G.blood_take("rev", can)
+	rv_fill = rv_ammo + can
 	rv_reloading = true; rv_t = 0; rv_ev = 0; spin_t = 1; inspecting = false
 	G.snd("draw", -8)
 
@@ -851,7 +878,7 @@ func _upd_pistol_reload(dt: float) -> void:
 	if rv_ev == 1 and t >= .7:
 		rv_ev = 2
 		G.snd("latch", -4, 1.15)
-		rv_ammo = rv_max
+		rv_ammo = rv_fill
 	if rv_ev == 2 and t >= .8:
 		rv_ev = 3
 		G.snd("click", -10, .8)
@@ -861,7 +888,7 @@ func _upd_pistol_reload(dt: float) -> void:
 		G.snd("pump", -8, 1.5)
 	if t >= PR_END:
 		rv_reloading = false
-		rv_ammo = rv_max
+		rv_ammo = rv_fill
 		cd = .1
 
 func _sm(x: float) -> float:
@@ -893,6 +920,8 @@ func _pistol_reload_pose(t: float) -> Array:
 
 func start_sg_reload() -> void:
 	if cur != 1 or sg_reloading or sg_ammo >= sg_max or draw_t < 1: return
+	if not G.blood_can("sg"):
+		G.blood_out(); return
 	sg_reloading = true; sg_phase = "raise"; sg_t = 0; sg_ins = false; spin_t = 1; inspecting = false
 	G.snd("draw", -8)
 
@@ -907,10 +936,11 @@ func _upd_sg_reload(dt: float) -> void:
 		if u >= .55 and not sg_ins:
 			sg_ins = true
 			sg_ammo += 1
+			G.blood_take("sg")
 			G.snd("shell", -6)
 		if u >= 1:
 			sg_t = 0; sg_ins = false
-			if sg_ammo >= sg_max:
+			if sg_ammo >= sg_max or not G.blood_can("sg"):
 				sg_reloading = false; sg_phase = ""
 				pump_t = -.12
 				cd = .45
@@ -919,6 +949,8 @@ func _upd_sg_reload(dt: float) -> void:
 func punch() -> void:
 	if punch_t < 1 or G.player.dead: return
 	punch_t = 0
+	# jab: se a mão ainda está na guarda, sai direto de lá
+	jab_t = JAB_GUARD_FROM if (jab_t > .3 and jab_t < .82) else 0.0
 	G.snd("punch", -4)
 	var d = cam_dir()
 	var o = G.cam.global_position
@@ -949,6 +981,38 @@ func punch() -> void:
 				var k = .3 if e.kind == "brute" else 1.0
 				e.velocity += d * 16 * k + Vector3(0, 6 * k, 0)
 			G.shake = max(G.shake, .2)
+
+# ---------------- jab ----------------
+const JAB_END := .98
+const JAB_GUARD_FROM := .06
+var jab_fw := 0.0
+# [tempo, posição do pulso (espaço da câmera), direção do soco, giro da mão (0 = palma para baixo)]
+const JAB_KEYS := [
+	[0.0, Vector3(-.36, -.66, -.1), Vector3(.1, .7, -.7), 1.2],
+	[.06, Vector3(-.25, -.27, -.22), Vector3(.12, .55, -.83), 1.45],
+	[.15, Vector3(-.11, -.06, -.6), Vector3(.12, .12, -1), .05],
+	[.22, Vector3(-.11, -.06, -.59), Vector3(.12, .12, -1), .05],
+	[.4, Vector3(-.21, -.1, -.44), Vector3(.2, .45, -.87), .55],
+	[.72, Vector3(-.21, -.11, -.44), Vector3(.2, .43, -.88), .55],
+	[JAB_END, Vector3(-.36, -.68, -.12), Vector3(.1, .7, -.7), 1.2],
+]
+func _jab_pose(t: float) -> Array:
+	var i = 0
+	while i < JAB_KEYS.size() - 2 and t > JAB_KEYS[i + 1][0]: i += 1
+	var k0 = JAB_KEYS[i]; var k1 = JAB_KEYS[i + 1]
+	var u: float = clamp((t - k0[0]) / max(.001, k1[0] - k0[0]), 0.0, 1.0)
+	# o golpe sai seco; o resto é suave
+	u = ease_out(u) if i == 1 else _sm(u)
+	var pos: Vector3 = k0[1].lerp(k1[1], u)
+	if i == 4: pos += Vector3(0, sin(t * 9.0) * .006, 0) # respira na guarda
+	var fwd: Vector3 = k0[2].lerp(k1[2], u).normalized()
+	var roll: float = lerp(float(k0[3]), float(k1[3]), u)
+	# palma (= +Y do marcador) para baixo, girando para dentro com 'roll'
+	var palm := Vector3(0, 1, 0).rotated(fwd, -roll)
+	palm = (palm - fwd * palm.dot(fwd)).normalized()
+	var ext: float = clamp(1.0 - pos.distance_to(Vector3(-.11, -.06, -.6)) / .5, 0.0, 1.0)
+	var fw: float = clamp(t / .05, 0.0, 1.0) * (1.0 - _sm((t - .9) / .08))
+	return [Transform3D(Basis(fwd.cross(palm).normalized(), palm, -fwd).orthonormalized(), pos), ext, fw]
 
 # ---------------- pose (animação) ----------------
 func _process(dt: float) -> void:
@@ -1112,11 +1176,14 @@ func _process(dt: float) -> void:
 	if cur == 0 and spin_w > .001 and arms_ik and arms_ik.index_ok:
 		var pg: Vector3 = rev.pivot.global_position
 		w.root.global_position += (arms_ik.index_pt - pg) * clamp(spin_w * 1.4, 0.0, 1.0)
-	var pu = punch_t
+	# jab com o braço inteiro: sobe, estica, recolhe para a guarda, segura e desce
 	var ext = 0.0
-	if pu < 1:
-		ext = ease_out(pu / .3) if pu < .3 else 1.0 - ease_out((pu - .3) / .7)
-	fist.position = Vector3(-.26 + ext * .17, -.42 + ext * .3, -.22 - ext * .33)
-	fist.rotation = Vector3(-.2 + ext * .2, .15 - ext * .15, 0)
-	fist.visible = ext > .01
+	if jab_t >= 0.0:
+		jab_t += dt
+		var jp = _jab_pose(jab_t)
+		fist.transform = jp[0]
+		ext = jp[1]
+		jab_fw = jp[2]
+		if jab_t >= JAB_END: jab_t = -1.0
+	fist.visible = jab_t >= 0.0
 	w.root.position.y -= ext * .03

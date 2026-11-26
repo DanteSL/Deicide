@@ -1,5 +1,20 @@
 # Histórico de mudanças
 
+## Munição de sangue, cadáveres e jab
+
+- **Revólver de dois canos** (modelo enviado pelo autor) no lugar da pistola.
+- **Munição de sangue**: todas as armas de fogo bebem de um reservatório único (máx. 200, começa com 120).
+  Recarregar a pistola custa 2 por bala, a escopeta 4 por cartucho; foguete 14, prego 0,7, raio 12, arpão 6, granada 8.
+  As espadas e o soco são de graça. Sem sangue: clique seco e aviso "SEM SANGUE".
+- Ao estourar, o inimigo solta **gotas de sangue** que voam até você e enchem o reservatório
+  (casca 22, bruto 55, drone 12; morte no soco vale 1,5×).
+- **Frasco de sangue** na HUD: ampola de vidro com tampa de espinhos e cruz invertida, líquido que balança com o movimento,
+  bolhas, gotas caindo pelo gargalo ao coletar e alerta piscando quando acaba. As armas sem pente mostram quantos tiros ainda dá.
+- **Mortes**: o corpo inteiro é arremessado longe, quica, escorrega nas paredes deixando manchas e fica caído no mapa
+  (até 28 cadáveres); sangue espirra **na tela** e escorre. Novo som de impacto pesado (**porradão**).
+- **Soco em jab**: o braço inteiro sobe, estica com o punho fechado, recolhe para a guarda perto do rosto, segura um instante
+  e desce. Socar de novo na guarda sai direto de lá.
+
 ## Novo chefe: Miguel, o Arcanjo Velado
 
 - Modelo enviado pelo autor, reduzido para ~48 mil triângulos e separado em partes (2 asas, 4 braços, cabeça) para animar por código:
