@@ -22,10 +22,22 @@ uniform vec3 emis = vec3(.05, 0.0, 0.0);
 uniform float flap = 0.0;   // ângulo atual da batida (rad)
 uniform float lift = 0.0;   // sobe/desce das pontas
 uniform float wings = 1.0;  // 1 no corpo, 0 nas outras partes
+uniform float leg_t = 0.0;  // tempo do balanço das pernas
+uniform float leg_amp = 1.0;
 void vertex() {
 	float ax = abs(VERTEX.x);
 	float s = sign(VERTEX.x);
 	float w = smoothstep(.09, .42, ax) * clamp((-VERTEX.z + .01) / .07, 0.0, 1.0) * smoothstep(.3, .52, VERTEX.y) * wings;
+	// pernas e saia balançam como se flutuasse: quanto mais baixo, mais balança; cada perna num ritmo
+	float lw = (1.0 - smoothstep(.2, .52, VERTEX.y)) * (1.0 - smoothstep(.16, .3, ax)) * wings;
+	if (lw > 0.0) {
+		float k = (.52 - VERTEX.y) * lw * leg_amp;
+		float side = clamp(-VERTEX.x * 14.0, -1.0, 1.0); // contínuo: nada rasga entre as pernas
+		float ph = leg_t * 1.6 + side * 1.1;
+		VERTEX.z += sin(ph) * k * .11;
+		VERTEX.x += sin(leg_t * 1.1) * k * .04;
+		VERTEX.y += cos(ph) * k * .015;
+	}
 	float dx = ax - .08;
 	if (dx > 0.0 && w > 0.0) {
 		float a = flap * w;
@@ -99,6 +111,7 @@ var A = {"flap": 0.0, "fold": 0.0, "spread": 0.0, "raise": 0.0, "claw": 0.0, "ca
 var T = {"flap": 0.0, "fold": 0.0, "spread": 0.0, "raise": 0.0, "claw": 0.0, "cast": 0.0, "lean": 0.0, "nod": 0.0, "glow": 0.0, "rise": 0.0, "spin": 0.0}
 var RATE = {"fold": 4.0, "lean": 6.0}
 var swing := 0.0
+var head_look := Vector2.ZERO
 var wph := 0.0
 
 func setup(pos: Vector3) -> void:
@@ -351,30 +364,42 @@ func _anim(dt: float) -> void:
 		A[key] += (T[key] - A[key]) * (1.0 - exp(-RATE.get(key, 6.0) * dt))
 	flinch *= exp(-7 * dt)
 	var pw = wph
-	wph += dt * (2.2 + A.flap * 5.0) * (1.0 - A.fold * .5)
+	wph += dt * (3.0 + A.flap * 5.0) * (1.0 - A.fold * .5)
 	if floor(pw / TAU) != floor(wph / TAU) and A.flap > .4:
 		G.snd("flapbig", -10 + A.flap * 4, .55)
 	var s = sin(wph)
 	var fold: float = A.fold
-	var amp: float = (.1 + A.flap * .3) * (1.0 - fold * .7)
+	var amp: float = (.26 + A.flap * .3) * (1.0 - fold * .7)
 	# batida: as pontas vão para trás e para a frente e sobem/descem; recolhidas, ficam para trás
 	var fl: float = amp * s + A.spread * .15 - fold * .55 + flinch * .15
 	var li: float = sin(wph + .6) * (.1 + A.flap * .25) * (1.0 - fold * .7) + A.spread * .1
 	for m in mats:
+		m.set_shader_parameter("leg_t", phase)
+		m.set_shader_parameter("leg_amp", 1.0 + A.flap * .6 + (.6 if att == "dive" else 0.0))
 		m.set_shader_parameter("flap", fl)
 		m.set_shader_parameter("lift", li)
 	var ph = phase
 	# braço erguido (esquerdo dela): ergue a cruz e conjura
 	var al: Node3D = N.get("armL")
 	if al:
-		al.rotation = Vector3(-A.cast * .7 + sin(ph * 1.1) * .05, sin(ph * .7) * .06, -A.raise * .35 + sin(ph * .9) * .04)
+		# gira a cruz no alto como quem conjura, mão ondulando
+		al.rotation = Vector3(-A.cast * .7 + sin(ph * 1.1) * .16, sin(ph * .7) * .2 + sin(ph * 2.3) * .05, -A.raise * .35 + sin(ph * .9 + 1.0) * .14)
 	# braço da garra (direito): rasga
 	var ar: Node3D = N.get("armR")
 	if ar:
-		ar.rotation = Vector3(sin(ph * 1.3) * .05 - A.claw * .6, -A.claw * .7 + swing * 1.4 + sin(ph * .8) * .05, A.raise * .4 - swing * .3)
+		# garra abre e fecha, braço sobe e desce devagar
+		ar.rotation = Vector3(sin(ph * 1.3) * .15 - A.claw * .6, -A.claw * .7 + swing * 1.4 + sin(ph * .8 + .5) * .18, A.raise * .4 - swing * .3 + sin(ph * 1.7) * .1)
 	var hd: Node3D = N.get("head")
 	if hd:
-		hd.rotation = Vector3(A.nod * .4 + sin(ph * .6) * .05, sin(ph * .45) * .1, sin(ph * .55) * .05 + flinch * G.rnd(-.1, .1))
+		# cabeça firme, sempre encarando o jogador
+		var look := Vector2.ZERO
+		if G.player:
+			var to: Vector3 = (G.player.global_position + Vector3(0, 1.6, 0)) - hd.global_position
+			var d: Vector3 = model.global_transform.basis.orthonormalized().inverse() * to
+			look.x = clamp(-atan2(d.y, Vector2(d.x, d.z).length()), -.5, .6)
+			look.y = clamp(atan2(d.x, d.z), -.8, .8)
+		head_look = head_look.lerp(look, 1.0 - exp(-6.0 * dt))
+		hd.rotation = Vector3(head_look.x + A.nod * .3, head_look.y, flinch * G.rnd(-.06, .06))
 	model.position.y = sin(ph * 1.4) * .35 + A.rise
 	model.rotation = Vector3(A.lean - flinch * .25, A.spin, sin(ph * .9) * .03 + flinch * G.rnd(-.05, .05))
 	# fogo

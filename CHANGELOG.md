@@ -1,5 +1,12 @@
 # Histórico de mudanças
 
+## Lilith mais viva
+
+- Pernas e saia balançam de leve, como quem flutua (cada perna num ritmo, sem rasgar a malha).
+- Braços se mexem mais: a mão erguida gira a cruz conjurando, a garra abre e fecha e o braço sobe e desce.
+- Asas batem o tempo todo, mais largas e um pouco mais rápidas.
+- A cabeça ficou firme e acompanha o jogador (vira e inclina na sua direção, com limite).
+
 ## Asas da Lilith presas ao corpo
 
 - As asas deixaram de ser peças soltas giradas (que pareciam flutuar e levavam junto pedaços de fumaça e enfeites).
