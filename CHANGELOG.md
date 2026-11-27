@@ -1,5 +1,16 @@
 # Histórico de mudanças
 
+## Vale da Torre: texturas novas e chão sem repetição
+
+- A torre agora é de lajes de pedra com runas que brilham fraco, num ciano que pulsa devagar (o topo acima da neblina
+  brilha mais).
+- Ponte, portões, colunata, torrezinhas dos cantos, capela, cemitério e obeliscos usam parede de pedra de masmorra; as
+  estátuas usam a pedra lisa estilizada. Todas continuam com musgo em manchas.
+- Chão e montanhas com um material novo, feito da terra procedural do Blender, que foi assada em textura sem emenda.
+  A textura muda de deslocamento por região e é misturada em duas escalas, então não se repete em grade. Tem manchas de
+  lama, poças escuras que refletem, variação de tom em áreas grandes, terra escorrida nas encostas e rocha só nos
+  barrancos mais íngremes.
+
 ## Vale da Torre com texturas de verdade
 
 - Torre, ponte, portões, colunata, capela, cemitério, obeliscos e estátuas usam a textura de pedra escura estilizada
