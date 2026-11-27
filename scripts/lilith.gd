@@ -363,6 +363,7 @@ func take_damage(dmg: float, src: String, head: bool) -> bool:
 # ---------------- morte ----------------
 func die(src: String, _head: bool) -> void:
 	alive = false
+	G.relic_unlock("lilith")
 	dying = true
 	die_t = 0.0
 	G.boss = null

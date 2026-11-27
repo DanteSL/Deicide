@@ -63,7 +63,8 @@ signal style_added(label: String)
 
 ## munição de sangue: todas as armas de fogo bebem do mesmo reservatório, enchido com o sangue dos inimigos
 const BLOOD_MAX := 200.0
-const BLOOD_COST := {"rev": 2.0, "sg": 4.0, "sword": 0.0, "rocket": 14.0, "nail": .7, "rail": 12.0, "harp": 6.0, "gren": 8.0}
+const BLOOD_COST := {"rev": 2.0, "sg": 4.0, "sword": 0.0, "rocket": 14.0, "nail": .7, "rail": 12.0, "harp": 6.0, "gren": 8.0,
+	"trombeta": 3.0, "olho": 2.5, "maos": 4.0}
 var blood := 120.0
 var blood_flash := 0.0
 var blood_empty := 0.0
@@ -292,7 +293,9 @@ func _process(dt: float) -> void:
 func add_style(pts: float, label: String) -> void:
 	style = min(RANKS.size() * 100 - 1, style + pts)
 	if not blas_on:
-		blas = min(100.0, blas + pts * (0.05 + rank() * 0.025))
+		# Mãos do Criador em mãos: a Blasfêmia enche mais rápido
+		var bk := 1.6 if (player and player.weapons and player.weapons.R and player.weapons.R.cur == "maos") else 1.0
+		blas = min(100.0, blas + pts * (0.05 + rank() * 0.025) * bk)
 	style_added.emit(label)
 
 func rank() -> int:
@@ -340,11 +343,15 @@ func hurt_enemy(e, dmg: float, src: String, point: Vector3, head: bool, dir := V
 	return e.take_damage(dmg, src, head)
 
 const KILL_LABEL := {"rev": "ABATE", "rico": "RICOCHETE", "sg": "ABATE", "punch": "NOCAUTE", "parry": "DEVOLVIDO", "slam": "ESMAGADO",
-	"sword": "ESPADA ALADA", "rocket": "FOGUETE", "nail": "PREGADO", "rail": "TRESPASSADO", "harp": "ARPOADO", "gren": "GRANADA", "burn": "QUEIMADO", "blas": "EXECUTADO", "queda": "PRO ABISMO"}
+	"sword": "ESPADA ALADA", "rocket": "FOGUETE", "nail": "PREGADO", "rail": "TRESPASSADO", "harp": "ARPOADO", "gren": "GRANADA", "burn": "QUEIMADO", "blas": "EXECUTADO", "queda": "PRO ABISMO",
+	"garras": "DILACERADO", "rosario": "AÇOITADO", "trombeta": "JULGADO", "olho": "FULMINADO", "maos": "ESMAGADO", "eclipse": "ECLIPSADO"}
 var _last_src = ""
 var _streak = 0
 func on_kill(e, src: String, head: bool) -> void:
 	stats.kills += 1
+	# Garras do Abismo: quem morre queimando por elas solta a alma
+	if e.has_meta("lilith") and player and player.weapons.R and src == "burn":
+		player.weapons.R._soul(e.center())
 	hit_v = 1.0
 	hit_kill = true
 	snd("kill", -4)
@@ -460,6 +467,15 @@ var vol = 0.8
 var mvol = 0.8
 var svol = 0.8
 var loadout: Array = [0, 1, 2, 3, 4, 5, 6, 7]
+var relics := {} # relíquias ganhas (id -> true): a arma de cada chefe morto
+
+func relic_unlock(boss: String) -> void:
+	var R = load("res://scripts/reliquias.gd")
+	var id: String = R.DE_CHEFE.get(boss, "")
+	if id == "" or relics.get(id, false): return
+	relics[id] = true
+	save()
+	if main: main.banner("RELÍQUIA: " + R.NOME[id], "aperte 9 para empunhar")
 const SAVE := "user://save.cfg"
 
 func load_save() -> void:
@@ -482,6 +498,8 @@ func load_save() -> void:
 			set(k, cf.get_value("video", k, get(k)))
 		res_i = clamp(int(res_i), 0, RES_LIST.size() - 1)
 		win_mode = clamp(int(win_mode), 0, 2)
+		var rl = cf.get_value("reliquias", "ganhas", {})
+		if rl is Dictionary: relics = rl
 		var r = cf.get_value("rec", "all", {})
 		if r is Dictionary: rec = r
 	apply_volume()
@@ -531,4 +549,5 @@ func save() -> void:
 	for k in ["win_mode", "res_i", "vsync", "max_fps", "bright", "show_fps", "shake_k", "invert_y", "ui_i", "msaa_i"]:
 		cf.set_value("video", k, get(k))
 	cf.set_value("rec", "all", rec)
+	cf.set_value("reliquias", "ganhas", relics)
 	cf.save(SAVE)

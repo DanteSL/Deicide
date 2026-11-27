@@ -214,6 +214,7 @@ func take_damage(dmg: float, src: String, _head: bool) -> bool:
 # ---------------- morte (sequência de 3 s antes de sumir) ----------------
 func die(src: String, _head: bool) -> void:
 	alive = false
+	G.relic_unlock("gabriel")
 	dying = true
 	die_t = 0.0
 	G.boss = null

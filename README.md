@@ -78,6 +78,19 @@ Um ranking de heresia (de Devoto a Supremo Sacrilégio) recompensa variar as arm
 | ![Arena do Azazel](docs/img/azazel_arena.jpg) | ![Trono](docs/img/trono_marmore.jpg) |
 | O Olho da Tempestade: raios caindo nas marcas | O salão do trono em mármore com veios de ouro e colunas jônicas |
 
+### Relíquias dos chefes
+
+Cada chefe morto deixa a sua arma (tecla **9**). Modelos e animações feitos no Blender junto com os braços humanos.
+
+| | |
+|---|---|
+| ![Garras do Abismo](docs/img/reliquia_garras.jpg) | ![Rosário Velado](docs/img/reliquia_rosario.jpg) |
+| **Garras do Abismo** (Lilith): cortes que queimam e roubam almas | **Rosário Velado** (Miguel): chicote de contas simuladas e laço |
+| ![Trombeta do Juízo](docs/img/reliquia_trombeta.jpg) | ![Olho da Tempestade](docs/img/reliquia_olho.jpg) |
+| **Trombeta do Juízo** (Gabriel): o toque carregado atravessa paredes | **Olho da Tempestade** (Azazel): arranca o olho e o arremessa |
+| ![Mãos do Criador](docs/img/reliquia_maos.jpg) | ![Mãos humanas](docs/img/maos_humanas.jpg) |
+| **Mãos do Criador** (Deus): mãos de mármore que agarram e esmagam | Os braços humanos novos, com os dedos fechados no cabo |
+
 ## Habilidades dos chefes
 
 ![Habilidades](docs/img/habilidades.jpg)
@@ -119,6 +132,7 @@ Mil Olhos e Tempestade Final (Azazel) e Sóis de Sangue (Deus).
 | Atirar | **Clique esquerdo** |
 | Especial da arma | **Clique direito** |
 | Trocar arma | **Q** (anterior) · **1–8** · **roda do mouse** |
+| Relíquias dos chefes | **9** (passa por elas; **1–8** voltam às armas) |
 | Girar / recarregar (gasta sangue) | **R** |
 | Soco (jab) e rebater projéteis | **F** |
 | Blasfêmia (com a barra cheia) | **G** |
@@ -165,7 +179,9 @@ Deicide/
 │   ├── boss_bar.gd        # barras de vida estilizadas de cada chefe
 │   ├── blood_screen.gd    # sangue espirrado na tela
 │   ├── gibs.gd            # mortes: cadáveres arremessados, manchas e gotas de sangue (munição)
-│   ├── fp_ik.gd           # braços em primeira pessoa: IK, punho fechado, giro da arma
+│   ├── fp_ik.gd           # braços em primeira pessoa: IK, dedos em volta do cabo, gatilho, torção do antebraço
+│   ├── reliquias.gd       # relíquias dos chefes: troca (tecla 9), animações, golpes e especiais
+│   ├── olho_torre.gd      # o Olho da Tempestade arremessado (torre de raios que explode com um tiro)
 │   └── menu_ui.gd         # menu principal e de pausa
 ├── gabriel.glb            # modelo do Gabriel (asas em duas partes, auréolas, mãos)
 ├── gabriel_tex.jpg        # textura do Gabriel

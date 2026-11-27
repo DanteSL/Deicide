@@ -298,6 +298,7 @@ func _col() -> Color:
 # ---------------- morte ----------------
 func die(src: String, _head: bool) -> void:
 	alive = false
+	G.relic_unlock("azazel")
 	dying = true
 	die_t = 0.0
 	G.boss = null

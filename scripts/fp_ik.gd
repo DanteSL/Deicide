@@ -26,6 +26,24 @@ var ib3 := -1
 var GRIP_FWD := .075
 var GRIP_PALM := .03
 var GRIP_UP := .0 # "pistol" (envolve a mão direita), "barrel" (segura o cano), "hand", "punch"
+# ---- dedos que envolvem o cabo da arma ----
+# grip_r/grip_l: null = pose da animação; "relax" = mão solta; "support" = apoio sob o cano;
+# "cup" = mão em concha (segura a outra mão); ou {"c","u","r"} = cilindro do cabo no referencial da mão
+var grip_r = null
+var grip_l = null
+var grip_w := 1.0
+var trigger := false # indicador no gatilho (não envolve o cabo)
+var trig := 0.0      # gatilho puxado 0..1
+var CH = {}          # lado -> dedo -> [b1, b2, b3, ponta]
+const FR := {"thumb": .0112, "index": .0098, "middle": .01, "ring": .0095, "pinky": .0085}
+const MAXC := [1.7, 1.9, 1.35]
+const RELAX := {"index": [.16, .26, .14], "middle": [.22, .34, .18], "ring": [.28, .42, .22], "pinky": [.34, .5, .26], "thumb": [.06, .14, .1]}
+const SUPPORT_P := {"index": [.36, .42, .26], "middle": [.42, .5, .3], "ring": [.46, .56, .32], "pinky": [.5, .62, .34], "thumb": [.12, .3, .22]}
+const CUP_P := {"index": [.7, .9, .5], "middle": [.8, 1.0, .55], "ring": [.85, 1.05, .6], "pinky": [.9, 1.1, .62], "thumb": [.2, .45, .35]}
+const TRIG_P := [.42, .78, .38]
+# ossos de torção do antebraço: repartem o giro da mão ao longo do braço (sem "embrulho de bala" no pulso)
+var twist = {}
+var rest_rel = {}
 
 func setup() -> void:
 	var sk := get_skeleton()
@@ -42,6 +60,19 @@ func setup() -> void:
 		var tb = sk.find_bone("thumb_%s_l" % k)
 		if tb >= 0: thumb_l.append(tb)
 	ib1 = sk.find_bone("index_01_r"); ib2 = sk.find_bone("index_02_r"); ib3 = sk.find_bone("index_03_r")
+	for side in ["r", "l"]:
+		CH[side] = {}
+		for f in ["thumb", "index", "middle", "ring", "pinky"]:
+			var ch = []
+			for k in ["01", "02", "03", "04_leaf"]: ch.append(sk.find_bone("%s_%s_%s" % [f, k, side]))
+			if ch.min() >= 0: CH[side][f] = ch
+		var t1 = sk.find_bone("lowerarm_twist_01_" + side)
+		var t2 = sk.find_bone("lowerarm_twist_02_" + side)
+		if t1 >= 0 and t2 >= 0:
+			twist[side] = [t1, t2]
+			var L0: Basis = sk.get_bone_global_rest(bones[side][1]).basis.orthonormalized()
+			var H0: Basis = sk.get_bone_global_rest(bones[side][2]).basis.orthonormalized()
+			rest_rel[side] = (L0.inverse() * H0).get_rotation_quaternion()
 
 func _process_modification_with_delta(_dt: float) -> void:
 	var sk := get_skeleton()
@@ -95,6 +126,7 @@ func _process_modification_with_delta(_dt: float) -> void:
 		var rt := Transform3D(Basis(rx, ry, rx.cross(ry)), g3.origin - ry * .07)
 		tr = rt if tr == null else (tr as Transform3D).interpolate_with(rt, clamp(free_rw, 0.0, 1.0))
 	if tr != null: _solve(sk, bones.r, inv * tr, ib * Vector3(.8, -1, .25))
+	if grip_r != null and finger_w < .99: _fingers(sk, "r", grip_r, grip_w * (1.0 - finger_w))
 	if finger_w > 0.0:
 		# indicador dobrado 90° na junta da base, apontando para onde a palma olha (entra no guarda-mato)
 		if ib1 >= 0:
@@ -116,7 +148,78 @@ func _process_modification_with_delta(_dt: float) -> void:
 		index_pt = skg * (p3 + (p3 - p2) * .3) # perto da ponta do indicador
 		index_ok = true
 	if tl != null: _solve(sk, bones.l, inv * tl, ib * Vector3(-.8, -1, .25))
+	if grip_l != null and fist_lw < .99: _fingers(sk, "l", grip_l, grip_w * (1.0 - fist_lw))
 	if fist_lw > 0.0: _fist_l(sk, clamp(fist_lw, 0.0, 1.0))
+	for side in twist: _twist(sk, side)
+
+## dedos: pose fixa (solta, apoio, concha) ou fecham até encostar no cilindro do cabo
+func _fingers(sk: Skeleton3D, side: String, g, w: float) -> void:
+	if w <= 0.001 or not CH.has(side): return
+	var H := sk.get_bone_global_pose(bones[side][2])
+	var c := Vector3.ZERO
+	var u := Vector3.ZERO
+	var R := 0.0
+	var wrap: bool = g is Dictionary
+	if wrap:
+		var hb := H.basis.orthonormalized()
+		c = H.origin + hb * (g.c as Vector3)
+		u = (hb * (g.u as Vector3)).normalized()
+		R = g.r
+	for f in CH[side]:
+		var ch: Array = CH[side][f]
+		var fixed = null
+		if not wrap:
+			fixed = {"relax": RELAX, "support": SUPPORT_P, "cup": CUP_P}.get(g, RELAX)[f]
+		elif f == "index" and trigger and side == "r":
+			fixed = [TRIG_P[0] + trig * .12, TRIG_P[1] + trig * .38, TRIG_P[2] + trig * .2]
+		_wrap(sk, ch, c, u, R, FR[f], w, fixed)
+
+func _wrap(sk: Skeleton3D, ch: Array, c: Vector3, u: Vector3, R: float, rf: float, w: float, fixed) -> void:
+	var q_anim := []
+	for k in 3:
+		q_anim.append(sk.get_bone_pose_rotation(ch[k]))
+		sk.set_bone_pose_rotation(ch[k], sk.get_bone_rest(ch[k]).basis.get_rotation_quaternion())
+	for k in 3:
+		var th := 0.0
+		if fixed != null:
+			th = fixed[k]
+		else:
+			var G := sk.get_bone_global_pose(ch[k])
+			var piv := G.origin
+			var ax := G.basis.x.normalized()
+			var nxt := sk.get_bone_global_pose(ch[k + 1]).origin
+			var v := nxt - piv
+			var lim: float = MAXC[k]
+			if _cd(piv + Basis(ax, lim) * v, c, u) >= R + rf:
+				th = lim
+			elif _cd(nxt, c, u) >= R + rf:
+				var lo := 0.0
+				var hi := lim
+				for it in 10:
+					var mid := (lo + hi) * .5
+					if _cd(piv + Basis(ax, mid) * v, c, u) >= R + rf: lo = mid
+					else: hi = mid
+				th = lo
+		var rq: Quaternion = sk.get_bone_rest(ch[k]).basis.get_rotation_quaternion()
+		sk.set_bone_pose_rotation(ch[k], rq * Quaternion(Vector3(1, 0, 0), th))
+	if w < .999:
+		for k in 3:
+			sk.set_bone_pose_rotation(ch[k], (q_anim[k] as Quaternion).slerp(sk.get_bone_pose_rotation(ch[k]), w))
+
+func _cd(p: Vector3, c: Vector3, u: Vector3) -> float:
+	var d := p - c
+	return (d - u * d.dot(u)).length()
+
+## torção: a parte do giro da mão em volta do eixo do antebraço vai 1/3 e 2/3 para os ossos de torção
+func _twist(sk: Skeleton3D, side: String) -> void:
+	var L: Basis = sk.get_bone_global_pose(bones[side][1]).basis.orthonormalized()
+	var Hb: Basis = sk.get_bone_global_pose(bones[side][2]).basis.orthonormalized()
+	var rel: Quaternion = (L.inverse() * Hb).get_rotation_quaternion()
+	var d: Quaternion = rel * rest_rel[side].inverse()
+	var ang := 2.0 * atan2(d.y, d.w)
+	ang = clamp(wrapf(ang, -PI, PI), -2.6, 2.6)
+	sk.set_bone_pose_rotation(twist[side][0], Quaternion(Vector3.UP, ang * .33))
+	sk.set_bone_pose_rotation(twist[side][1], Quaternion(Vector3.UP, ang * .66))
 
 # espelha uma pegada da mão direita para a esquerda (eixos do esqueleto espelhados em X)
 func _mirror(b: Basis) -> Basis:

@@ -1,5 +1,32 @@
 # Histórico de mudanças
 
+## Relíquias dos chefes e braços humanos
+
+- **Braços novos**: mãos e antebraços humanos modelados do zero, com pele de verdade (duas texturas de pele
+  misturadas, relevo, brilho, translucidez) e unhas. Ossos de torção no antebraço: a mão gira sem "embrulhar" o pulso.
+- **Dedos que encaixam**: em cada arma os dedos se fecham em volta do cabo de verdade (cada falange dobra até
+  encostar), o indicador fica no gatilho e puxa quando atira, e a mão de apoio segura o cano.
+- **Relíquias** (tecla **9**): matar um chefe dá a arma dele. No Treino todas ficam liberadas. Cada uma foi modelada
+  e animada no Blender junto com os braços: saque, parado, três golpes em sequência, especial e inspeção (R).
+  - **Garras do Abismo** (Lilith): manoplas de obsidiana com lâminas curvas em cada dedo. Cortes da direita, da
+    esquerda e em X; quem é cortado queima e, se morrer queimando, solta a alma (vida e sangue). Especial "beijo":
+    a esquerda agarra e puxa o inimigo, a direita crava as garras e torce, roubando o sangue.
+  - **Rosário Velado** (Miguel): o crucifixo é o cabo e as contas viram chicote (as contas são simuladas: balançam
+    com o peso de verdade). Chicotadas e um golpe de cima que abre um anel de eclipse. Especial: o laço estica as
+    contas longe, prende e puxa o inimigo. A pisada (slam) com o rosário abre um **mini-eclipse**.
+  - **Trombeta do Juízo** (Gabriel): trombeta de arauto dourada com asas e auréola, segurada com as duas mãos.
+    Toques que empurram tudo num cone e devolvem os projéteis; golpe com o sino. Especial: ergue a trombeta,
+    carrega tremendo e solta o toque do juízo, que **atravessa paredes** e atordoa.
+  - **Olho da Tempestade** (Azazel): cetro com um olho vivo preso em garras e anéis que giram. Raio em cadeia que
+    salta até 4 inimigos. Especial: a esquerda arranca o olho e o arremessa; ele flutua 8 s soltando raios, e
+    **um tiro nele faz ele explodir**. Um olho novo cresce no cetro.
+  - **Mãos do Criador** (Deus): braçadeiras de mármore e ouro, auréolas girando nos pulsos e o olho da providência
+    no dorso das mãos. Lança mãos de mármore que agarram e esmagam aos poucos; o "aperto" (especial, gasta sangue)
+    explode todas as mãos presas. Com ela em mãos a Blasfêmia enche mais rápido, e na Blasfêmia as mãos ficam
+    gigantes.
+- As relíquias de longe gastam sangue como as armas de fogo; as de corpo a corpo são de graça. A HUD mostra o nome,
+  a recarga do especial e o estado (mãos presas, olho vigiando).
+
 ## Vale da Torre: neblina, chuva de sangue e silêncio
 
 - Neblina bem mais fechada: as montanhas somem na névoa a partir de uns 400 m (a torre e o vórtice continuam acima dela).

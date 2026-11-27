@@ -21,6 +21,7 @@ var phase = 0.0
 var seed_ = 0.0
 var burn = 0.0
 var burn_tick = 0.0
+var stun := 0.0 # atordoado pelas relíquias (trombeta, rosário): não anda nem ataca
 var lost_t = 0.0
 var base_scale = 1.0
 
@@ -250,6 +251,19 @@ func _physics_process(dt: float) -> void:
 			G.hurt_enemy(self, 5, "burn", center(), false)
 			if not alive:
 				return
+	if stun > 0.0:
+		stun -= dt
+		wind = 0.0
+		if fly:
+			velocity *= exp(-4.0 * dt)
+		else:
+			velocity.x *= exp(-6.0 * dt)
+			velocity.z *= exp(-6.0 * dt)
+			velocity.y -= 40.0 * dt
+		move_and_slide()
+		if G.rng.randf() < dt * 8.0:
+			G.emit("white", center() + Vector3(G.rnd(-.4, .4), h * .45, G.rnd(-.4, .4)), 1, 1.5, .1, .4, Vector3.ZERO, -2)
+		return
 	var p: Vector3 = G.player.global_position
 	var dx = p.x - global_position.x
 	var dz = p.z - global_position.z

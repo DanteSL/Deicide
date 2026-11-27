@@ -95,6 +95,7 @@ func handle_input(ev: InputEvent) -> void:
 		elif ev.is_action("inspect"): weapons.inspect()
 		elif ev.is_action("swap"): weapons.quick_swap()
 		elif ev.is_action("use"): G.main.use_pressed()
+		elif ev.is_action("w9"): weapons.relic_next()
 		else:
 			for n in 8:
 				if ev.is_action("w%d" % (n + 1)):
@@ -163,6 +164,7 @@ func slide_or_slam() -> void:
 		dash_t = 0
 
 func slam_impact() -> void:
+	if weapons.R and weapons.R.cur == "rosario": weapons.R.eclipse(global_position)
 	slamming = false
 	G.shake = max(G.shake, 0.9)
 	G.snd("slam", -2)

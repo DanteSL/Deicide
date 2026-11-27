@@ -671,6 +671,101 @@ func _autotest(m: String) -> void:
 	if m == "caida":
 		_caida_test()
 		return
+	if m == "vm":
+		# viewmodel: cada arma parada, atirando e o soco
+		start_mode("train")
+		var rtv = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+		var shv = func(nm): get_viewport().get_texture().get_image().save_png("/tmp/vm_%s.png" % nm)
+		hud.visible = false
+		for e in G.enemies: if is_instance_valid(e): e.queue_free()
+		G.enemies.clear()
+		var t0 = 7.0
+		for k in 8:
+			rtv.call(t0 + k * 3.2, func(): player.weapons.select_slot(k); player.pitch = 0.0)
+			rtv.call(t0 + k * 3.2 + 2.2, shv.bind("%d" % k))
+			rtv.call(t0 + k * 3.2 + 2.4, func(): player.weapons.try_fire())
+			rtv.call(t0 + k * 3.2 + 2.55, shv.bind("%d_tiro" % k))
+		var t1 = t0 + 8 * 3.2
+		rtv.call(t1, func(): player.weapons.punch())
+		for j in 3: rtv.call(t1 + .1 + j * .12, shv.bind("soco%d" % j))
+		rtv.call(t1 + 1.0, func(): print("VM OK"); get_tree().quit())
+		return
+	if m == "relunlock":
+		start_mode("waves")
+		var rtu = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+		rtu.call(3.0, func():
+			G.relics = {}
+			player.weapons.relic_next()
+			print("sem relíquia: cur='", player.weapons.R.cur, "'")
+			G.relic_unlock("gabriel")
+			G.relic_unlock("lilith")
+			player.weapons.relic_next()
+			print("depois: cur=", player.weapons.R.cur, " ganhas=", G.relics)
+			player.weapons.relic_next()
+			print("próxima: cur=", player.weapons.R.cur)
+			player.weapons.select_slot(0)
+			print("tecla 1: cur='", player.weapons.R.cur, "' arma=", player.weapons.id())
+			G.relics = {}
+			G.save())
+		rtu.call(4.5, func(): print("RELUNLOCK OK"); get_tree().quit())
+		return
+	if m == "relfx":
+		# relíquias em combate: bonecos na frente, combo de 3 golpes e o especial de cada uma
+		start_mode("train")
+		var rtf = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+		var WPf = player.weapons
+		var st := {"hp0": 0.0, "k0": 0}
+		var tt := 6.0
+		for rid in ["garras", "rosario", "trombeta", "olho", "maos"]:
+			rtf.call(tt, func():
+				for e in G.enemies: if is_instance_valid(e): e.queue_free()
+				G.enemies.clear()
+				player.yaw = 0.0; player.pitch = -0.05
+				var fw: Vector3 = player.fwd_dir()
+				var rgt := fw.cross(Vector3.UP)
+				for d in [[3.0, 0.0], [5.5, 1.2], [8.0, -1.4], [11.0, 0.5]]:
+					spawn_enemy("husk", player.global_position + fw * d[0] + rgt * d[1], true)
+				G.blood = 200.0
+				WPf.R.enter(rid))
+			rtf.call(tt + 1.5, func(): st.hp0 = WPf.R.dmg_total; st.k0 = G.stats.kills)
+			rtf.call(tt + 1.6, func(): player.fire_held = true)
+			rtf.call(tt + 4.2, func(): player.fire_held = false)
+			rtf.call(tt + 4.6, func(): WPf.R.alt_press())
+			rtf.call(tt + 4.7, func(): WPf.R.alt_release())
+			if rid == "maos":
+				rtf.call(tt + 3.4, func(): WPf.R.cd_alt = 0.0; WPf.R.alt_press())
+			rtf.call(tt + 5.0, func(): get_viewport().get_texture().get_image().save_png("/tmp/relfx_%s.png" % rid))
+			rtf.call(tt + 6.6, func():
+				print("RELFX ", rid, " dano=", snapped(WPf.R.dmg_total - st.hp0, 0.1), " abates=", G.stats.kills - st.k0, " sangue=", snapped(G.blood, 0.1), " maos_presas=", WPf.R.latched_count(), " torre=", is_instance_valid(WPf.R.turret_node)))
+			tt += 7.0
+		rtf.call(tt + .5, func(): print("RELFX OK"); get_tree().quit())
+		return
+	if m == "rel":
+		# relíquias: cada animação congelada em alguns quadros (--rel=<id>)
+		start_mode("train")
+		var rtr = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+		var shr = func(nm): get_viewport().get_texture().get_image().save_png("/tmp/rel_%s.png" % nm)
+		hud.visible = "--hud" in OS.get_cmdline_user_args()
+		for e in G.enemies: if is_instance_valid(e): e.queue_free()
+		G.enemies.clear()
+		var rid = "garras"
+		for a in OS.get_cmdline_user_args(): if a.begins_with("--rel="): rid = a.substr(6)
+		var WP = player.weapons
+		# (animação, fração da duração)
+		var shots = [["parado", .3], ["saque", .3], ["saque", .7], ["ataque1", .25], ["ataque1", .4], ["ataque1", .55],
+			["ataque2", .4], ["ataque3", .3], ["ataque3", .45], ["especial", .2], ["especial", .35], ["especial", .5],
+			["especial", .7], ["inspecao", .3], ["inspecao", .6]]
+		rtr.call(6.0, func(): player.pitch = 0.0; WP.R.enter(rid))
+		var tt = 7.5
+		for i in shots.size():
+			var sh = shots[i]
+			rtr.call(tt, func():
+				var ap: AnimationPlayer = WP.R.ap
+				ap.play(rid + "_" + sh[0], 0.0); ap.seek(sh[1] * ap.current_animation_length, true); ap.pause())
+			rtr.call(tt + .7, shr.bind("%s_%02d_%s" % [rid, i, sh[0]]))
+			tt += 1.0
+		rtr.call(tt + .5, func(): print("REL OK"); get_tree().quit())
+		return
 	if m == "arms":
 		start_mode("train")
 		var rta = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
@@ -1137,7 +1232,7 @@ func _autotest(m: String) -> void:
 func _input_map() -> void:
 	var keys = {"fwd": [KEY_W, KEY_UP], "back": [KEY_S, KEY_DOWN], "left": [KEY_A, KEY_LEFT], "right": [KEY_D, KEY_RIGHT], "jump": [KEY_SPACE],
 		"dash": [KEY_SHIFT], "slide": [KEY_C, KEY_CTRL], "punch": [KEY_F], "inspect": [KEY_R], "swap": [KEY_Q], "use": [KEY_E], "blas": [KEY_G],
-		"w1": [KEY_1], "w2": [KEY_2], "w3": [KEY_3], "w4": [KEY_4], "w5": [KEY_5], "w6": [KEY_6], "w7": [KEY_7], "w8": [KEY_8], "pause": [KEY_ESCAPE]}
+		"w1": [KEY_1], "w2": [KEY_2], "w3": [KEY_3], "w4": [KEY_4], "w5": [KEY_5], "w6": [KEY_6], "w7": [KEY_7], "w8": [KEY_8], "w9": [KEY_9], "pause": [KEY_ESCAPE]}
 	for a in keys:
 		if not InputMap.has_action(a):
 			InputMap.add_action(a)
@@ -1541,7 +1636,7 @@ func _build_hud() -> void:
 	hud2.set_anchors_preset(Control.PRESET_FULL_RECT)
 	hud2.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud.add_child(hud2)
-	var kh = _lbl("Q troca · R recarregar · F soco · E terminal", 12, Color(1, 1, 1, .4), 2)
+	var kh = _lbl("Q troca · R recarregar · F soco · 9 relíquia · E terminal", 12, Color(1, 1, 1, .4), 2)
 	kh.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	kh.position = Vector2(-436, -186)
 	kh.custom_minimum_size = Vector2(420, 0)
@@ -1666,6 +1761,11 @@ func _on_style(label: String) -> void:
 func on_weapon_changed() -> void:
 	if hud2 == null or player == null: return
 	var w = player.weapons
+	if w.R and w.R.cur != "":
+		var sl = []
+		for n in G.loadout.size(): sl.append({"short": G.WEAP[G.loadout[n]].short, "cur": false})
+		hud2.push({"wname": w.R.NOME[w.R.cur], "slots": sl})
+		return
 	var slots = []
 	for n in G.loadout.size():
 		var k = G.loadout[n]
@@ -1682,6 +1782,11 @@ func _upd_hud(dt: float) -> void:
 	var id: String = w.id()
 	var X = w.X
 	var d = {"hp": p.hp, "stam": p.stamina, "walls": p.wall_jumps, "status": "", "reload": 0.0, "inf": false, "bar": 0.0, "bar_col": Color("40e8ff")}
+	if w.R and w.R.cur != "":
+		id = "relic"
+		d.inf = true
+		var rs: Dictionary = w.R.hud_state()
+		d.bar = rs.bar; d.bar_col = rs.col; d.status = rs.status
 	match id:
 		"rev":
 			d.ammo = w.rv_ammo; d.max = w.rv_max; d.kind = "bullet"

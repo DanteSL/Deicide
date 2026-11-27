@@ -21,6 +21,20 @@ Além das armas:
 - **F** é o soco: aparar um projétil laranja no momento certo congela o tempo por um instante e devolve o
   projétil muito mais forte, com uma explosão.
 
+## Relíquias dos chefes
+
+Matar um chefe dá a arma dele, para sempre (fica salvo). A tecla **9** empunha a última relíquia usada e, apertada de
+novo, passa para a próxima; **1–8** voltam às armas normais. No **Treino** todas estão liberadas. **R** faz a inspeção.
+Segurar o clique esquerdo emenda os três golpes (o terceiro é o mais forte).
+
+| Chefe | Relíquia | Clique esquerdo | Clique direito |
+|---|---|---|---|
+| Lilith | **Garras do Abismo** | Corte da direita, da esquerda e em X. Quem é cortado queima; quem morre queimando solta a alma (cura e sangue). Também no **F**. | **Beijo**: puxa o inimigo da mira, crava as garras e suga o sangue (cura). |
+| Miguel | **Rosário Velado** | Chicotadas largas e um golpe de cima que abre um anel de eclipse e atordoa. Também no **F**. | **Laço**: as contas se esticam longe, prendem o inimigo e o puxam até você. A **pisada** (slam) com o rosário abre um mini-eclipse. |
+| Gabriel | **Trombeta do Juízo** | Toque sônico em cone: empurra, devolve projéteis inimigos; o terceiro golpe é o sino na cara. Gasta sangue. | **Juízo**: carrega e solta um toque que atravessa paredes e atordoa tudo no cone. |
+| Azazel | **Olho da Tempestade** | Raio em cadeia que salta entre até 4 inimigos. Gasta sangue. | **Arremessa o olho**: ele flutua por 8 s soltando raios no inimigo mais perto; **atire nele** para explodir. |
+| Deus | **Mãos do Criador** | Mãos de mármore que voam, agarram e esmagam aos poucos (na Blasfêmia ficam gigantes). Gasta sangue. Enche a Blasfêmia mais rápido. | **Aperto** (gasta sangue): explode todas as mãos presas. |
+
 ## Melhorias
 
 | Arma | Melhoria | Efeito |

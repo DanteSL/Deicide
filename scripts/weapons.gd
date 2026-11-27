@@ -177,8 +177,12 @@ func _setup_arms() -> void:
 	for m in _all_meshes(arms):
 		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		m.extra_cull_margin = 4.0
+	_skin_materials(arms)
 	var ap: AnimationPlayer = arms.find_children("*", "AnimationPlayer", true, false)[0]
+	arms_ap = ap
 	var an: String = ap.get_animation_list()[0]
+	for a in ap.get_animation_list():
+		if String(a).contains("fps_test"): an = a
 	ap.get_animation(an).loop_mode = Animation.LOOP_LINEAR
 	ap.play(an)
 	var sk: Skeleton3D = arms.find_children("*", "Skeleton3D", true, false)[0]
@@ -187,9 +191,49 @@ func _setup_arms() -> void:
 	arms_ik.W = self
 	arms_ik.rig = arms
 	arms_ik.setup()
+	R = preload("res://scripts/reliquias.gd").new()
+	R.name = "Reliquias"
+	add_child(R)
+	R.setup(self)
+
+## pele humana (duas texturas misturadas, cores de vértice) e unhas
+var skin_mat: ShaderMaterial
+var nail_mat: StandardMaterial3D
+var arms_ap: AnimationPlayer
+var R: Node = null # relíquias (armas dos chefes)
+func _skin_materials(n: Node) -> void:
+	skin_mat = ShaderMaterial.new()
+	skin_mat.shader = load("res://shaders/pele.gdshader")
+	for k in [["cor1", "pele1_cor"], ["cor2", "pele2_cor"], ["nrm1", "pele1_normal"], ["nrm2", "pele2_normal"], ["liso1", "pele1_liso"], ["liso2", "pele2_liso"]]:
+		skin_mat.set_shader_parameter(k[0], load("res://maos/%s.jpg" % k[1]))
+	var fn = FastNoiseLite.new()
+	fn.frequency = .01
+	var nt = NoiseTexture2D.new()
+	nt.width = 256; nt.height = 256; nt.seamless = true; nt.noise = fn
+	skin_mat.set_shader_parameter("manchas", nt)
+	nail_mat = StandardMaterial3D.new()
+	nail_mat.albedo_color = Color(.86, .7, .66)
+	nail_mat.roughness = .3
+	nail_mat.clearcoat_enabled = true
+	nail_mat.clearcoat = .6
+	nail_mat.clearcoat_roughness = .25
+	nail_mat.vertex_color_use_as_albedo = false
+	for mi in _all_meshes(n):
+		if not String(mi.name).begins_with("Braco"): continue
+		var mesh: Mesh = mi.mesh
+		for si in mesh.get_surface_count():
+			var sm = mesh.surface_get_material(si)
+			var nm = String(sm.resource_name) if sm else ""
+			mi.set_surface_override_material(si, nail_mat if nm.begins_with("Unha") else skin_mat)
 
 # chamado pelo IK a cada quadro: escolhe onde cada mão deve estar
 func fp_targets(ik) -> void:
+	if R and R.cur != "":
+		ik.aim_r = null; ik.aim_l = null; ik.mode_l = ""
+		ik.free_l = null; ik.free_w = 0.0; ik.free_r = null; ik.free_rw = 0.0; ik.finger_w = 0.0
+		ik.grip_r = null; ik.grip_l = null; ik.trigger = false; ik.trig = 0.0; ik.fist_lw = 0.0
+		arms.visible = true
+		return
 	var g = grips.get(IDS[cur], {})
 	var md = W()
 	var shown: bool = md.has("root") and md.root.visible
@@ -206,12 +250,34 @@ func fp_targets(ik) -> void:
 			ik.free_l = spin_l; ik.free_w = spin_w
 	elif shown and cur == 1:
 		ik.free_l = sg.load_hand; ik.free_w = sb
+	# dedos: o cabo de cada arma (cilindro no referencial da mão direita) e a mão de apoio
+	var fit: Dictionary = GRIP_FIT.get(IDS[cur], {})
+	ik.grip_r = fit.get("r", "relax")
+	ik.grip_l = fit.get("l", "support")
+	ik.trigger = fit.get("trig", false)
+	ik.trig = clamp(trig_v, 0.0, 1.0)
+	if ik.mode_l == "pistol": ik.grip_l = "cup"
+	if ik.free_w > .5 and ik.free_l != null: ik.grip_l = "relax"
 	ik.fist_lw = 0.0
 	if fist_grip and fist.visible:
 		ik.aim_l = fist_grip; ik.mode_l = "free"
 		ik.free_l = fist_grip; ik.free_w = 1.0
 		ik.fist_lw = jab_fw
 	arms.visible = ik.aim_r != null or ik.aim_l != null
+
+## cabo de cada arma para os dedos fecharem em volta (c = centro, u = eixo, r = raio; referencial da mão direita:
+## +X dorso, +Y para os dedos, +Z lado do polegar)
+const GRIP_FIT := {
+	"rev": {"r": {"c": Vector3(-.03, .075, .0), "u": Vector3(0, -.28, 1), "r": .0145}, "trig": true},
+	"sg": {"r": {"c": Vector3(-.03, .075, .0), "u": Vector3(0, -.22, 1), "r": .0165}, "trig": true, "l": "support"},
+	"sword": {"r": "relax", "l": "relax"},
+	"rocket": {"r": {"c": Vector3(-.03, .075, .0), "u": Vector3(0, -.22, 1), "r": .0175}, "trig": true, "l": "support"},
+	"nail": {"r": {"c": Vector3(-.03, .075, .0), "u": Vector3(0, -.22, 1), "r": .016}, "trig": true, "l": "support"},
+	"rail": {"r": {"c": Vector3(-.03, .075, .0), "u": Vector3(0, -.22, 1), "r": .016}, "trig": true, "l": "support"},
+	"harp": {"r": {"c": Vector3(-.03, .075, .0), "u": Vector3(0, -.22, 1), "r": .016}, "trig": true, "l": "support"},
+	"gren": {"r": {"c": Vector3(-.03, .075, .0), "u": Vector3(0, -.22, 1), "r": .017}, "trig": true, "l": "support"},
+}
+var trig_v := 0.0 # gatilho puxado (decai sozinho)
 
 # ponto da mão direita na pistola (ajuste fino sobre a luva antiga)
 const PISTOL_HAND_OFS := Vector3(-.005, .05, .0)
@@ -509,6 +575,7 @@ func cycle(dirn: int) -> void:
 	switch_to(lo[k])
 
 func quick_swap() -> void:
+	if R and R.cur != "": switch_to(cur, true); return
 	if prev in G.loadout and prev != cur: switch_to(prev)
 	else: cycle(1)
 
@@ -528,6 +595,9 @@ func spin_angle() -> float:
 
 func switch_to(i: int, force := false) -> void:
 	if rev.is_empty(): return
+	if R and R.cur != "":
+		R.leave()
+		force = true
 	if i == cur and not force: return
 	if charging:
 		charging = false
@@ -553,7 +623,24 @@ func switch_to(i: int, force := false) -> void:
 	G.snd("draw", -8)
 	if G.main: G.main.on_weapon_changed()
 
+## tecla 9
+func relic_next() -> void:
+	if R: R.next()
+
+## chamado pelas relíquias ao entrar (on) e sair: esconde/mostra a arma normal e zera os estados dela
+func on_relic(on: bool) -> void:
+	charging = false; sg_reloading = false; rv_reloading = false; zoom = false
+	inspecting = false; spin_t = 1; jab_t = -1.0; sb = 0; rb = 0
+	for k in IDS.size(): model(k).root.visible = (not on) and k == cur
+	X.on_switch("relic" if on else IDS[cur])
+	if not on:
+		draw_t = 0
+		switch_time = Time.get_ticks_msec()
+		start_spin(1, .45, "x")
+		if G.main: G.main.on_weapon_changed()
+
 func reset_ammo() -> void:
+	if R: R.reset_world()
 	rv_ammo = rv_max
 	sg_ammo = sg_max
 	rv_reloading = false
@@ -575,6 +662,8 @@ func muzzle_flash(w: Dictionary) -> void:
 	G.main.world_flash(G.cam.global_position, 2.5)
 
 func inspect() -> void:
+	if R and R.cur != "":
+		R.inspect(); return
 	if spin_t < 1 or charging or draw_t < 1 or sg_reloading or rv_reloading: return
 	if cur == 1 and sg_ammo < sg_max:
 		start_sg_reload(); return
@@ -609,6 +698,8 @@ var _last_flourish = 0
 
 # ---------------- tiro ----------------
 func try_fire() -> void:
+	if R and R.cur != "":
+		R.fire(); return
 	if cur == 2:
 		if draw_t >= .6: X.fire("sword")
 		return
@@ -773,6 +864,8 @@ func fire_sg(dbl: bool) -> void:
 
 # ---------------- botão direito ----------------
 func alt_press() -> void:
+	if R and R.cur != "":
+		R.alt_press(); return
 	if G.player.dead: return
 	if cur >= 2:
 		if cur != 2 and draw_t < .6: return
@@ -801,6 +894,8 @@ func alt_press() -> void:
 	inspecting = false
 
 func alt_release() -> void:
+	if R and R.cur != "":
+		R.alt_release(); return
 	if cur >= 2 or zoom:
 		X.alt_release(IDS[cur])
 		return
@@ -947,6 +1042,8 @@ func _upd_sg_reload(dt: float) -> void:
 
 # ---------------- soco / aparar ----------------
 func punch() -> void:
+	if R and R.cur != "":
+		R.punch(); return
 	if punch_t < 1 or G.player.dead: return
 	punch_t = 0
 	# jab: se a mão ainda está na guarda, sai direto de lá
@@ -1015,7 +1112,12 @@ func _jab_pose(t: float) -> Array:
 	return [Transform3D(Basis(fwd.cross(palm).normalized(), palm, -fwd).orthonormalized(), pos), ext, fw]
 
 # ---------------- pose (animação) ----------------
+var _last_recoil := 0.0
 func _process(dt: float) -> void:
+	# dedo no gatilho: puxa quando a arma dispara (o recuo sobe) e solta devagar
+	if recoil > _last_recoil + .15: trig_v = 1.0
+	_last_recoil = recoil
+	trig_v = max(0.0, trig_v - dt * 5.0)
 	if rev.is_empty(): return
 	var p = G.player
 	recoil *= exp(-dt * 9)
@@ -1187,3 +1289,7 @@ func _process(dt: float) -> void:
 		if jab_t >= JAB_END: jab_t = -1.0
 	fist.visible = jab_t >= 0.0
 	w.root.position.y -= ext * .03
+	if self.R and self.R.cur != "":
+		fist.visible = false
+		w.root.visible = false
+		self.R.process(dt)
