@@ -55,8 +55,8 @@ var rng := RandomNumberGenerator.new()
 var _acc := {}
 var _parr := {}
 var solid: StaticBody3D
-var m_stone: StandardMaterial3D
-var m_top: StandardMaterial3D
+var m_stone: ShaderMaterial
+var m_top: ShaderMaterial
 var m_ground: StandardMaterial3D
 var m_bark: StandardMaterial3D
 var m_bird: StandardMaterial3D
@@ -147,28 +147,34 @@ func _noise_tex(freq: float, seed_: int, c0: Color, c1: Color, normal := false, 
 	return tx
 
 func _mats() -> void:
-	m_stone = StandardMaterial3D.new()
-	m_stone.albedo_texture = _noise_tex(.018, 7, Color(.3, .31, .34), Color(.52, .53, .57))
-	m_stone.normal_enabled = true
-	m_stone.normal_texture = _noise_tex(.03, 8, Color.BLACK, Color.WHITE, true)
-	m_stone.normal_scale = .8
-	m_stone.vertex_color_use_as_albedo = true
-	m_stone.uv1_triplanar = true
-	m_stone.uv1_world_triplanar = true
-	m_stone.uv1_scale = Vector3.ONE * .12
-	m_stone.roughness = .92
-	# o topo da torre fica acima da neblina e é iluminado pela luz do vórtice
-	m_top = m_stone.duplicate()
-	m_top.disable_fog = true
+	# pedra escura estilizada (textura enviada) com musgo nas partes viradas para cima e perto do chão
+	var moss_n = _noise_tex(.035, 61, Color.BLACK, Color.WHITE, false, 4)
+	for k in 2:
+		var sh = Shader.new()
+		sh.code = STONE_SHADER.replace("render_mode ", "render_mode fog_disabled, " if k == 1 else "render_mode ")
+		var mm = ShaderMaterial.new()
+		mm.shader = sh
+		mm.set_shader_parameter("alb", load("res://texturas/torre/pedra_albedo.jpg"))
+		mm.set_shader_parameter("nrm", load("res://texturas/torre/pedra_normal.jpg"))
+		mm.set_shader_parameter("rgh", load("res://texturas/torre/pedra_rough.jpg"))
+		mm.set_shader_parameter("moss_n", moss_n)
+		if k == 0: m_stone = mm
+		else: m_top = mm # o topo da torre fica acima da neblina e é iluminado pela luz do vórtice
+	# chão e montanhas: lama molhada (textura enviada)
 	m_ground = StandardMaterial3D.new()
-	m_ground.albedo_texture = _noise_tex(.02, 3, Color(.55, .55, .55), Color(1, 1, 1))
+	m_ground.albedo_texture = load("res://texturas/torre/lama_albedo.jpg")
 	m_ground.normal_enabled = true
-	m_ground.normal_texture = _noise_tex(.045, 4, Color.BLACK, Color.WHITE, true)
+	m_ground.normal_texture = load("res://texturas/torre/lama_normal.jpg")
+	m_ground.normal_scale = 1.2
+	m_ground.roughness_texture = load("res://texturas/torre/lama_rough.jpg")
+	m_ground.roughness = 1.0
+	m_ground.metallic_specular = .18
 	m_ground.vertex_color_use_as_albedo = true
 	m_ground.uv1_triplanar = true
 	m_ground.uv1_world_triplanar = true
-	m_ground.uv1_scale = Vector3.ONE * .07
-	m_ground.roughness = .97
+	m_ground.uv1_triplanar_sharpness = 4.0
+	m_ground.uv1_scale = Vector3.ONE * .28
+	m_ground.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 	m_bark = StandardMaterial3D.new()
 	m_bark.albedo_texture = _noise_tex(.05, 21, Color(.32, .3, .29), Color(.55, .52, .5), false, 3)
 	m_bark.vertex_color_use_as_albedo = true
@@ -179,6 +185,54 @@ func _mats() -> void:
 	m_bird = StandardMaterial3D.new()
 	m_bird.albedo_color = Color(.02, .02, .025)
 	m_bird.roughness = .7
+
+const STONE_SHADER := """
+shader_type spatial;
+render_mode diffuse_burley, specular_schlick_ggx;
+uniform sampler2D alb : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D nrm : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D rgh : hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform sampler2D moss_n : filter_linear_mipmap, repeat_enable;
+uniform float scale = 0.16;
+uniform float bright = 1.35;
+uniform vec3 moss_col : source_color = vec3(0.075, 0.1, 0.04);
+varying vec3 wp;
+varying vec3 wn;
+void vertex() {
+	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+}
+void fragment() {
+	vec3 n = normalize(wn);
+	vec3 bw = pow(abs(n), vec3(4.0));
+	bw /= dot(bw, vec3(1.0));
+	vec2 ux = wp.zy * scale;
+	vec2 uy = wp.xz * scale;
+	vec2 uz = wp.xy * scale;
+	vec3 a = texture(alb, ux).rgb * bw.x + texture(alb, uy).rgb * bw.y + texture(alb, uz).rgb * bw.z;
+	float ro = texture(rgh, ux).r * bw.x + texture(rgh, uy).r * bw.y + texture(rgh, uz).r * bw.z;
+	vec3 tx = texture(nrm, ux).xyz * 2.0 - 1.0;
+	vec3 ty = texture(nrm, uy).xyz * 2.0 - 1.0;
+	vec3 tz = texture(nrm, uz).xyz * 2.0 - 1.0;
+	vec3 nx = vec3(tx.xy + n.zy, abs(tx.z) * n.x);
+	vec3 ny = vec3(ty.xy + n.xz, abs(ty.z) * n.y);
+	vec3 nz = vec3(tz.xy + n.xy, abs(tz.z) * n.z);
+	vec3 wnorm = normalize(nx.zyx * bw.x + ny.xzy * bw.y + nz.xyz * bw.z);
+	// musgo: manchas no que fica virado para cima e perto do chão, mais nas frestas escuras
+	float m1 = texture(moss_n, wp.xz * 0.018 + wp.y * 0.01).r;
+	float m2 = texture(moss_n, (wp.xy + wp.zy) * 0.06).r;
+	float cav = 1.0 - clamp(dot(a, vec3(0.333)) * 3.5, 0.0, 1.0);
+	float up = smoothstep(0.25, 0.85, n.y);
+	float low = 1.0 - smoothstep(2.0, 26.0, wp.y);
+	float moss = smoothstep(0.5, 0.68, m1 * 0.8 + up * 0.22 + low * 0.22 + cav * 0.18 + m2 * 0.22 - 0.25);
+	moss *= smoothstep(0.15, 0.35, COLOR.r);
+	vec3 base = a * bright * COLOR.rgb;
+	vec3 mc = moss_col * (0.55 + 0.9 * m2) * (0.7 + 0.6 * texture(alb, uy * 3.0).g);
+	ALBEDO = mix(base, mc, moss * 0.85);
+	ROUGHNESS = mix(clamp(ro, 0.5, 1.0), 0.95, moss);
+	NORMAL = normalize((VIEW_MATRIX * vec4(mix(wnorm, n, moss * 0.5), 0.0)).xyz);
+}
+"""
 
 # ======================================================================
 # acumulador de malha: todas as peças de pedra viram uma malha só
@@ -452,12 +506,12 @@ func _build_terrain() -> void:
 	var cols := PackedColorArray()
 	var idx := PackedInt32Array()
 	verts.resize(TW * TD); norms.resize(TW * TD); cols.resize(TW * TD)
-	var c_earth = Color(.3, .285, .26)
-	var c_grass = Color(.36, .345, .28)
-	var c_path = Color(.47, .46, .44)
-	var c_rock = Color(.38, .39, .43)
-	var c_deep = Color(.08, .085, .1)
-	var c_peak = Color(.5, .51, .56)
+	var c_earth = Color(1.0, .97, .95)
+	var c_grass = Color(1.08, 1.06, .92)
+	var c_path = Color(1.35, 1.32, 1.28)
+	var c_rock = Color(1.05, 1.06, 1.12)
+	var c_deep = Color(.25, .25, .3)
+	var c_peak = Color(1.25, 1.26, 1.32)
 	for iz in TD:
 		var z = TZ0 + iz * TS
 		for ix in TW:
@@ -533,7 +587,7 @@ func _build_far_ring() -> void:
 			var h = smoothstep(520.0, 1100.0, r) * (130.0 + 480.0 * pk * pk) * (1.0 - smoothstep(2600.0, 3820.0, r) * .55)
 			verts.append(Vector3(x, h, z))
 			hh.append(h)
-			cols.append(Color(.2, .21, .24).lerp(Color(.3, .31, .35), pk))
+			cols.append(Color(.8, .8, .85).lerp(Color(1.1, 1.1, 1.15), pk))
 	for j in nr:
 		for i in na:
 			var k = j * na + i
@@ -561,6 +615,7 @@ func _build_far_ring() -> void:
 	var mi = MeshInstance3D.new()
 	mi.mesh = am
 	var fm: StandardMaterial3D = m_ground.duplicate()
+	fm.uv1_scale = Vector3.ONE * .02
 	fm.cull_mode = BaseMaterial3D.CULL_DISABLED
 	mi.material_override = fm
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -963,9 +1018,7 @@ func _build_statues() -> void:
 	if not ResourceLoader.exists("res://estatua/anjo_estatua.glb"): return
 	for s in [-1, 1]:
 		var st: Node3D = load("res://estatua/anjo_estatua.glb").instantiate()
-		var m = m_stone.duplicate()
-		m.vertex_color_use_as_albedo = false
-		m.albedo_color = Color(.62, .63, .7)
+		var m = m_stone
 		var lo = INF
 		var hi = -INF
 		for mi in st.find_children("*", "MeshInstance3D", true, false):

@@ -1,5 +1,12 @@
 # Histórico de mudanças
 
+## Vale da Torre com texturas de verdade
+
+- Torre, ponte, portões, colunata, capela, cemitério, obeliscos e estátuas usam a textura de pedra escura estilizada
+  (cor, relevo e aspereza), projetada pelos três eixos para não esticar.
+- Musgo verde-escuro em manchas: nas partes viradas para cima, perto do chão e nas frestas da pedra.
+- Chão e montanhas usam a textura de lama molhada, com pouco brilho para não parecer plástico.
+
 ## Mapa novo: O Vale da Torre (o começo do jogo)
 
 - Novo modo **A TORRE**, o primeiro do menu: um mapa enorme e escuro com cerca de 1 km de ponta a ponta.
