@@ -537,7 +537,7 @@ func _torre_test() -> void:
 		["10_volta", Vector3(-20, 0, -160), Vector3(0, 10, 120)],
 		["11_capela", Vector3(25, 0, 245), Vector3(48, 5, 205)],
 		["12_inicio_de_novo", Vector3(0, 0, 345), T + Vector3(0, 380, 0)],
-		["13_estatua", Vector3(-30, 0, -238), T + Vector3(-34, 12, 61)],
+		["13_estatua", Vector3(-22, 0, -248), T + Vector3(-34, 10, 61)],
 		["16_aereo_vale", Vector3(-160, 140, 420), Vector3(0, 0, 60)],
 		["18_topo_montanha", Vector3(60, 0, 230), Vector3(260, 200, 150)],
 		["19_topo_montanha2", Vector3(-40, 0, -200), Vector3(-300, 250, -260)],

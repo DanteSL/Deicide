@@ -1,5 +1,12 @@
 # Histórico de mudanças
 
+## Vale da Torre: anjo novo, sem musgo e mais rocha nos picos
+
+- As duas estátuas do portal da torre são o anjo novo, em pedra escura lisa (só o relevo do modelo, sem textura de
+  cor), viradas para a porta.
+- O musgo foi removido de todas as paredes.
+- A rocha natural agora cobre o alto das montanhas a partir de uns 50 m, e as encostas íngremes mais altas.
+
 ## Vale da Torre: rocha natural nos picos e barrancos
 
 - Picos, barrancos íngremes e paredes do abismo usam a textura de pedra natural enviada, em duas escalas (8 m e 29 m)

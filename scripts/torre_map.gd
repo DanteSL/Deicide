@@ -167,7 +167,7 @@ func _mats() -> void:
 		mm.set_shader_parameter("moss_n", moss_n)
 		mm.set_shader_parameter("scale", sc)
 		mm.set_shader_parameter("bright", br)
-		mm.set_shader_parameter("moss_k", moss)
+		mm.set_shader_parameter("moss_k", 0.0) # sem musgo (pedido)
 		if emi > 0.0:
 			mm.set_shader_parameter("emi", load(T + "runa_brilho.jpg"))
 			mm.set_shader_parameter("emi_k", emi)
@@ -333,7 +333,8 @@ void fragment() {
 	float slope = 1.0 - n.y;
 	float rk = smoothstep(0.5, 0.66, slope + (mid - 0.5) * 0.3);
 	// partes altas das montanhas: rocha exposta
-	rk = max(rk, smoothstep(110.0, 200.0, wp.y + (mid - 0.5) * 80.0) * 0.85);
+	rk = max(rk, smoothstep(45.0, 120.0, wp.y + (mid - 0.5) * 60.0));
+	rk = max(rk, smoothstep(0.3, 0.45, slope + (mid - 0.5) * 0.3) * smoothstep(15.0, 50.0, wp.y));
 	vec2 rx = wp.zy / 8.0;
 	vec2 rz = wp.xy / 8.0;
 	// rocha natural em duas escalas (8 m e 29 m, deslocada) para não repetir nos paredões
@@ -1149,14 +1150,25 @@ func _build_tower() -> void:
 
 ## estátuas de anjo escurecidas guardando o portal
 func _build_statues() -> void:
-	if not ResourceLoader.exists("res://estatua/anjo_estatua.glb"): return
+	var path = "res://estatua/anjo_torre.glb"
+	if not ResourceLoader.exists(path): return
 	for s in [-1, 1]:
-		var st: Node3D = load("res://estatua/anjo_estatua.glb").instantiate()
-		var m = m_statue
+		var st: Node3D = load(path).instantiate()
 		var lo = INF
 		var hi = -INF
 		for mi in st.find_children("*", "MeshInstance3D", true, false):
-			for si in mi.mesh.get_surface_count(): mi.set_surface_override_material(si, m)
+			for si in mi.mesh.get_surface_count():
+				# pedra escura lisa: sem a textura de cor, só o relevo (normal) do próprio modelo
+				var om = mi.mesh.surface_get_material(si)
+				var m = StandardMaterial3D.new()
+				m.albedo_color = Color(.085, .085, .095)
+				m.roughness = .82
+				m.metallic_specular = .35
+				if om is StandardMaterial3D and om.normal_enabled:
+					m.normal_enabled = true
+					m.normal_texture = om.normal_texture
+					m.normal_scale = 1.2
+				mi.set_surface_override_material(si, m)
 			# transformação do pedaço relativa à raiz do modelo
 			var xf = Transform3D.IDENTITY
 			var nd: Node = mi
@@ -1170,7 +1182,10 @@ func _build_statues() -> void:
 		print("estatua altura modelo=", hi - lo, " escala=", sc)
 		st.scale = Vector3.ONE * sc
 		st.position = TOWER + Vector3(s * 34.0, PLINTH + 4.0 - lo * sc, _tier_w(0) * .5 + 9.0)
-		st.rotation.y = s * -.35
+		# virada para a porta da torre
+		var door = Vector3(0, 0, TOWER.z + _tier_w(0) * .5)
+		var d = door - st.position
+		st.rotation.y = atan2(d.x, d.z)
 		add_child(st)
 		_bxc(TOWER + Vector3(s * 34.0, PLINTH + 2.0, _tier_w(0) * .5 + 9.0), Vector3(7.0, 4.0, 7.0), C_DARK)
 		_commit("st", m_stone)
