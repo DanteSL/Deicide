@@ -224,6 +224,7 @@ func _skin_materials(n: Node) -> void:
 		for si in mesh.get_surface_count():
 			var sm = mesh.surface_get_material(si)
 			var nm = String(sm.resource_name) if sm else ""
+			if nm.begins_with("Faixa"): continue
 			mi.set_surface_override_material(si, nail_mat if nm.begins_with("Unha") else skin_mat)
 
 # chamado pelo IK a cada quadro: escolhe onde cada mão deve estar

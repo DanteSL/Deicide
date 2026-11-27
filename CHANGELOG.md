@@ -1,5 +1,11 @@
 # Histórico de mudanças
 
+## 2026-11-27 — Mão esculpida e punho do soco
+
+- Mão e antebraço novos a partir da escultura `Hand.obj`: esqueleto encaixado (dedos com as proporções da escultura), pesos suaves nas juntas, unhas e uma faixa de couro cobrindo a emenda no antebraço.
+- As 5 relíquias foram reanimadas com a mão nova.
+- Soco: a mão esquerda é trocada pelo modelo de punho fechado (Tripo) sem dobrar os dedos de ossos; o modelo entra como veio, com o próprio relevo (`maos/punho_normal.jpg`) e o tom de pele dos braços.
+
 ## Relíquias dos chefes e braços humanos
 
 - **Braços novos**: mãos e antebraços humanos modelados do zero, com pele de verdade (duas texturas de pele

@@ -45,8 +45,27 @@ const TRIG_P := [.42, .78, .38]
 var twist = {}
 var rest_rel = {}
 
+# punho fechado esculpido (modelo do soco): aparece quando a mão esquerda fecha
+var punho_b := -1
+var punho_mi: MeshInstance3D = null
+var punho_on := false
+const PUNHO_HAND := .6   # a mão de ossos encolhe um pouco para ficar dentro do punho
+const PUNHO_DEDO := .01
+
 func setup() -> void:
 	var sk := get_skeleton()
+	punho_b = sk.find_bone("punho_l")
+	var pm = rig.find_children("Punho_L*", "MeshInstance3D", true, false) if rig else []
+	if pm.size() > 0:
+		punho_mi = pm[0]
+		punho_mi.visible = false
+		# o modelo como veio (UV e relevo dele), só com o tom de pele dos braços
+		var m := StandardMaterial3D.new()
+		m.albedo_color = Color(.8, .55, .46)
+		m.normal_enabled = true
+		m.normal_texture = load("res://maos/punho_normal.jpg")
+		m.roughness = .55
+		punho_mi.material_override = m
 	for side in ["r", "l"]:
 		bones[side] = [sk.find_bone("upperarm_" + side), sk.find_bone("lowerarm_" + side), sk.find_bone("hand_" + side)]
 	for nm in ["index_01_r", "index_02_r", "index_03_r", "middle_01_r", "middle_02_r", "middle_03_r", "ring_01_r", "ring_02_r", "ring_03_r", "pinky_01_r", "pinky_02_r", "pinky_03_r", "thumb_01_r", "thumb_02_r", "thumb_03_r"]:
@@ -149,7 +168,9 @@ func _process_modification_with_delta(_dt: float) -> void:
 		index_ok = true
 	if tl != null: _solve(sk, bones.l, inv * tl, ib * Vector3(-.8, -1, .25))
 	if grip_l != null and fist_lw < .99: _fingers(sk, "l", grip_l, grip_w * (1.0 - fist_lw))
-	if fist_lw > 0.0: _fist_l(sk, clamp(fist_lw, 0.0, 1.0))
+	# com o modelo do punho: troca a mão inteira por ele (sem dobrar os dedos de ossos)
+	if punho_mi != null and punho_b >= 0: _punho(sk, fist_lw > .05)
+	elif fist_lw > 0.0: _fist_l(sk, clamp(fist_lw, 0.0, 1.0))
 	for side in twist: _twist(sk, side)
 
 ## dedos: pose fixa (solta, apoio, concha) ou fecham até encostar no cilindro do cabo
@@ -268,7 +289,7 @@ func _solve(sk: Skeleton3D, ch: Array, t: Transform3D, hint: Vector3) -> void:
 func _fist_l(sk: Skeleton3D, w: float) -> void:
 	var H := sk.get_bone_global_pose(bones.l[2])
 	var palm := -H.basis.x.normalized() * FIST_SIGN
-	var ang := [1.6, 1.8, 1.4]
+	var ang := [1.45, 1.6, 0.95]
 	for ch in fingers_l:
 		for k in 3:
 			var b: int = ch[k]
@@ -290,3 +311,17 @@ func _fist_l(sk: Skeleton3D, w: float) -> void:
 		if ax2.length() < .001: continue
 		var a2: float = [.5, .6, .5][i]
 		sk.set_bone_global_pose(b, Transform3D(Basis(Quaternion(ax2.normalized(), a2 * w)) * G1.basis, G1.origin))
+
+
+func _punho(sk: Skeleton3D, on: bool) -> void:
+	if punho_mi == null or punho_b < 0: return
+	if not on and not punho_on: return
+	punho_on = on
+	punho_mi.visible = on
+	var hd: int = bones.l[2]
+	var hs := PUNHO_HAND if on else 1.0
+	sk.set_bone_pose_scale(hd, Vector3.ONE * hs)
+	sk.set_bone_pose_scale(punho_b, Vector3.ONE / hs)
+	var fs := PUNHO_DEDO if on else 1.0
+	for ch in fingers_l: sk.set_bone_pose_scale(ch[0], Vector3.ONE * fs)
+	if thumb_l.size() > 0: sk.set_bone_pose_scale(thumb_l[0], Vector3.ONE * fs)
