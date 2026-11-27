@@ -1,5 +1,22 @@
 # Histórico de mudanças
 
+## Mapa novo: O Vale da Torre (o começo do jogo)
+
+- Novo modo **A TORRE**, o primeiro do menu: um mapa enorme e escuro com cerca de 1 km de ponta a ponta.
+- Vale morto entre montanhas, com capim seco, árvores retorcidas, um cemitério com mausoléu e uma capela gótica em
+  ruínas. Uma colunata de pináculos e arcos ogivais leva até a ponte.
+- Ponte gótica de 190 m sobre um abismo sem fundo, com portões de torres nas duas pontas, pináculos em cada pilar e dois
+  andares de arcos que descem até a névoa. Quem cai (ou é empurrado) no abismo some: inimigos morrem ("PRO ABISMO") e o
+  jogador volta ao último ponto de retorno com 25 de dano.
+- Do outro lado, uma avenida de obeliscos até a torre: 24 andares de janelas ogivais, pináculos, portal com arquivoltas e
+  rosácea, estátuas de anjo e agulhas nos cantos. Ela sobe por quase 1 km até sumir no vórtice negro que gira no céu — o
+  único ponto de luz do mundo, com relâmpagos dentro das nuvens, um feixe de luz na ponta da torre, destroços girando
+  em espiral e corvos circulando.
+- Sete encontros com inimigos que já existiam (anjos caídos, brutamontes, voadores e a anja caída maior); os voadores
+  da ponte sobem do abismo. Três pontos de retorno (vale, cabeceira da ponte e planalto); morrer recomeça do último.
+  Sem chefe por enquanto: no fim, o portal está selado.
+- Fora do combate toca o tema sombrio do menu; o HUD mostra quantos inimigos restam.
+
 ## Todas as habilidades dos chefes refeitas com efeitos; sangue do trono corrigido
 
 - O sangue da Sala do Trono não parece mais água: saiu o reflexo azulado da borda do material de sangue (fonte, poça e

@@ -8,6 +8,7 @@ const PALE := Color("c9b2a6")
 const DIM := Color("7d6a63")
 
 const MODES := {
+	"torre": ["A TORRE", "O começo de tudo. Um vale morto entre montanhas, uma ponte sobre o abismo e uma torre tão alta que some no vórtice negro — o único lugar onde ainda existe luz.", 3],
 	"waves": ["ONDAS", "Hordas sem fim de anjos. A cada 5 ondas desce Gabriel; a cada 10, o próprio Deus.", 3],
 	"train": ["TREINO", "Alvos que sempre voltam, e aqui você não morre. Teste as armas, as melhorias e a Blasfêmia.", 0],
 	"boss": ["GABRIEL", "O Arauto de Muitos Olhos. Oito ataques e uma segunda fase de julgamento, no Átrio das Trombetas acima das nuvens.", 4],
@@ -142,6 +143,7 @@ func _build() -> void:
 	list.add_theme_constant_override("separation", 2)
 	left.add_child(list)
 	cont_btn = _entry("CONTINUAR", "", func(): main.resume(), "cont")
+	_entry("A TORRE", "", func(): main.start_mode("torre"), "torre")
 	_entry("ONDAS", "", func(): main.start_mode("waves"), "waves")
 	_entry("TREINO", "", func(): main.start_mode("train"), "train")
 	_entry("GABRIEL", "", func(): main.start_mode("boss"), "boss")
@@ -149,7 +151,7 @@ func _build() -> void:
 	_entry("LILITH", "", func(): main.start_mode("lilith"), "lilith")
 	_entry("AZAZEL", "", func(): main.start_mode("azazel"), "azazel")
 	_entry("DEUS", "", func(): main.start_mode("deus"), "deus")
-	var gap = Control.new(); gap.custom_minimum_size = Vector2(0, 14); list.add_child(gap)
+	var gap = Control.new(); gap.custom_minimum_size = Vector2(0, 6); list.add_child(gap)
 	_entry("CONFIGURAÇÕES", "", func(): _show_page("cfg"), "cfg", true)
 	_entry("CONTROLES", "", func(): _show_page("ctl"), "ctl", true)
 	exit_btn = _entry("SAIR", "", func(): _exit(), "exit", true)
@@ -508,11 +510,11 @@ func open(is_paused: bool) -> void:
 		for b in buttons: b.custom_minimum_size.x = 500
 	else:
 		left.anchor_left = 0; left.anchor_right = 0
-		left.offset_left = 86; left.offset_right = 640; left.offset_top = 50
+		left.offset_left = 86; left.offset_right = 640; left.offset_top = 28
 		for b in buttons: b.custom_minimum_size.x = 440
 	panel.visible = not paused
 	panel.offset_left = -560; panel.offset_right = -70
-	_show_info(G.mode if paused else "waves")
+	_show_info(G.mode if paused else "torre")
 	# entrada animada
 	modulate.a = 0
 	_tw().tween_property(self, "modulate:a", 1.0, .25)
@@ -538,7 +540,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if ev.is_action_pressed("ui_cancel") and not paused and not pages.info.visible:
-		_show_info("waves")
+		_show_info("torre")
 		get_viewport().set_input_as_handled()
 
 # ---------------- arte do fundo ----------------

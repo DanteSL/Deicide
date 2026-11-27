@@ -252,8 +252,11 @@ func _physics_process(dt: float) -> void:
 	if G.mode == "train":
 		hp = min(100.0, hp + dt * 12)
 	if global_position.y < -30:
-		global_position = Vector3(0, 3, 0)
-		velocity = Vector3.ZERO
+		if G.main and G.main.level == "torre":
+			G.main.torre_map.player_fell()
+		else:
+			global_position = Vector3(0, 3, 0)
+			velocity = Vector3.ZERO
 	if fire_held:
 		weapons.try_fire()
 	_apply_cam(dt)

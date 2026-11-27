@@ -340,7 +340,7 @@ func hurt_enemy(e, dmg: float, src: String, point: Vector3, head: bool, dir := V
 	return e.take_damage(dmg, src, head)
 
 const KILL_LABEL := {"rev": "ABATE", "rico": "RICOCHETE", "sg": "ABATE", "punch": "NOCAUTE", "parry": "DEVOLVIDO", "slam": "ESMAGADO",
-	"sword": "ESPADA ALADA", "rocket": "FOGUETE", "nail": "PREGADO", "rail": "TRESPASSADO", "harp": "ARPOADO", "gren": "GRANADA", "burn": "QUEIMADO", "blas": "EXECUTADO"}
+	"sword": "ESPADA ALADA", "rocket": "FOGUETE", "nail": "PREGADO", "rail": "TRESPASSADO", "harp": "ARPOADO", "gren": "GRANADA", "burn": "QUEIMADO", "blas": "EXECUTADO", "queda": "PRO ABISMO"}
 var _last_src = ""
 var _streak = 0
 func on_kill(e, src: String, head: bool) -> void:

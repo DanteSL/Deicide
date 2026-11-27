@@ -265,12 +265,24 @@ func _physics_process(dt: float) -> void:
 	else:
 		_upd_husk(dt, dx, dz, dist, nx, nz, p)
 	# preso fora de vista: reaparece num ponto normal
-	var out = abs(global_position.x) > G.A - 1 or abs(global_position.z) > G.A - 1
-	var lost = out or (global_position.y > 15.0 if fly else (global_position.y > 3.2 and is_on_floor()))
+	var lost := false
+	var torre: bool = G.main.level == "torre"
+	if torre:
+		# Vale da Torre: quem cai no abismo morre; quem se perde volta perto do jogador
+		var st: int = G.main.torre_map.enemy_state(self)
+		if st == 2:
+			G.hurt_enemy(self, 99999.0, "queda", global_position, false)
+			return
+		lost = st == 1
+	else:
+		var out = abs(global_position.x) > G.A - 1 or abs(global_position.z) > G.A - 1
+		lost = out or (global_position.y > 15.0 if fly else (global_position.y > 3.2 and is_on_floor()))
 	lost_t = lost_t + dt if lost else 0.0
 	if lost_t > 1.5:
 		var sp: Vector3 = G.main.spawn_point()
-		global_position = Vector3(sp.x, 6.0 if fly else 0.5, sp.z)
+		var by: float = sp.y if torre else 0.0
+		global_position = Vector3(sp.x, by + (6.0 if fly else 0.5), sp.z)
+		if torre: home = global_position
 		velocity = Vector3.ZERO
 		lost_t = 0.0
 

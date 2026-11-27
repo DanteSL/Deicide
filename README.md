@@ -44,6 +44,10 @@ Um ranking de heresia (de Devoto a Supremo Sacrilégio) recompensa variar as arm
 
 | | |
 |---|---|
+| ![Vale da Torre](docs/img/torre_vale.jpg) | ![Avenida da torre](docs/img/torre_avenida.jpg) |
+| **O Vale da Torre** — o começo do jogo: vale morto entre montanhas, cemitério e a torre que some no vórtice negro | A avenida de obeliscos até o portal da torre; lá em cima, o único ponto de luz do mundo |
+| ![Cabeceira da ponte](docs/img/torre_ponte.jpg) | ![Abismo](docs/img/torre_abismo.jpg) |
+| A colunata de arcos ogivais na cabeceira da ponte | Da ponte gótica, o abismo sem fundo coberto de névoa |
 | ![Pórtico da Balança](docs/img/portico_balanca.jpg) | ![Portão dourado](docs/img/portico_portao.jpg) |
 | **Pórtico da Balança** — a entrada do Gabriel: mosaico rachado de sangue, a balança dourada e os anjos de espada | O portão dourado se abre quando você chega e leva ao Átrio |
 | ![Átrio das Trombetas](docs/img/gabriel_arena.jpg) | ![Átrio visto de cima](docs/img/gabriel_arena_cima.jpg) |
@@ -96,6 +100,7 @@ Mil Olhos e Tempestade Final (Azazel) e Sóis de Sangue (Deus).
 
 | Modo | Descrição |
 |---|---|
+| **A Torre** | O começo do jogo: atravesse o vale, a ponte sobre o abismo e o planalto até o portal da torre gigante. Encontros com anjos caídos, brutamontes e voadores; quem for empurrado da ponte cai no abismo. Três pontos de retorno. Sem chefe por enquanto. |
 | **Ondas** | Hordas crescentes. A cada 5 ondas aparece Gabriel; a cada 10, Deus. |
 | **Treino** | Alvos infinitos para testar armas e melhorias. |
 | **Gabriel** | Suba o Pórtico da Balança, atravesse o portão dourado e lute contra o arcanjo no Átrio das Trombetas (8 ataques, segunda fase). |
@@ -155,6 +160,7 @@ Deicide/
 │   ├── gabriel_arena.gd   # Pórtico da Balança (entrada) e Átrio das Trombetas, a arena do Gabriel
 │   ├── deus.gd            # chefe Deus
 │   ├── trono.gd           # Sala do Trono e cutscene de Deus
+│   ├── torre_map.gd       # O Vale da Torre: terreno, ponte, torre de ~1 km, vórtice, encontros
 │   ├── hud2.gd            # HUD: vida, estamina, dash, arma em 3D, munição e frasco de sangue
 │   ├── boss_bar.gd        # barras de vida estilizadas de cada chefe
 │   ├── blood_screen.gd    # sangue espirrado na tela

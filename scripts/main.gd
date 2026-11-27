@@ -26,6 +26,8 @@ var miguel_arena: Node3D
 var gabriel_arena: Node3D
 var lilith_arena: Node3D
 var azazel_arena: Node3D
+var torre_map: Node3D
+var _torre_sky: Sky
 var _storm_sky: Sky
 var _blood_sky: Sky
 var _dawn_sky: Sky
@@ -41,6 +43,7 @@ const LEVEL_ENV := {
 	"azazel2": {"background_color": Color("120203"), "fog_light_color": Color("3a0606"), "ambient_light_color": Color("b88080"), "ambient_light_energy": .55, "fog_depth_begin": 55.0, "fog_depth_end": 300.0, "sun": .35},
 	"lilith": {"background_color": Color("0e0303"), "fog_light_color": Color("2a0804"), "ambient_light_color": Color("8a6a78"), "ambient_light_energy": .45, "fog_depth_begin": 45.0, "fog_depth_end": 200.0, "sun": .25},
 	"miguel": {"background_color": Color("0a0610"), "fog_light_color": Color("1a0c22"), "ambient_light_color": Color("b8a8d0"), "ambient_light_energy": .6, "fog_depth_begin": 40.0, "fog_depth_end": 230.0, "sun": .5},
+	"torre": {"background_color": Color("06080c"), "fog_light_color": Color("080a0f"), "ambient_light_color": Color("8c98b4"), "ambient_light_energy": .95, "fog_depth_begin": 25.0, "fog_depth_end": 900.0, "sun": .55, "fog_height": -14.0, "fog_height_density": .035},
 	"trono": {"background_color": Color("160205"), "fog_light_color": Color("2a0a0c"), "ambient_light_color": Color("e8d2c0"), "ambient_light_energy": .55, "fog_depth_begin": 50.0, "fog_depth_end": 190.0, "sun": .55},
 }
 var world_sun: DirectionalLight3D
@@ -104,6 +107,12 @@ func _ready() -> void:
 	azazel_arena.name = "ArenaDoAzazel"
 	azazel_arena.set_script(preload("res://scripts/azazel_arena.gd"))
 	azazel_arena.build(self)
+	var t_build = Time.get_ticks_msec()
+	torre_map = Node3D.new()
+	torre_map.name = "ValeDaTorre"
+	torre_map.set_script(preload("res://scripts/torre_map.gd"))
+	torre_map.build(self)
+	print("Vale da Torre montado em %d ms" % (Time.get_ticks_msec() - t_build))
 	build_root = world
 	gibs = preload("res://scripts/gibs.gd").new()
 	add_child(gibs)
@@ -498,6 +507,81 @@ func _gab_test() -> void:
 	rt.call(3.2, shot.bind("intro_2"))
 	rt.call(t1 + 7.5, func(): print("GABTEST OK boss=", G.boss, " groups=", get_tree().get_nodes_in_group("gabriel").size()); get_tree().quit())
 
+## Vale da Torre: fotos de vários pontos do mapa, combate e queda no abismo
+func _torre_test() -> void:
+	start_mode("torre")
+	var rt = func(t, f): get_tree().create_timer(t, true, false, true).timeout.connect(f)
+	var shot = func(nm):
+		var img = get_viewport().get_texture().get_image()
+		if img: img.save_png("/tmp/torre_%s.png" % nm)
+	var look = func(pos: Vector3, tgt: Vector3):
+		var y = torre_map.floor_y(pos.x, pos.z, 400.0 if pos.y > 50.0 else NAN) + .1
+		player.global_position = Vector3(pos.x, y + pos.y, pos.z)
+		player.velocity = Vector3.ZERO
+		var d = tgt - (player.global_position + Vector3(0, 1.6, 0))
+		player.yaw = atan2(-d.x, -d.z)
+		player.pitch = atan2(d.y, Vector2(d.x, d.z).length())
+	var T = torre_map.TOWER
+	var views = [
+		["0_inicio", Vector3(0, 0, 345), T + Vector3(0, 380, 0)],
+		["0b_inicio", Vector3(0, 0, 345), T + Vector3(0, 380, 0)],
+		["1_cemiterio", Vector3(-12, 0, 300), Vector3(-45, 4, 270)],
+		["2_vale", Vector3(-30, 0, 240), T + Vector3(0, 250, 0)],
+		["3_ponte_lado", Vector3(-44, 0, 106), Vector3(0, -25, 10)],
+		["4_cabeceira", Vector3(0, 0, 150), T + Vector3(0, 300, 0)],
+		["5_na_ponte", Vector3(0, 0, 30), T + Vector3(0, 500, 0)],
+		["6_abismo", Vector3(4.0, 2.2, 14), Vector3(90, -80, 0)],
+		["7_avenida", Vector3(0, 0, -140), T + Vector3(0, 120, 0)],
+		["8_portal", Vector3(10, 0, -215), T + Vector3(0, 30, 40)],
+		["9_olhando_cima", Vector3(30, 0, -250), T + Vector3(0, 900, 0)],
+		["10_volta", Vector3(-20, 0, -160), Vector3(0, 10, 120)],
+		["11_capela", Vector3(25, 0, 245), Vector3(48, 5, 205)],
+		["12_inicio_de_novo", Vector3(0, 0, 345), T + Vector3(0, 380, 0)],
+		["13_estatua", Vector3(-30, 0, -238), T + Vector3(-34, 12, 61)],
+		["16_aereo_vale", Vector3(-160, 140, 420), Vector3(0, 0, 60)],
+		["17_aereo_torre", Vector3(150, 160, 0), T + Vector3(0, 60, 0)],
+	]
+	player.frozen = true
+	player.hp = 100000.0
+	if OS.get_cmdline_user_args().has("--nohud"):
+		hud.visible = false
+		vpc2.visible = false
+	rt.call(1.1, func():
+		var nv = 0
+		for mi in torre_map.find_children("*", "MeshInstance3D", true, false):
+			if mi.mesh is ArrayMesh: nv += mi.mesh.surface_get_array_len(0)
+		print("TORRE vertices=", nv))
+	rt.call(1.0, func(): print("TORRE cp=", torre_map.cp, " pos=", player.global_position, " far=", player.cam.far))
+	for i in views.size():
+		var v = views[i]
+		rt.call(1.5 + i * 1.6, func(): look.call(v[1], v[2]); player.hp = 100000.0)
+		rt.call(2.7 + i * 1.6, shot.bind(v[0]))
+	var t1 = 1.5 + views.size() * 1.6 + 1.0
+	# volta ao começo e anda até o primeiro encontro
+	rt.call(t1 - .9, func():
+		for e in G.enemies: if is_instance_valid(e): e.queue_free()
+		G.enemies.clear()
+		torre_map.enc_i = 0
+		look.call(Vector3(0, 0, 316), Vector3(0, 2, 262))
+		player.frozen = false)
+	rt.call(t1 + .2, func(): player.frozen = true; player.hp = 100000.0)
+	rt.call(t1 + .8, shot.bind("15_primeiro_encontro"))
+	rt.call(t1 + .85, func(): print("TORRE encontro1 inimigos=", G.enemies.size(), " ys=", G.enemies.map(func(e): return snappedf(e.global_position.y, .1))))
+	t1 += 1.2
+	# combate: anda pela ponte com os voadores subindo do abismo
+	rt.call(t1, func():
+		player.frozen = false
+		for e in G.enemies: if is_instance_valid(e): e.queue_free()
+		G.enemies.clear()
+		torre_map.enc_i = 3
+		look.call(Vector3(0, 0, 106), Vector3(0, 6, 40)))
+	rt.call(t1 + 4.0, shot.bind("14_combate_ponte"))
+	rt.call(t1 + 4.1, func(): print("TORRE inimigos=", G.enemies.size(), " enc=", torre_map.enc_i, " cp=", torre_map.cp, " ys=", G.enemies.map(func(e): return snappedf(e.global_position.y, .1))))
+	# cai do lado da ponte
+	rt.call(t1 + 5.0, func(): player.global_position = Vector3(20, 2, 10); player.velocity = Vector3.ZERO; player.hp = 100.0)
+	rt.call(t1 + 9.0, func(): print("TORRE QUEDA pos=", player.global_position, " hp=", player.hp, " cp=", torre_map.cp))
+	rt.call(t1 + 9.5, func(): print("TORRE OK fps=", Engine.get_frames_per_second()); get_tree().quit())
+
 func _autotest(m: String) -> void:
 	G.msaa_i = 0  # renderizador por software dos testes é lento com MSAA
 	_apply_render()
@@ -528,9 +612,9 @@ func _autotest(m: String) -> void:
 		var shm = func(nm): get_viewport().get_texture().get_image().save_png("/tmp/menu_%s.png" % nm)
 		G.rec["waves"] = {"rank": 5, "wave": 14, "kills": 212}
 		rtm.call(1.5, func(): shm.call("a"); print("ts=", Engine.time_scale, " size=", menu.size, " mod=", menu.modulate))
-		rtm.call(1.6, func(): menu.buttons[4].grab_focus())
+		rtm.call(1.6, func(): menu.buttons[5].grab_focus())
 		rtm.call(2.1, shm.bind("deus"))
-		rtm.call(2.2, func(): menu._show_page("cfg"); menu.buttons[6].grab_focus(); print("tela ", DisplayServer.screen_get_size(), " janela ", get_window().size, " fator ", get_window().content_scale_factor, " escala3d ", vp.scaling_3d_scale))
+		rtm.call(2.2, func(): menu._show_page("cfg"); menu.buttons[7].grab_focus(); print("tela ", DisplayServer.screen_get_size(), " janela ", get_window().size, " fator ", get_window().content_scale_factor, " escala3d ", vp.scaling_3d_scale))
 		rtm.call(2.45, shm.bind("cfg"))
 		rtm.call(2.5, func(): menu._cfg_tab("JOGO"))
 		rtm.call(2.75, shm.bind("cfg_jogo"))
@@ -548,6 +632,9 @@ func _autotest(m: String) -> void:
 		return
 	if m == "deus":
 		_deus_test()
+		return
+	if m == "torre":
+		_torre_test()
 		return
 	if m == "rage":
 		start_mode("deus")
@@ -1657,6 +1744,7 @@ func _upd_hud(dt: float) -> void:
 	ui.sty.modulate.a = 1.0 if (G.style > 0 or feed_box.get_child_count() > 0) else .35
 	if G.mode == "boss" or G.mode == "deus" or G.mode == "miguel" or G.mode == "lilith" or G.mode == "azazel": ui.wave.text = ""
 	elif G.mode == "train": ui.wave.text = "TREINO · ESC PAUSA"
+	elif G.mode == "torre": ui.wave.text = ("%d INIMIGOS" % G.enemies.size()) if G.enemies.size() > 0 else ""
 	elif wave > 0: ui.wave.text = "ONDA %d · %d RESTANTES" % [wave, G.enemies.size() + queue.size()]
 	else: ui.wave.text = "PREPARE-SE"
 	var bs = G.boss
@@ -1767,6 +1855,7 @@ func quit_to_menu() -> void:
 
 func die() -> void:
 	_store_record()
+	if level == "torre": torre_map.keep_cp = true
 	player.dead = true
 	G.state = "dead"
 	var t = int(G.stats.t)
@@ -1790,8 +1879,8 @@ func reset() -> void:
 		if is_instance_valid(p.m): p.m.queue_free()
 	G.projs.clear()
 	G.clear_timers()
-	_set_level({"deus": "trono", "miguel": "miguel", "boss": "gabriel", "lilith": "lilith", "azazel": "azazel"}.get(G.mode, "arena"))
-	player.reset_at({"trono": Vector3(0, 2.3, 104), "miguel": Vector3(0, 2.3, 30), "lilith": Vector3(0, 2.3, 32), "azazel": Vector3(0, 2.3, 30), "gabriel": gabriel_arena.HALL + Vector3(0, 2.3, 40)}.get(level, Vector3(0, 2.3, 26)))
+	_set_level({"deus": "trono", "miguel": "miguel", "boss": "gabriel", "lilith": "lilith", "azazel": "azazel", "torre": "torre"}.get(G.mode, "arena"))
+	player.reset_at({"trono": Vector3(0, 2.3, 104), "miguel": Vector3(0, 2.3, 30), "lilith": Vector3(0, 2.3, 32), "azazel": Vector3(0, 2.3, 30), "gabriel": gabriel_arena.HALL + Vector3(0, 2.3, 40), "torre": torre_map.start_pos()}.get(level, Vector3(0, 2.3, 26)))
 	if level == "gabriel":
 		gabriel_arena.start_hall()
 		apply_env("gabriel_hall")
@@ -1819,6 +1908,8 @@ func reset() -> void:
 		G.later(1.5, respawn_azazel)
 	elif G.mode == "deus":
 		spawn_deus_cine()
+	elif G.mode == "torre":
+		torre_map.start_run()
 	elif G.mode == "train":
 		for d in [["husk", -8, 12], ["husk", 0, 8], ["husk", 8, 12], ["brute", 0, -8], ["drone", -14, 4], ["drone", 14, 4]]:
 			spawn_enemy(d[0], Vector3(d[1], 0, d[2]), true)
@@ -1828,7 +1919,7 @@ func reset() -> void:
 func _set_level(l: String) -> void:
 	if trono == null: return
 	if l != level:
-		var roots = {"arena": arena_root, "trono": trono, "miguel": miguel_arena, "gabriel": gabriel_arena, "lilith": lilith_arena, "azazel": azazel_arena}
+		var roots = {"arena": arena_root, "trono": trono, "miguel": miguel_arena, "gabriel": gabriel_arena, "lilith": lilith_arena, "azazel": azazel_arena, "torre": torre_map}
 		world.remove_child(roots[level])
 		world.add_child(roots[l])
 		level = l
@@ -1837,15 +1928,29 @@ func _set_level(l: String) -> void:
 	if gabriel_arena: gabriel_arena.reset_state()
 	if lilith_arena: lilith_arena.reset_state()
 	if azazel_arena: azazel_arena.reset_state()
+	if torre_map: torre_map.reset_state()
 	apply_env(level)
 
 func apply_env(name: String) -> void:
 	if G.fx: G.fx.bright = name == "gabriel"
 	var E: Dictionary = LEVEL_ENV[name]
+	world_env.fog_height = 0.0
+	world_env.fog_height_density = 0.0
 	for k in E:
 		if k != "sun": world_env.set(k, E[k])
+	# Vale da Torre: mundo enorme (a torre some no céu), brilho só no olho do vórtice
+	var tor = name == "torre"
+	if player and player.cam: player.cam.far = 7000.0 if tor else 400.0
+	world_env.glow_enabled = tor
+	if tor:
+		world_env.glow_intensity = .9
+		world_env.glow_bloom = .04
+		world_env.glow_hdr_threshold = .9
+		world_env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
+	world_sun.rotation = Vector3(-1.05, PI + .25, 0) if tor else Vector3(-1.0, 0.6, 0)
+	world_sun.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_ONLY if tor else DirectionalLight3D.SKY_MODE_LIGHT_AND_SKY
 	world_sun.light_energy = E.sun
-	world_sun.light_color = {"arena": Color("ffe2c4"), "lilith": Color("ff5a2a"), "miguel": Color("c8b8ff"), "gabriel": Color("ffd9a8"), "gabriel_hall": Color("ff7a70"), "gabriel_inferno": Color("ff3a20"), "azazel": Color("9ab4ff"), "azazel2": Color("ff4a3a")}.get(name, Color("fff4e8"))
+	world_sun.light_color = {"arena": Color("ffe2c4"), "lilith": Color("ff5a2a"), "miguel": Color("c8b8ff"), "gabriel": Color("ffd9a8"), "gabriel_hall": Color("ff7a70"), "gabriel_inferno": Color("ff3a20"), "azazel": Color("9ab4ff"), "azazel2": Color("ff4a3a"), "torre": Color("a8b8dc")}.get(name, Color("fff4e8"))
 	# o Átrio das Trombetas tem céu de amanhecer de verdade (degradê), as outras arenas usam cor lisa
 	if name == "gabriel_hall":
 		if _hall_sky == null:
@@ -1875,6 +1980,20 @@ func apply_env(name: String) -> void:
 		world_env.sky = _blood_sky if red else _storm_sky
 		world_env.background_mode = Environment.BG_SKY
 		world_env.fog_sky_affect = .35
+	elif name == "torre":
+		if _torre_sky == null:
+			var ts = ProceduralSkyMaterial.new()
+			ts.sky_top_color = Color("040508")
+			ts.sky_horizon_color = Color("2c3548")
+			ts.sky_curve = .1
+			ts.ground_horizon_color = Color("0e121a")
+			ts.ground_bottom_color = Color("020203")
+			ts.sun_angle_max = 0.0
+			_torre_sky = Sky.new()
+			_torre_sky.sky_material = ts
+		world_env.sky = _torre_sky
+		world_env.background_mode = Environment.BG_SKY
+		world_env.fog_sky_affect = 0.0
 	elif name == "gabriel_inferno":
 		if _hell_sky == null:
 			var hs = ProceduralSkyMaterial.new()
@@ -1976,6 +2095,7 @@ func respawn_gabriel() -> void:
 		spawn_enemy("gabriel", Vector3(0, 0, -30))
 
 func spawn_point() -> Vector3:
+	if level == "torre": return torre_map.spawn_near(player.global_position)
 	for i in 20:
 		var a = G.rnd(0, TAU)
 		var r = G.rnd(22, 38)
@@ -2055,8 +2175,9 @@ func spawn_enemy(kind: String, at = null, dummy := false) -> void:
 	e.set_script(preload("res://scripts/enemy.gd"))
 	world.add_child(e)
 	e.setup(kind, Vector3(p.x, 0.5, p.z), dummy)
+	if level == "torre": torre_map.place_enemy(e, p)
 	G.enemies.append(e)
-	G.emit("blood2", Vector3(p.x, .3, p.z), 14, 8, .15, .6)
+	G.emit("blood2", Vector3(p.x, e.position.y - .2, p.z), 14, 8, .15, .6)
 	G.snd("spawn", -14)
 
 func _start_wave() -> void:
@@ -2105,7 +2226,7 @@ func _upd_marks() -> void:
 	var normal = []
 	for e in G.enemies:
 		if not e.is_boss: normal.append(e)
-	var show: bool = G.mode != "train" and (G.mode == "boss" or G.mode == "deus" or G.mode == "miguel" or G.mode == "lilith" or G.mode == "azazel" or queue.is_empty()) and normal.size() <= 3
+	var show: bool = G.mode != "train" and (G.mode == "boss" or G.mode == "deus" or G.mode == "miguel" or G.mode == "lilith" or G.mode == "azazel" or G.mode == "torre" or queue.is_empty()) and normal.size() <= 3
 	if _mark_mesh == null:
 		_mark_mesh = SphereMesh.new()
 		_mark_mesh.radius = .32; _mark_mesh.height = .64; _mark_mesh.radial_segments = 4; _mark_mesh.rings = 1
@@ -2308,6 +2429,10 @@ func _upd_music() -> void:
 		else:
 			var fighting: bool = G.enemies.size() > 0 or wave_active or G.mode == "train"
 			tgt.coro = 1.0 if fighting else .5
+			# no Vale da Torre, sem inimigos por perto, toca o tema sombrio do menu
+			if level == "torre" and not fighting:
+				tgt.coro = 0.0
+				tgt.menu = .75
 			tgt.furia = clamp((G.style - 100.0) / 250.0, 0.0, 1.0) if fighting else 0.0
 			if G.blas_on: tgt.furia = 1.0
 		var k2 = {"paused": .55, "term": .6, "dead": .35}.get(G.state, 1.0)
