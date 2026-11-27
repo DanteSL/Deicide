@@ -188,8 +188,8 @@ func _mats() -> void:
 		m_ground.set_shader_parameter(k + "_alb", load(T + k + "_albedo.jpg"))
 		m_ground.set_shader_parameter(k + "_nrm", load(T + k + "_normal.jpg"))
 		m_ground.set_shader_parameter(k + "_rgh", load(T + k + "_rough.jpg"))
-	m_ground.set_shader_parameter("rocha_alb", load(T + "pedra_albedo.jpg"))
-	m_ground.set_shader_parameter("rocha_nrm", load(T + "pedra_normal.jpg"))
+	m_ground.set_shader_parameter("rocha_alb", load(T + "rocha_albedo.jpg"))
+	m_ground.set_shader_parameter("rocha_nrm", load(T + "rocha_normal.jpg"))
 	var gn = _noise_tex(.02, 909, Color.BLACK, Color.WHITE, false, 5)
 	m_ground.set_shader_parameter("macro", gn)
 	m_bark = StandardMaterial3D.new()
@@ -334,13 +334,16 @@ void fragment() {
 	float rk = smoothstep(0.5, 0.66, slope + (mid - 0.5) * 0.3);
 	// partes altas das montanhas: rocha exposta
 	rk = max(rk, smoothstep(110.0, 200.0, wp.y + (mid - 0.5) * 80.0) * 0.85);
-	vec2 rx = wp.zy / 7.0;
-	vec2 rz = wp.xy / 7.0;
-	vec3 ra = texture(rocha_alb, rx).rgb * bw.x + texture(rocha_alb, rz).rgb * bw.z + texture(rocha_alb, uv / 7.0).rgb * bw.y;
+	vec2 rx = wp.zy / 8.0;
+	vec2 rz = wp.xy / 8.0;
+	// rocha natural em duas escalas (8 m e 29 m, deslocada) para não repetir nos paredões
+	vec3 ra = texture(rocha_alb, rx).rgb * bw.x + texture(rocha_alb, rz).rgb * bw.z + texture(rocha_alb, uv / 8.0 + oa).rgb * bw.y;
+	vec3 ra2 = texture(rocha_alb, wp.zy / 29.0 + 0.37).rgb * bw.x + texture(rocha_alb, wp.xy / 29.0 + 0.61).rgb * bw.z + texture(rocha_alb, uv / 29.0 + ob).rgb * bw.y;
+	ra = ra * (0.55 + 0.9 * dot(ra2, vec3(0.33)) / max(dot(ra, vec3(0.33)) * 0.0 + 0.3, 0.01) * 0.5);
 	vec3 rnx = norm_ts(texture(rocha_nrm, rx).rgb);
 	vec3 rnz = norm_ts(texture(rocha_nrm, rz).rgb);
 	vec3 rock_n = normalize(vec3(rnx.xy + n.zy, abs(rnx.z) * n.x).zyx * bw.x + vec3(rnz.xy + n.xy, abs(rnz.z) * n.z) * bw.z + n * bw.y);
-	vec3 rock_col = mix(ra * vec3(0.62, 0.52, 0.42), ta * 0.8, 0.35);
+	vec3 rock_col = mix(ra * vec3(0.95, 0.9, 0.85), ta * 0.8, 0.15);
 	// encosta íngreme mas não paredão: terra escorrida (terra projetada de lado)
 	vec3 side_t = texture(terra_alb, rx * 1.9).rgb * bw.x + texture(terra_alb, rz * 1.9).rgb * bw.z + ta * bw.y;
 	float sd = smoothstep(0.15, 0.4, slope);

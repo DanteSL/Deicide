@@ -1,5 +1,10 @@
 # Histórico de mudanças
 
+## Vale da Torre: rocha natural nos picos e barrancos
+
+- Picos, barrancos íngremes e paredes do abismo usam a textura de pedra natural enviada, em duas escalas (8 m e 29 m)
+  para não repetir nos paredões.
+
 ## Vale da Torre: topo das montanhas com textura
 
 - Os picos não são mais cortados retos no limite de altura: sobem suavemente e ganham cristas.
