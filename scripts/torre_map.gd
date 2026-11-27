@@ -333,8 +333,7 @@ void fragment() {
 	float slope = 1.0 - n.y;
 	float rk = smoothstep(0.5, 0.66, slope + (mid - 0.5) * 0.3);
 	// partes altas das montanhas: rocha exposta
-	rk = max(rk, smoothstep(45.0, 120.0, wp.y + (mid - 0.5) * 60.0));
-	rk = max(rk, smoothstep(0.3, 0.45, slope + (mid - 0.5) * 0.3) * smoothstep(15.0, 50.0, wp.y));
+	rk = 0.0; // montanhas cobertas com a mesma terra do chão (pedido)
 	vec2 rx = wp.zy / 8.0;
 	vec2 rz = wp.xy / 8.0;
 	// rocha natural em duas escalas (8 m e 29 m, deslocada) para não repetir nos paredões
@@ -1185,7 +1184,7 @@ func _build_statues() -> void:
 		# virada para a porta da torre
 		var door = Vector3(0, 0, TOWER.z + _tier_w(0) * .5)
 		var d = door - st.position
-		st.rotation.y = atan2(d.x, d.z)
+		st.rotation.y = atan2(d.x, d.z) + (PI if s < 0 else 0.0) # a da esquerda estava de costas
 		add_child(st)
 		_bxc(TOWER + Vector3(s * 34.0, PLINTH + 2.0, _tier_w(0) * .5 + 9.0), Vector3(7.0, 4.0, 7.0), C_DARK)
 		_commit("st", m_stone)

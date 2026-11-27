@@ -1,5 +1,10 @@
 # Histórico de mudanças
 
+## Vale da Torre: montanhas só de terra, estátua da esquerda virada
+
+- As montanhas (inclusive os picos) usam só a mesma terra do chão, com lama, poças e variação de tom; saiu a rocha.
+- A estátua da esquerda do portal foi girada para o lado certo.
+
 ## Vale da Torre: anjo novo, sem musgo e mais rocha nos picos
 
 - As duas estátuas do portal da torre são o anjo novo, em pedra escura lisa (só o relevo do modelo, sem textura de
