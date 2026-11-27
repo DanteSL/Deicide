@@ -49,8 +49,11 @@ var rest_rel = {}
 var punho_b := -1
 var punho_mi: MeshInstance3D = null
 var punho_on := false
-const PUNHO_HAND := .6   # a mão de ossos encolhe um pouco para ficar dentro do punho
-const PUNHO_DEDO := .01
+const PUNHO_HAND := 1.0
+var mao_l: MeshInstance3D = null  # Braco_L
+var mao_surf = []                  # superfícies da mão esquerda (pele da mão e unhas)
+var mao_mats = {}
+var invis: StandardMaterial3D
 
 func setup() -> void:
 	var sk := get_skeleton()
@@ -59,13 +62,24 @@ func setup() -> void:
 	if pm.size() > 0:
 		punho_mi = pm[0]
 		punho_mi.visible = false
-		# o modelo como veio (UV e relevo dele), só com o tom de pele dos braços
+		# texturas do próprio modelo (a de cor veio cinza: foi tingida com o tom de pele dos braços)
 		var m := StandardMaterial3D.new()
-		m.albedo_color = Color(.8, .55, .46)
+		m.albedo_texture = load("res://maos/punho_cor.jpg")
 		m.normal_enabled = true
 		m.normal_texture = load("res://maos/punho_normal.jpg")
-		m.roughness = .55
+		m.roughness_texture = load("res://maos/punho_rugosidade.jpg")
+		m.roughness = 1.0
 		punho_mi.material_override = m
+		var bl = rig.find_children("Braco_L*", "MeshInstance3D", true, false)
+		if bl.size() > 0:
+			mao_l = bl[0]
+			for si in mao_l.mesh.get_surface_count():
+				var sm = mao_l.mesh.surface_get_material(si)
+				var nm = String(sm.resource_name) if sm else ""
+				if nm.begins_with("PeleMao") or nm.begins_with("Unha"): mao_surf.append(si)
+		invis = StandardMaterial3D.new()
+		invis.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		invis.albedo_color = Color(0, 0, 0, 0)
 	for side in ["r", "l"]:
 		bones[side] = [sk.find_bone("upperarm_" + side), sk.find_bone("lowerarm_" + side), sk.find_bone("hand_" + side)]
 	for nm in ["index_01_r", "index_02_r", "index_03_r", "middle_01_r", "middle_02_r", "middle_03_r", "ring_01_r", "ring_02_r", "ring_03_r", "pinky_01_r", "pinky_02_r", "pinky_03_r", "thumb_01_r", "thumb_02_r", "thumb_03_r"]:
@@ -322,6 +336,11 @@ func _punho(sk: Skeleton3D, on: bool) -> void:
 	var hs := PUNHO_HAND if on else 1.0
 	sk.set_bone_pose_scale(hd, Vector3.ONE * hs)
 	sk.set_bone_pose_scale(punho_b, Vector3.ONE / hs)
-	var fs := PUNHO_DEDO if on else 1.0
-	for ch in fingers_l: sk.set_bone_pose_scale(ch[0], Vector3.ONE * fs)
-	if thumb_l.size() > 0: sk.set_bone_pose_scale(thumb_l[0], Vector3.ONE * fs)
+	# só o punho do modelo aparece: a mão de ossos some
+	if mao_l:
+		for si in mao_surf:
+			if on:
+				mao_mats[si] = mao_l.get_surface_override_material(si)
+				mao_l.set_surface_override_material(si, invis)
+			elif mao_mats.has(si):
+				mao_l.set_surface_override_material(si, mao_mats[si])
