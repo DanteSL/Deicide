@@ -177,8 +177,9 @@ func _mats() -> void:
 	m_stone = mk.call(sh_fog, "masmorra", .25, 1.15, 1.0, 0.0)
 	# a torre: lajes de pedra com runas que brilham fraco
 	# a torre usa a mesma pedra de masmorra das outras construções
-	m_tower = mk.call(sh_fog, "masmorra", .25, 1.15, 0.0, 0.0)
-	m_top = mk.call(sh_nofog, "masmorra", .25, 1.15, 0.0, 0.0) # topo acima da neblina, iluminado pelo vórtice
+	# a torre fura a neblina e fica mais clara para ser vista de longe (como na primeira versão)
+	m_tower = mk.call(sh_nofog, "masmorra", .25, 2.6, 0.0, 0.0)
+	m_top = mk.call(sh_nofog, "masmorra", .25, 2.6, 0.0, 0.0) # topo acima da neblina, iluminado pelo vórtice
 	# estátuas: pedra lisa estilizada
 	m_statue = mk.call(sh_fog, "pedra", .3, 1.35, .6, 0.0)
 	# chão e montanhas: terra com lama, poças e rocha nos barrancos, sem cara de azulejo repetido
