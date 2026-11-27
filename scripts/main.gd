@@ -443,6 +443,7 @@ func _bfx_test(mode: String) -> void:
 	for k in 200: rt.call(k * .5, keep)
 	if mode == "boss": rt.call(1.0, func(): gabriel_enter())
 	if mode == "deus":
+		rt.call(4.0, func(): if trono.stage != "fight": trono._end_cut(true))
 		for k in 120: rt.call(5.0 + k * .5, func():
 			player.global_position = Vector3(0, 1.2, -4); player.velocity = Vector3.ZERO
 			if G.boss: var d = G.boss.head_pos() - (player.global_position + Vector3(0, 1.6, 0)); player.yaw = atan2(-d.x, -d.z); player.pitch = atan2(d.y, Vector2(d.x, d.z).length()) - .25)
@@ -462,6 +463,11 @@ func _bfx_test(mode: String) -> void:
 		rt.call(t2 + i * step, func():
 			if G.boss: G.boss.att = ""; G.boss.cd = 99.0; G.boss._attack(k))
 		for j in 2: rt.call(t2 + i * step + .7 + j * 1.1, shot.bind("3_%02d%s_%d" % [i, k, j]))
+	if mode == "deus":
+		var te = t2 + atks2.size() * step - 1.0
+		rt.call(te - 1.2, func():
+			for k in 400: rt.call(k * .005, func(): player.global_position = Vector3(30, 9, -40); player.velocity = Vector3.ZERO; player.yaw = PI * .25 + PI; player.pitch = -.55))
+		rt.call(te, shot.bind("4_inundacao"))
 	rt.call(t2 + atks2.size() * step + .5, func(): print("BFX OK ", mode, " ph2=", G.boss.get("ph2") if G.boss else "morto"); get_tree().quit())
 
 func _gab_test() -> void:
@@ -1834,6 +1840,7 @@ func _set_level(l: String) -> void:
 	apply_env(level)
 
 func apply_env(name: String) -> void:
+	if G.fx: G.fx.bright = name == "gabriel"
 	var E: Dictionary = LEVEL_ENV[name]
 	for k in E:
 		if k != "sun": world_env.set(k, E[k])
@@ -2170,6 +2177,8 @@ func spawn_feather(pos: Vector3, vel: Vector3) -> void:
 	world.add_child(m)
 	m.global_position = pos
 	m.look_at(pos + vel, Vector3.UP)
+	if G.fx:
+		var gl = G.fx.attach_glow(m, Color(1, .9, .7, .8), 2.2, true, "trace_05")
 	G.projs.append({"m": m, "mat": mat, "vel": vel, "owner": "enemy", "life": 6.0, "big": false, "feather": true})
 
 func parry_proj(p: Dictionary, d: Vector3) -> void:
@@ -2211,7 +2220,9 @@ func _upd_projs(dt: float, t: float) -> void:
 					p.life = 0
 					break
 		if p.life > 0 and G.in_solid(q):
-			if p.owner == "enemy": G.emit("spark", q, 8, 8, .1, .4)
+			if p.owner == "enemy":
+				G.emit("spark", q, 8, 8, .1, .4)
+				if G.fx: G.fx.flash(q, p.mat.albedo_color, 2.2, .25)
 			else: G.blast(q, 1.0, "parry")
 			p.life = 0
 		if p.life <= 0: m.queue_free()

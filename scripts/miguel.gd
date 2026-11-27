@@ -401,6 +401,10 @@ func _attack(k: String) -> void:
 	fired.clear()
 	ad = {}
 	mv = "stalk"
+	# toda habilidade começa com um aviso de carga no chefe
+	if G.fx:
+		var big = k == "eclipse"
+		G.fx.charge(center(), (Color(1, .12, .18) if ph2 else Color(1, .75, .55)), 1.2 if big else .65, 6.0 * (2.0 if big else 1.0), (G.player.global_position - global_position).normalized())
 	match k:
 		"eclipse":
 			inv = true; mv = "hold"; hover = 5.0
@@ -547,6 +551,7 @@ func _run_attack(dt: float) -> void:
 					var tg = pc + G.player.velocity * .25 + Vector3(G.rnd(-1.5, 1.5), G.rnd(-.5, .8), G.rnd(-1.5, 1.5))
 					_orb(o, (tg - o).normalized() * (24.0 if ph2 else 19.0))
 					G.emit("blood", o, 4, 6, .15, .3)
+					G.fx.flash(o, Color(1, .2, .25), 2.6, .25)
 			if at > .7 + ad.n * .45 + .5: _end()
 		"cross":
 			# cruz de gêiseres de sangue centrada no jogador; na fase 2, também em X
@@ -558,6 +563,7 @@ func _run_attack(dt: float) -> void:
 				var dirs = [Vector3(1, 0, 0), Vector3(0, 0, 1)]
 				if ph2: dirs += [Vector3(1, 0, 1).normalized(), Vector3(1, 0, -1).normalized()]
 				var rot = G.rnd(0, PI)
+				G.fx.shock(Vector3(c.x, _ground_y(c.x, c.z), c.z), Color(1, .1, .15), 6, .5)
 				for d in dirs:
 					var dd: Vector3 = d.rotated(Vector3.UP, rot)
 					for k in range(-9, 10):
@@ -592,6 +598,7 @@ func _run_attack(dt: float) -> void:
 					ad.grab = true
 					ad.gt = at
 					G.snd("hit", 0, .6)
+					G.fx.flash(pc, Color(1, .3, .3), 5, .4)
 					G.main.banner("", "PRESO NA CORRENTE")
 			if ad.get("grab", false):
 				var hand2 = _hand("armUR")
@@ -603,6 +610,8 @@ func _run_attack(dt: float) -> void:
 					T.point = 0.0; T.slam = 1.0
 					G.snd("slam", 0, .9); G.shake = max(G.shake, .8)
 					G.emit("blood2", pc, 30, 14, .25, .8)
+					G.fx.shock(Vector3(pc.x, _ground_y(pc.x, pc.z), pc.z), Color(1, .15, .2), 10, .5)
+					G.fx.flash(pc, Color(1, .25, .25), 8, .4)
 					if G.hurt_player(30.0 if ph2 else 24.0):
 						var back = (pc - global_position); back.y = 0
 						G.player.velocity = back.normalized() * 22 + Vector3(0, 10, 0)
@@ -661,6 +670,9 @@ func _run_attack(dt: float) -> void:
 			# rosário de sangue: espiral de contas girando para fora
 			T.spin = sin(at * 2.0) * .3
 			var arms = 4 if ph2 else 3
+			if _once("rs", .5):
+				G.fx.sprite(global_position + Vector3(0, 1.4 + hover * .2, 0), "twirl_02", Color(1, .1, .2, .9), 4, 14, 2.6, 3.0, true, Vector3.UP, false)
+				G.fx.sprite(global_position + Vector3(0, 1.5 + hover * .2, 0), "magic_02", Color(1, .2, .3, .8), 6, 10, 2.6, -1.5, true, Vector3.UP, false)
 			if at > .6 and at < 3.0:
 				ad.acc = ad.get("acc", 0.0) + dt
 				while ad.acc > .085:
@@ -744,6 +756,7 @@ func _ring_mesh(color: Color, op: float) -> MeshInstance3D:
 	m.mesh = tm
 	m.material_override = _addm(color, op)
 	G.world.add_child(m)
+	if G.fx: G.fx.ring_overlay(m, color, m.material_override)
 	return m
 
 func _wave(c: Color) -> void:
@@ -827,6 +840,7 @@ func _gfx(dt: float) -> void:
 						sp.mesh = cm
 						sp.material_override = G.unshaded(Color(.55, .03, .06))
 						G.world.add_child(sp)
+						G.fx.attach_glow(sp, Color(1, .1, .15, .7), 2.0, false, "flame_05")
 						g.spikes.append({"m": sp, "a": k * TAU / 28.0})
 					G.snd("spear", -6, .6)
 				# o anel cresce do chão e depois se fecha
@@ -835,6 +849,7 @@ func _gfx(dt: float) -> void:
 				for s in g.spikes:
 					var q = g.c + Vector3(cos(s.a + g.t * .4), 0, sin(s.a + g.t * .4)) * g.r
 					s.m.position = Vector3(q.x, -1.0 + rise * 1.85, q.z)
+					if G.rng.randf() < dt * 3: G.emit("blood2", s.m.position + Vector3(0, .8, 0), 1, 3, .18, .5)
 				var dd = Vector2(p.x - g.c.x, p.z - g.c.z).length()
 				if not g.hit and g.t > .55 and abs(dd - g.r) < .9 and p.y < 1.6:
 					g.hit = true
@@ -843,6 +858,8 @@ func _gfx(dt: float) -> void:
 					g.dead = true
 					for s in g.spikes: s.m.queue_free()
 					G.emit("blood2", g.c + Vector3(0, .5, 0), 30, 14, .25, .8)
+					G.fx.flash(g.c + Vector3(0, 1, 0), Color(1, .15, .2), 8, .4)
+					G.fx.shock(g.c, Color(1, .1, .15), 6, .4)
 	for g in gfx:
 		if g.get("dead", false) and g.kind != "crown" and is_instance_valid(g.get("m")): g.m.queue_free()
 	gfx = gfx.filter(func(g): return not g.get("dead", false))

@@ -427,6 +427,10 @@ func _attack(k: String) -> void:
 	ad = {}
 	mv = "orbit"
 	hy = BASE_Y
+	# toda habilidade começa com um aviso de carga no chefe
+	if G.fx:
+		var big = k == "ascend"
+		G.fx.charge(eye.global_position, _fxc(), 1.2 if big else .65, 9.0 * (2.0 if big else 1.0), (G.player.global_position - global_position).normalized())
 	match k:
 		"ascend":
 			inv = true; ascended = true; ph2 = true; mv = "hold"; hy = 27.0
@@ -588,6 +592,8 @@ func _run_attack(dt: float) -> void:
 					T.fold = -.35; T.flap = 1.8; T.lean = .2; RATE.fold = 16.0
 					G.snd("flapbig", 0); _flap_snd(1.5)
 					G.shake = max(G.shake, .4)
+					G.fx.ring_v(global_position, (G.player.global_position - global_position).normalized(), _fxc(), 14, .5)
+					G.fx.burst(global_position, Color(1, .97, .9), 30, 22, 1.2, .8, "trace_05", 0.0)
 					var tips = []
 					for nm in [["wingULt", -1], ["wingURt", 1], ["wingLLt", -1], ["wingLRt", 1]]:
 						if N.has(nm[0]): tips.append([N[nm[0]], nm[1]])
@@ -756,6 +762,8 @@ func _run_attack(dt: float) -> void:
 				pr.life = 9.0
 				ad.orbs.append({"p": pr, "off": off})
 				G.emit("spark", pos, 6, 4, .1, .3)
+				G.fx.flash(pos, _fxc(), 2.4, .3)
+				if i == 0: G.fx.sprite(global_transform * Vector3(0, 2, 3), "magic_02", Color(_fxc().r, _fxc().g, _fxc().b, .9), 6, 20, 1.4, .8, true, (G.player.global_position - global_position).normalized())
 				G.snd("ping", -10, .8 + i * .05)
 			for o in ad.orbs:
 				if o.has("go") or not is_instance_valid(o.p.m): continue
@@ -867,6 +875,7 @@ func _ring_mesh(color: Color, op: float) -> MeshInstance3D:
 	m.mesh = tm
 	m.material_override = _addm(color, op)
 	G.world.add_child(m)
+	if G.fx: G.fx.ring_overlay(m, color, m.material_override)
 	return m
 
 func _gfx(dt: float) -> void:
@@ -942,6 +951,8 @@ func _gfx(dt: float) -> void:
 					tw.parallel().tween_property(pil.material_override, "albedo_color:a", 0.0, .45)
 					tw.tween_callback(pil.queue_free)
 					G.emit("dust", Vector3(q.x, y + .3, q.z), 4, 6, .4, .7)
+					G.fx.pillar(Vector3(q.x, y, q.z), 1.0, 9, _fxc(), .4)
+					G.fx.sprite(Vector3(q.x, y + .08, q.z), "scorch_0%d" % (1 + G.rng.randi() % 3), Color(_fxc().r, _fxc().g, _fxc().b, .8), 1.5, 3.2, .6, 0.0, true, Vector3.UP)
 					g.next += 1.7
 				var rel = Vector3(p.x - g.o.x, 0, p.z - g.o.z)
 				var along = rel.dot(g.d)
@@ -989,6 +1000,7 @@ func _gfx(dt: float) -> void:
 							g.pos += to.normalized() * min(to.length(), (30.0 + g.t * 30.0) * dt)
 				g.m.position = g.pos
 				if G.rng.randf() < .7: G.emit("spark", g.pos + Vector3(G.rnd(-4, 4), 0, G.rnd(-4, 4)), 1, 2, .12, .35, Vector3.ZERO, 0)
+				if G.rng.randf() < dt * 30: G.fx.sprite(g.pos + Vector3(cos(g.t * 9) * g.m.scale.x, 0, sin(g.t * 9) * g.m.scale.x), "star_04", _fxc(), 1.2, 2.4, .25)
 				# disco horizontal: acerta quem está na altura dele (dá para pular por cima)
 				if g.st != "grow" and not g.hit:
 					var rel = Vector3(p.x - g.pos.x, 0, p.z - g.pos.z).length()
@@ -1004,4 +1016,4 @@ func _gfx(dt: float) -> void:
 
 
 func _fxc() -> Color:
-	return Color(1, .22, .12) if ph2 else Color(1, .86, .55)
+	return Color(1, .22, .12) if ph2 else Color(1, .58, .12)

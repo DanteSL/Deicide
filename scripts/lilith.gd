@@ -596,6 +596,10 @@ func _attack(k: String) -> void:
 	fired.clear()
 	ad = {}
 	mv = "stalk"
+	# toda habilidade começa com um aviso de carga no chefe
+	if G.fx:
+		var big = k == "inferno"
+		G.fx.charge(center(), Color(1, .4, .08), 1.2 if big else .65, 6.0 * (2.0 if big else 1.0), (G.player.global_position - global_position).normalized())
 	match k:
 		"inferno":
 			inv = true; mv = "hold"; hover = 4.0
@@ -732,6 +736,9 @@ func _run_attack(dt: float) -> void:
 					v.y = (tg.y - o.y) / tf + 0.5 * 26.0 * tf
 					var pr = _orb(o, v, Color(1, .5, .08))
 					pr.grav = 26.0
+					G.fx.attach_glow(pr.m, Color(1, .45, .1, .9), 2.2, true, "flame_02")
+					G.fx.sigil(Vector3(tg.x, _ground_y(tg.x, tg.z), tg.z), 1.6, Color(1, .35, .05), 1.15, 1)
+					G.fx.flash(o, Color(1, .5, .1), 2, .2)
 					G.snd("ping", -18, .7)
 			if at > 3.2: _end()
 		"kiss":
@@ -742,6 +749,7 @@ func _run_attack(dt: float) -> void:
 				var pull = (12.0 if ph2 else 9.0) * clamp(at / .6, 0.0, 1.0)
 				G.player.velocity += to.normalized() * pull * dt * 4.0
 				if G.rng.randf() < dt * 25: G.tracer(pc, center(), .05, Color(1, .3, .5), .06)
+				if G.rng.randf() < dt * 20: G.fx.sprite(pc.lerp(center(), G.rng.randf()), "star_06", Color(1, .3, .55), .8, 1.6, .3)
 				if _once("ring", .1):
 					var rm = _ring_mesh(Color(1, .2, .4), .7)
 					rm.position = Vector3(global_position.x, _ground_y(global_position.x, global_position.z) + .1, global_position.z)
@@ -780,6 +788,7 @@ func _run_attack(dt: float) -> void:
 				G.snd("whoosh", 0, .4); G.snd("angel", -6, .5)
 				T.lean = .9; T.fold = 1.0
 			if fired.has("go") and not fired.has("done"):
+				if G.rng.randf() < dt * 40: G.fx.sprite(center() + Vector3(G.rnd(-2, 2), G.rnd(-3, 3), G.rnd(-2, 2)), "flame_0%d" % (1 + G.rng.randi() % 4), Color(1, .4, .08, .9), 4, 8, .4)
 				var u = clamp((at - ad.t0) / .75, 0.0, 1.0)
 				var pos: Vector3 = ad.from.lerp(ad.to, u)
 				pos.y = lerp(ad.from.y, BASE_Y, sin(u * PI * .5))
@@ -883,6 +892,8 @@ func _run_attack(dt: float) -> void:
 					var o = center() + Vector3(cos(a) * 3.0, 2.0 + sin(a) * 2.0, 0)
 					var pr = _orb(o, Vector3(cos(a), 1, sin(a)) * 4.0, Color(.55, 1, .35))
 					pr.life = 6.0
+					G.fx.attach_glow(pr.m, Color(.5, 1, .35, .9), 3.0, true, "smoke_07")
+					G.fx.flash(o, Color(.5, 1, .35), 3, .35)
 					souls.append(pr)
 					G.snd("ping", -14, .5)
 			if at > .6 + n * .25 + .5: _end()
@@ -897,6 +908,7 @@ func _ring_mesh(color: Color, op: float) -> MeshInstance3D:
 	m.mesh = tm
 	m.material_override = _addm(color, op)
 	G.world.add_child(m)
+	if G.fx: G.fx.ring_overlay(m, color, m.material_override)
 	return m
 
 func _wave(c: Color) -> void:
@@ -919,7 +931,7 @@ func _fire_patch(q: Vector3) -> void:
 	var m = MeshInstance3D.new()
 	var pm = QuadMesh.new(); pm.size = Vector2(3.2, 3.2)
 	m.mesh = pm
-	var mt = _addm(Color(1, .35, .05), .8); mt.albedo_texture = _soft_tex()
+	var mt = _addm(Color(1, .35, .05), .8); mt.albedo_texture = G.fx.tex("scorch_02") if G.fx else _soft_tex()
 	m.material_override = mt
 	m.rotation.x = -PI / 2
 	G.world.add_child(m)
@@ -937,6 +949,8 @@ func _cross_spawn(q: Vector3, gy: float, delay: float) -> void:
 	var tip = MeshInstance3D.new(); var cm = CylinderMesh.new(); cm.top_radius = .3; cm.bottom_radius = 0.0; cm.height = 1.2; tip.mesh = cm; tip.material_override = red
 	tip.position = Vector3(0, -3.1, 0); cr.add_child(tip)
 	cr.global_position = Vector3(q.x, gy + 16.0, q.z)
+	if G.fx:
+		G.fx.attach_glow(cr, Color(1, .15, .1, .8), 6.0, true, "light_01")
 	var mk = _ring_mesh(Color(1, .1, .1), .8)
 	mk.position = Vector3(q.x, gy + .07, q.z)
 	mk.scale = Vector3(1.6, 1, 1.6)

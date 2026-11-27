@@ -1,5 +1,23 @@
 # Histórico de mudanças
 
+## Todas as habilidades dos chefes refeitas com efeitos; sangue do trono corrigido
+
+- O sangue da Sala do Trono não parece mais água: saiu o reflexo azulado da borda do material de sangue (fonte, poça e
+  inundação), agora é vermelho-escuro com brilho úmido.
+- A inundação de sangue cobre o salão inteiro, inclusive a parte de baixo e as laterais do trono.
+- Todo ataque de todo chefe agora tem um aviso de carga (brilho, estrela, selo girando e partículas convergindo) antes
+  de disparar, e todos os anéis/ondas ganharam textura de energia por baixo.
+- Deus: mãos com brilho e impacto, aréola com clarão, lágrimas com clarão nos olhos, maré com espuma e selo na brecha,
+  queda com estouro e onda de choque, anel de sangue com explosão.
+- Gabriel: fissuras com colunas de luz e chão queimado, auréola com estrelas, penas com estalo, esferas com selo; na
+  arena clara do céu os efeitos usam mistura normal para não sumirem no branco.
+- Miguel: coroa de espinhos com brilho e sangue escorrendo, olhos com clarão, rosário com runas, cruz e correntes com
+  onda de choque.
+- Lilith: enxofre com chama, alvo marcado no chão, almas com fumaça verde, beijo com estrelas, mergulho com chamas,
+  fogo no chão com textura de queimado, cruz caindo com luz.
+- Azazel: varredura com feixe e chão queimado, jaula com colunas e selo, olhos com faíscas, marca e nova com anéis
+  texturizados.
+
 ## Efeitos novos em todos os chefes (Kenney Particle Pack) e ataques de segunda fase
 
 - Biblioteca de efeitos (`scripts/fx.gd`) com as texturas do Kenney Particle Pack (CC0): clarões, ondas de choque no

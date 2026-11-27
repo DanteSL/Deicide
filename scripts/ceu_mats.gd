@@ -74,7 +74,6 @@ static func blood() -> StandardMaterial3D:
 		m.metallic = 0.0
 		m.metallic_specular = 1.0
 		m.clearcoat_enabled = true; m.clearcoat = 1.0; m.clearcoat_roughness = .02
-		m.rim_enabled = true; m.rim = .35; m.rim_tint = .2
 		var nt = NoiseTexture2D.new(); var nz = FastNoiseLite.new(); nz.frequency = .03; nz.fractal_octaves = 2
 		nt.noise = nz; nt.seamless = true; nt.as_normal_map = true; nt.bump_strength = 3.0
 		m.normal_enabled = true; m.normal_texture = nt; m.normal_scale = .5

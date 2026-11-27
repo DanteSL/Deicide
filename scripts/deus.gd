@@ -352,7 +352,7 @@ func _upd_death(dt: float) -> void:
 	# o sangue escoa
 	if flood:
 		flood_y -= dt * .12
-		flood.global_position.y = flood_y
+		flood.global_position = Vector3(0, flood_y, -18)
 	for f in falls:
 		f.pt.emitting = false
 		f.col.scale.x = max(.01, f.col.scale.x - dt * .5); f.col.scale.z = f.col.scale.x
@@ -519,6 +519,9 @@ func _attack(k: String) -> void:
 	at = 0.0
 	fired.clear()
 	ad = {}
+	if G.fx:
+		var big = k == "ascend"
+		G.fx.charge(head_pos(), Color(1, .1, .05) if ph2 else Color(1, .85, .55), 1.2 if big else .7, 14.0 if big else 8.0, (G.player.global_position - global_position).normalized())
 	match k:
 		"ascend":
 			inv = true
@@ -609,6 +612,7 @@ func _ring(color: Color, op: float, inner := .88) -> MeshInstance3D:
 	mat.disable_fog = true
 	m.material_override = mat
 	G.world.add_child(m)
+	if G.fx: G.fx.ring_overlay(m, color, m.material_override)
 	return m
 
 func _addm(c: Color, op: float) -> StandardMaterial3D:
@@ -733,6 +737,7 @@ func _run(dt: float) -> void:
 				gfx.append({"kind": "wave", "m": m, "r": 3.0, "y": gy, "x": global_position.x, "z": global_position.z, "hit": false, "high": high})
 				G.snd("boomlite", -4, .5)
 				G.flash = max(G.flash, .15)
+				G.fx.flash(head_pos(), Color(1, .2, .08), 12, .4)
 			if ad.k >= ad.n and at > .7 + ad.n * .75 + 1.2: _end()
 		"convulsao":
 			# o corpo se contorce e espirra anéis de sangue em todas as direções
@@ -764,7 +769,9 @@ func _run(dt: float) -> void:
 					var pr = G.projs.back()
 					pr.mat.albedo_color = Color(.85, .04, .04)
 					pr.life = 6.0
-				if int(at / .3) != int((at - dt) / .3): G.snd("eshot", -12, .6)
+				if int(at / .3) != int((at - dt) / .3):
+					G.snd("eshot", -12, .6)
+					G.fx.flash(hp2, Color(1, .1, .05), 5, .3)
 			if at > 4.2: _end()
 		"sois":
 			# SÓIS DE SANGUE: seis sóis vermelhos nascem da auréola; um a um, cada um marca você e despeja um raio
@@ -877,6 +884,9 @@ func _run(dt: float) -> void:
 					root_.add_child(b)
 				ad.w = root_
 				ad.wm = wm
+				# marca a abertura com um selo de luz
+				var gq = Vector3.ZERO; gq[other] = ad.gap
+				G.fx.sigil(Vector3(gq.x, 0, gq.z), 3.6, Color(1, .85, .6), 4.0, 1)
 			var spd = 0.0 if at < 1.0 else 15.0
 			ad.pos += ad.sgn * spd * dt
 			var wp = Vector3.ZERO
@@ -886,7 +896,9 @@ func _run(dt: float) -> void:
 			if at > 1.0 and G.rng.randf() < .8:
 				var q = Vector3.ZERO
 				q[ax] = ad.pos; q[other] = G.rnd(-44, 44); q.y = 2.6
-				if abs(q[other] - ad.gap) > 3.6: G.emit("blood2", q, 2, 6, .3, .7)
+				if abs(q[other] - ad.gap) > 3.6:
+					G.emit("blood2", q, 2, 6, .3, .7)
+					if G.rng.randf() < .5: G.fx.sprite(q + Vector3(0, .4, 0), "smoke_0%d" % (1 + G.rng.randi() % 8), Color(.5, .02, .03, .8), 2.0, 4.5, .6, 1.0, false)
 			if not fired.has("hit") and at > 1.0:
 				var pp = G.player.global_position
 				if abs(pp[ax] - ad.pos) < 1.4 and abs(pp[other] - ad.gap) > 3.4 and pp.y < 2.4:
@@ -945,6 +957,10 @@ func _run(dt: float) -> void:
 
 func _blood_ring(c: Vector3, n: int, spd: float) -> void:
 	var off = G.rnd(0, TAU)
+	if G.fx:
+		G.fx.ring_v(c, Vector3.UP, Color(1, .08, .05), 10, .5)
+		G.fx.flash(c, Color(1, .15, .08), 7, .35)
+		G.fx.burst(c, Color(.55, 0, .02), 18, 16, 1.0, .8, "circle_05", 10.0, true)
 	for i in n:
 		var a = off + i / float(n) * TAU
 		var dir = Vector3(cos(a), G.rnd(-.25, .05), sin(a)).normalized()
@@ -982,6 +998,11 @@ func _gfx(dt: float) -> void:
 					var pr = G.projs.back()
 					pr.mat.albedo_color = Color(.85, .04, .04)
 					pr.life = 2.0
+					var gy = g.y
+					var gx = g.x; var gz = g.z
+					G.later(.72, func():
+						G.fx.burst(Vector3(gx, max(gy, flood_y) + .3, gz), Color(.6, 0, .02), 10, 8, .8, .6, "circle_05", 18.0, true)
+						G.fx.shock(Vector3(gx, max(gy, flood_y), gz), Color(.9, .05, .05), 3.0, .35))
 			"wave":
 				g.r += 22 * dt
 				g.m.scale = Vector3(g.r, 2.0, g.r)
@@ -1081,8 +1102,8 @@ func _start_blood() -> void:
 	# a arena começa a encher de sangue
 	flood = MeshInstance3D.new()
 	var pm = PlaneMesh.new()
-	pm.size = Vector2(92, 92)
-	pm.subdivide_width = 24; pm.subdivide_depth = 24
+	pm.size = Vector2(94, 132)   # salão inteiro, incluindo a área do altar e do trono
+	pm.subdivide_width = 24; pm.subdivide_depth = 32
 	flood.mesh = pm
 	flood_mat = _blood_mat().duplicate()
 	flood_mat.albedo_color = Color(.34, 0, .02)
@@ -1093,7 +1114,7 @@ func _start_blood() -> void:
 	flood.top_level = true
 	flood.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(flood)
-	flood.global_position = Vector3(0, flood_y, 0)
+	flood.global_position = Vector3(0, flood_y, -18)
 	for hd in crest_hands: hd.pt.amount = 14
 
 func _upd_blood(dt: float) -> void:
@@ -1114,7 +1135,7 @@ func _upd_blood(dt: float) -> void:
 			G.emit("blood2", Vector3(src.x, gy + .3, src.z), 3, 7, .3, .7)
 	if flood:
 		flood_y = min(flood_t, flood_y + dt * .1)
-		flood.global_position = Vector3(0, flood_y + sin(phase * 1.3) * .03, 0)
+		flood.global_position = Vector3(0, flood_y + sin(phase * 1.3) * .03, -18)
 		flood_mat.emission = Color(.16, 0, .01) * (1.0 + .3 * sin(phase * 2.0))
 	# mãos voadoras
 	for hpj in hand_proj:
@@ -1132,6 +1153,8 @@ func _upd_blood(dt: float) -> void:
 		if hitp or G.in_solid(q) or q.y < max(flood_y, 0.0) + .3 or hpj.t > 4.0:
 			hpj.dead = true
 			G.emit("blood2", q, 40, 14, .35, 1.0)
+			G.fx.flash(q, Color(1, .2, .1), 9, .4)
+			G.fx.shock(Vector3(q.x, max(_ground_y(q.x, q.z), flood_y), q.z), Color(1, .1, .05), 9, .5)
 			G.snd("slam", -6, 1.4)
 			if q.distance_to(_pc()) < 4.0 and G.hurt_player(18.0):
 				G.player.velocity += (G.player.global_position - q).normalized() * 10 + Vector3(0, 6, 0)
@@ -1159,6 +1182,8 @@ func _launch_hand(hd: Dictionary) -> void:
 	hd.hand.visible = false
 	var out = (hd.piv.global_position - (crest.global_position)).normalized()
 	hand_proj.append({"n": n, "v": out * 14.0 + Vector3(0, 4, 0), "t": 0.0, "hd": hd})
+	G.fx.attach_glow(n, Color(1, .15, .08, .8), 7.0, true, "light_01")
+	G.fx.flash(hd.piv.global_position, Color(1, .3, .15), 6, .35)
 	G.snd("whoosh", -4, .7)
 	G.emit("blood2", hd.piv.global_position, 20, 10, .3, .8)
 
@@ -1192,5 +1217,7 @@ func _hand(q: Vector3) -> void:
 	gfx.append({"kind": "hand", "m": hn, "t": 0.0, "y": q.y})
 	G.emit("dust", q, 26, 12, .45, 1.0)
 	G.emit("blood2", q + Vector3(0, .5, 0), 18, 12, .25, .8)
+	G.fx.sprite(q + Vector3(0, .1, 0), "dirt_03", Color(.3, .05, .04, .9), 2.0, 6.0, 1.4, 0.0, false, Vector3.UP)
+	G.fx.flash(q + Vector3(0, 1, 0), Color(1, .25, .1), 5, .35)
 	G.snd("slam", -4, .9)
 	G.shake = max(G.shake, .3)

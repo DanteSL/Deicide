@@ -145,14 +145,14 @@ void fragment() {
 	NORMAL_MAP_DEPTH = mode == 2 ? .25 : .55;
 	// camada de "verniz": de frente vermelho escuro, rasante puxa para o brilho frio azulado
 	float facing = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
-	float rim = smoothstep(.85, .985, facing) * (mode == 2 ? .3 : 1.0);
-	ALBEDO = mix(col, rim_col.rgb * .35, rim * .5);
+	// visto de lado o sangue fica mais escuro e espelhado (sem puxar para azul)
+	ALBEDO = col * (1.0 - facing * .35);
 	ROUGHNESS = mode == 2 ? .28 : .02 + n2 * .05;
 	METALLIC = 0.0;
 	SPECULAR = mode == 2 ? .5 : 1.0;
 	CLEARCOAT = mode == 2 ? 0.0 : 1.0;
 	CLEARCOAT_ROUGHNESS = .02;
-	EMISSION = refl_col.rgb * pow(facing, 3.0) * (mode == 2 ? .0 : .35) + fresh.rgb * (mode == 2 ? .0 : .03);
+	EMISSION = fresh.rgb * (mode == 2 ? .0 : .05) + vec3(.25, .01, .01) * pow(facing, 4.0) * (mode == 2 ? 0.0 : .25);
 }
 """
 

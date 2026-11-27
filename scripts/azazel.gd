@@ -498,6 +498,10 @@ func _attack(k: String) -> void:
 	fired.clear()
 	ad = {}
 	mv = "orbit"
+	# toda habilidade começa com um aviso de carga no chefe
+	if G.fx:
+		var big = k == "lament"
+		G.fx.charge(eye_pos(), _col(), 1.2 if big else .65, 7.0 * (2.0 if big else 1.0), (G.player.global_position - global_position).normalized())
 	match k:
 		"lament":
 			inv = true; mv = "hold"; hover = 5.0
@@ -643,6 +647,8 @@ func _run_attack(dt: float) -> void:
 				if int(at * 30) != int((at - dt) * 30):
 					_bolt(e, g0 + Vector3(0, .5, 0), 1.0, .06)
 					_bolt(g0 + Vector3(0, .5, 0), gp + Vector3(0, .5, 0), .8, .06)
+					G.fx.beam(g0 + Vector3(0, .5, 0), gp + Vector3(0, .5, 0), .9, _col(), .07)
+					G.fx.sprite(g0.lerp(gp, G.rng.randf()) + Vector3(0, .2, 0), "scorch_0%d" % (1 + G.rng.randi() % 3), _col(), 1.5, 3.0, .4, 0.0, true, Vector3.UP)
 					G.emit("spark", g0.lerp(gp, G.rng.randf()) + Vector3(0, .5, 0), 3, 6, .1, .3)
 				if int(at * 8) != int((at - dt) * 8): G.snd("raio", -10, G.rnd(1.2, 1.5))
 				var py = p.y - _ground_y(p.x, p.z)
@@ -672,6 +678,7 @@ func _run_attack(dt: float) -> void:
 				for i in n:
 					ad.list.append(i * TAU / n)
 				G.snd("raio", -2, .6)
+				G.fx.sigil(Vector3(ad.c.x, _ground_y(ad.c.x, ad.c.z), ad.c.z), 11.0, _col(), 3.2, 0)
 			if ad.has("c"):
 				var u = clamp((at - .5) / 2.6, 0.0, 1.0)
 				var rr = lerp(11.0, 2.2, u * u)
@@ -681,6 +688,7 @@ func _run_attack(dt: float) -> void:
 					var q = ad.c + Vector3(cos(a), 0, sin(a)) * rr
 					if int(at * 20) != int((at - dt) * 20):
 						_bolt(q + Vector3(0, 40, 0), q, .6, .07)
+						G.fx.sprite(q + Vector3(0, .15, 0), "circle_05", _col(), 1.5, 2.5, .12, 0.0, true, Vector3.UP)
 					if not ad.has("hit") and Vector2(p.x - q.x, p.z - q.z).length() < 1.1:
 						ad.hit = true
 						if G.hurt_player(18.0 if ph2 else 14.0):
@@ -769,6 +777,8 @@ func _run_attack(dt: float) -> void:
 						G.main.spawn_orb(o, dir * (19.0 if ph2 else 15.0))
 						var pr = G.projs[G.projs.size() - 1]
 						pr.mat.albedo_color = _col()
+						G.fx.attach_glow(pr.m, Color(_col().r, _col().g, _col().b, .9), 2.0, false, "spark_02")
+						G.fx.flash(o, _col(), 2.0, .25)
 			if at > .8 + vol * .6: _end()
 
 ## marca no chão; depois de `delay` cai um raio nela
@@ -778,6 +788,7 @@ func _mark(q: Vector3, delay: float, rad: float) -> void:
 	m.mesh = tm
 	m.material_override = _addm(_col(), .7)
 	G.world.add_child(m)
+	G.fx.ring_overlay(m, _col(), m.material_override)
 	m.global_position = q + Vector3(0, .08, 0)
 	m.scale = Vector3(1, .1, 1)
 	G.fx.sigil(q, rad * 1.15, _col(), delay + .1, 0)
@@ -790,6 +801,7 @@ func _nova_ring(n: int) -> void:
 		m.mesh = tm
 		m.material_override = _addm(_col(), .85)
 		G.world.add_child(m)
+		G.fx.ring_overlay(m, _col(), m.material_override, "circle_03")
 		var gy = _ground_y(global_position.x, global_position.z)
 		m.global_position = Vector3(global_position.x, gy + .35, global_position.z)
 		gfx.append({"kind": "wave", "m": m, "r": 2.0 - i * 6.0, "x": global_position.x, "z": global_position.z, "gy": gy, "hit": false})

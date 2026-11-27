@@ -16,6 +16,8 @@ const PATH := "res://fx/%s.png"
 var _tex := {}
 var _mats := {}
 var items: Array = []
+## arena clara (céu do Gabriel): efeitos com mistura normal, senão o brilho somado some no branco
+var bright := false
 var _cross: ArrayMesh
 var _quad: QuadMesh
 var _flat: PlaneMesh
@@ -27,12 +29,12 @@ func tex(name: String) -> Texture2D:
 
 ## material de sprite (aditivo por padrão; alpha para fumaça e sangue)
 func mat(tname: String, col: Color, additive := true, billboard := 1, shared := false) -> StandardMaterial3D:
-	var key = "%s|%s|%s|%d" % [tname, col, additive, billboard]
+	var key = "%s|%s|%s|%d|%s" % [tname, col, additive, billboard, bright]
 	if shared and _mats.has(key): return _mats[key]
 	var m = StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	if additive: m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	if additive and not bright: m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	m.albedo_texture = tex(tname)
 	m.albedo_color = col
@@ -209,7 +211,71 @@ func burst(pos: Vector3, col: Color, n := 16, speed := 10.0, size := .5, life :=
 	p.emitting = true
 	get_tree().create_timer(life * 1.6 + .2).timeout.connect(p.queue_free)
 
+## aviso de carga: brilho que cresce, faíscas sugadas para o ponto e um selo vertical atrás
+func charge(pos: Vector3, col: Color, dur := .7, size := 5.0, face := Vector3.ZERO) -> void:
+	sprite(pos, "light_01", Color(col.r, col.g, col.b, .9), size * .2, size * 1.4, dur, 0.0, true, Vector3.ZERO, false)
+	sprite(pos, "star_08", Color(1, 1, 1, .9), size * .1, size * .8, dur, 4.0, true, Vector3.ZERO, false)
+	if face != Vector3.ZERO:
+		sprite(pos - face.normalized() * .5, "magic_03", Color(col.r, col.g, col.b, .8), size * .4, size * 1.6, dur * 1.2, 1.5, true, face)
+	var p = CPUParticles3D.new()
+	p.one_shot = true; p.amount = 26; p.lifetime = dur; p.explosiveness = .2
+	p.local_coords = false
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE; p.emission_sphere_radius = size * 1.2
+	p.radial_accel_min = -size * 6.0; p.radial_accel_max = -size * 4.0
+	p.gravity = Vector3.ZERO; p.initial_velocity_min = 0; p.initial_velocity_max = .5
+	var q = QuadMesh.new(); q.size = Vector2.ONE * size * .14
+	q.material = mat("star_06", col, true, 2, true)
+	p.mesh = q
+	var cv = Curve.new(); cv.add_point(Vector2(0, .4)); cv.add_point(Vector2(.7, 1)); cv.add_point(Vector2(1, 0)); p.scale_amount_curve = cv
+	_world().add_child(p); p.global_position = pos; p.emitting = true
+	get_tree().create_timer(dur * 1.6 + .2).timeout.connect(p.queue_free)
+
+## brilho que acompanha um nó (projéteis, penas, mãos...)
+func attach_glow(n: Node3D, col: Color, size := 2.0, trail := true, tname := "circle_05") -> Dictionary:
+	var g = MeshInstance3D.new(); var q = QuadMesh.new(); q.size = Vector2.ONE * size; g.mesh = q
+	var gm = mat(tname, col, true, 1)
+	g.material_override = gm
+	g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	n.add_child(g)
+	var out = {"glow": g, "gm": gm}
+	if trail:
+		var tr = CPUParticles3D.new()
+		tr.amount = 20; tr.lifetime = .35; tr.local_coords = false
+		tr.gravity = Vector3.ZERO; tr.initial_velocity_min = 0; tr.initial_velocity_max = .3; tr.spread = 180
+		var tq = QuadMesh.new(); tq.size = Vector2.ONE * size * .55
+		tq.material = mat("circle_05", Color(col.r, col.g, col.b, col.a * .7), true, 2)
+		tr.mesh = tq
+		var cv = Curve.new(); cv.add_point(Vector2(0, 1)); cv.add_point(Vector2(1, 0)); tr.scale_amount_curve = cv
+		n.add_child(tr)
+		out.trail = tr
+	return out
+
+## anel texturizado deitado, para pôr dentro dos anéis de torus (ondas, marcas, auréolas)
+## (a transparência acompanha a do material do anel)
+var overlays: Array = []
+func ring_overlay(ring: Node3D, col: Color, src: Material = null, tname := "circle_02") -> MeshInstance3D:
+	var mi = MeshInstance3D.new(); var pm = PlaneMesh.new(); pm.size = Vector2.ONE * 2.3; mi.mesh = pm
+	var m = mat(tname, Color(col.r, col.g, col.b, 1.0), true, 0)
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ring.add_child(mi)
+	# brilho largo por baixo
+	var mi2 = MeshInstance3D.new(); var pm2 = PlaneMesh.new(); pm2.size = Vector2.ONE * 2.6; mi2.mesh = pm2
+	var m2 = mat("light_03", Color(col.r, col.g, col.b, .6), true, 0)
+	mi2.material_override = m2; mi2.position.y = -.01
+	ring.add_child(mi2)
+	overlays.append({"n": ring, "src": src, "m": [m, m2], "a": [1.0, .6]})
+	return mi
+
 func _process(dt: float) -> void:
+	var ko = []
+	for o in overlays:
+		if not is_instance_valid(o.n): continue
+		if o.src and o.src is BaseMaterial3D:
+			var a: float = o.src.albedo_color.a
+			for i in 2: o.m[i].albedo_color.a = a * o.a[i] * 1.2
+		ko.append(o)
+	overlays = ko
 	if G.state != "play" and G.state != "dead": return
 	var cam = get_viewport().get_camera_3d()
 	for it in items:
