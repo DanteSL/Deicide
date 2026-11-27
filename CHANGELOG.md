@@ -1,5 +1,13 @@
 # Histórico de mudanças
 
+## Vale da Torre: neblina, chuva de sangue e silêncio
+
+- Neblina bem mais fechada: as montanhas somem na névoa a partir de uns 400 m (a torre e o vórtice continuam acima dela).
+- Mapa mais escuro (menos luz ambiente e menos luz do vórtice).
+- A torre usa a mesma pedra de masmorra das outras construções (saíram as runas).
+- Chove sangue no mapa inteiro, com respingos no chão em volta do jogador.
+- Mapa silencioso: sem trilha sonora e sem trovão, só os sons do combate.
+
 ## Vale da Torre: montanhas só de terra, estátua da esquerda virada
 
 - As montanhas (inclusive os picos) usam só a mesma terra do chão, com lama, poças e variação de tom; saiu a rocha.

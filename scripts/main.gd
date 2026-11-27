@@ -43,7 +43,7 @@ const LEVEL_ENV := {
 	"azazel2": {"background_color": Color("120203"), "fog_light_color": Color("3a0606"), "ambient_light_color": Color("b88080"), "ambient_light_energy": .55, "fog_depth_begin": 55.0, "fog_depth_end": 300.0, "sun": .35},
 	"lilith": {"background_color": Color("0e0303"), "fog_light_color": Color("2a0804"), "ambient_light_color": Color("8a6a78"), "ambient_light_energy": .45, "fog_depth_begin": 45.0, "fog_depth_end": 200.0, "sun": .25},
 	"miguel": {"background_color": Color("0a0610"), "fog_light_color": Color("1a0c22"), "ambient_light_color": Color("b8a8d0"), "ambient_light_energy": .6, "fog_depth_begin": 40.0, "fog_depth_end": 230.0, "sun": .5},
-	"torre": {"background_color": Color("06080c"), "fog_light_color": Color("080a0f"), "ambient_light_color": Color("8c98b4"), "ambient_light_energy": .95, "fog_depth_begin": 25.0, "fog_depth_end": 900.0, "sun": .55, "fog_height": -14.0, "fog_height_density": .035},
+	"torre": {"background_color": Color("06080c"), "fog_light_color": Color("080a0f"), "ambient_light_color": Color("7a86a0"), "ambient_light_energy": .6, "fog_depth_begin": 12.0, "fog_depth_end": 430.0, "sun": .34, "fog_height": -14.0, "fog_height_density": .035},
 	"trono": {"background_color": Color("160205"), "fog_light_color": Color("2a0a0c"), "ambient_light_color": Color("e8d2c0"), "ambient_light_energy": .55, "fog_depth_begin": 50.0, "fog_depth_end": 190.0, "sun": .55},
 }
 var world_sun: DirectionalLight3D
@@ -2431,12 +2431,11 @@ func _upd_music() -> void:
 		else:
 			var fighting: bool = G.enemies.size() > 0 or wave_active or G.mode == "train"
 			tgt.coro = 1.0 if fighting else .5
-			# no Vale da Torre, sem inimigos por perto, toca o tema sombrio do menu
-			if level == "torre" and not fighting:
-				tgt.coro = 0.0
-				tgt.menu = .75
 			tgt.furia = clamp((G.style - 100.0) / 250.0, 0.0, 1.0) if fighting else 0.0
 			if G.blas_on: tgt.furia = 1.0
+			# o Vale da Torre é silencioso: sem trilha sonora nenhuma
+			if level == "torre":
+				for k in tgt: tgt[k] = 0.0
 		var k2 = {"paused": .55, "term": .6, "dead": .35}.get(G.state, 1.0)
 		if G.blas_on and Engine.time_scale < .5: k2 = .12
 		for k in tgt: tgt[k] *= k2

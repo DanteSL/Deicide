@@ -115,6 +115,7 @@ func build(_m: Node) -> void:
 	_build_birds()
 	_build_mist()
 	_build_ash()
+	_build_rain()
 	_build_grass()
 
 func _noises() -> void:
@@ -175,8 +176,9 @@ func _mats() -> void:
 	# ponte, portões, colunata, ruínas, torrezinhas: parede de masmorra
 	m_stone = mk.call(sh_fog, "masmorra", .25, 1.15, 1.0, 0.0)
 	# a torre: lajes de pedra com runas que brilham fraco
-	m_tower = mk.call(sh_fog, "runa", .11, 1.6, .55, .55)
-	m_top = mk.call(sh_nofog, "runa", .11, 1.6, .2, .8) # topo acima da neblina, iluminado pelo vórtice
+	# a torre usa a mesma pedra de masmorra das outras construções
+	m_tower = mk.call(sh_fog, "masmorra", .25, 1.15, 0.0, 0.0)
+	m_top = mk.call(sh_nofog, "masmorra", .25, 1.15, 0.0, 0.0) # topo acima da neblina, iluminado pelo vórtice
 	# estátuas: pedra lisa estilizada
 	m_statue = mk.call(sh_fog, "pedra", .3, 1.35, .6, 0.0)
 	# chão e montanhas: terra com lama, poças e rocha nos barrancos, sem cara de azulejo repetido
@@ -1626,6 +1628,53 @@ func _build_grass() -> void:
 			x += cs
 		z += cs
 
+## chuva de sangue: gotas compridas vermelho-escuras caindo em volta do jogador
+var rain: CPUParticles3D
+func _build_rain() -> void:
+	rain = CPUParticles3D.new()
+	rain.amount = 2600
+	rain.lifetime = 1.1
+	rain.preprocess = 1.2
+	rain.local_coords = false
+	rain.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	rain.emission_box_extents = Vector3(45, 2, 45)
+	rain.direction = Vector3(.08, -1, .04)
+	rain.spread = 3.0
+	rain.initial_velocity_min = 34.0
+	rain.initial_velocity_max = 42.0
+	rain.gravity = Vector3(0, -20, 0)
+	var bm = BoxMesh.new()
+	bm.size = Vector3(.045, 1.4, .045)
+	var m = StandardMaterial3D.new()
+	m.albedo_color = Color(.32, .0, .015)
+	m.emission_enabled = true
+	m.emission = Color(.12, 0, 0)
+	m.roughness = .15
+	m.metallic_specular = .8
+	bm.material = m
+	rain.mesh = bm
+	add_child(rain)
+	# respingos no chão perto do jogador
+	splash = CPUParticles3D.new()
+	splash.amount = 260
+	splash.lifetime = .35
+	splash.local_coords = false
+	splash.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	splash.emission_box_extents = Vector3(14, .05, 14)
+	splash.direction = Vector3(0, 1, 0)
+	splash.spread = 60.0
+	splash.initial_velocity_min = 1.5
+	splash.initial_velocity_max = 3.2
+	splash.gravity = Vector3(0, -14, 0)
+	splash.scale_amount_min = .5
+	splash.scale_amount_max = 1.2
+	var sm = SphereMesh.new()
+	sm.radius = .04; sm.height = .08; sm.radial_segments = 4; sm.rings = 2
+	sm.material = m
+	splash.mesh = sm
+	add_child(splash)
+var splash: CPUParticles3D
+
 func _build_ash() -> void:
 	ash = CPUParticles3D.new()
 	ash.amount = 900
@@ -1736,12 +1785,11 @@ func _process(dt: float) -> void:
 		flash = 1.0
 		vortex_mat.set_shader_parameter("flash_a", rng.randf() * TAU)
 		var d = rng.randf_range(.6, 2.2)
-		get_tree().create_timer(d).timeout.connect(func(): if is_inside_tree(): G.snd("raio", -20.0, rng.randf_range(.35, .5)))
 	flash = max(0.0, flash - dt * (2.5 if flash > .5 else 1.2))
 	var fl = flash * (.6 + .4 * sin(t * 60.0))
 	vortex_mat.set_shader_parameter("flash", fl)
 	if G.main and G.main.level == "torre" and G.main.world_sun:
-		G.main.world_sun.light_energy = .55 + fl * .6
+		G.main.world_sun.light_energy = .34 + fl * .5
 	var pulse = .5 + .5 * sin(t * .7)
 	(glow_core.material_override as StandardMaterial3D).albedo_color.a = .85 + .15 * pulse + fl * .3
 	(glow_halo.material_override as StandardMaterial3D).albedo_color.a = .4 + .12 * pulse + fl * .4
@@ -1764,6 +1812,11 @@ func _process(dt: float) -> void:
 		cm.m.uv1_offset.x += cm.sp * dt
 	if cam and ash:
 		ash.global_position = cam.global_position + Vector3(0, 8, 0)
+		var cp3 = cam.global_position
+		rain.global_position = cp3 + Vector3(0, 26, 0)
+		if G.player:
+			var pp = G.player.global_position
+			splash.global_position = Vector3(pp.x, floor_y(pp.x, pp.z) + .05, pp.z)
 	if running and G.state == "play" and G.player:
 		_upd_game()
 
