@@ -539,6 +539,8 @@ func _torre_test() -> void:
 		["12_inicio_de_novo", Vector3(0, 0, 345), T + Vector3(0, 380, 0)],
 		["13_estatua", Vector3(-30, 0, -238), T + Vector3(-34, 12, 61)],
 		["16_aereo_vale", Vector3(-160, 140, 420), Vector3(0, 0, 60)],
+		["18_topo_montanha", Vector3(60, 0, 230), Vector3(260, 200, 150)],
+		["19_topo_montanha2", Vector3(-40, 0, -200), Vector3(-300, 250, -260)],
 		["17_aereo_torre", Vector3(150, 160, 0), T + Vector3(0, 60, 0)],
 	]
 	player.frozen = true

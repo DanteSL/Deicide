@@ -332,6 +332,8 @@ void fragment() {
 	bw /= dot(bw, vec3(1.0));
 	float slope = 1.0 - n.y;
 	float rk = smoothstep(0.5, 0.66, slope + (mid - 0.5) * 0.3);
+	// partes altas das montanhas: rocha exposta
+	rk = max(rk, smoothstep(110.0, 200.0, wp.y + (mid - 0.5) * 80.0) * 0.85);
 	vec2 rx = wp.zy / 7.0;
 	vec2 rz = wp.xy / 7.0;
 	vec3 ra = texture(rocha_alb, rx).rgb * bw.x + texture(rocha_alb, rz).rgb * bw.z + texture(rocha_alb, uv / 7.0).rgb * bw.y;
@@ -345,6 +347,9 @@ void fragment() {
 	col = mix(col, side_t * vec3(0.9, 0.85, 0.8), sd * (1.0 - rk));
 	col = mix(col, rock_col, rk);
 	vec3 wnorm = normalize(mix(ground_n, rock_n, max(rk, sd * 0.6)));
+	// detalhe grande (de dezenas de metros), que continua aparecendo de longe
+	float far_d = texture(rocha_alb, uv / 55.0 + wp.y * 0.004).r * 0.5 + texture(macro, uv * 0.006).r * 0.5;
+	col *= mix(1.0, 0.55 + 1.1 * far_d, 0.35 + 0.45 * smoothstep(20.0, 160.0, wp.y));
 	ALBEDO = col * COLOR.rgb * 1.25;
 	ROUGHNESS = mix(clamp(ro, 0.05, 1.0), 0.9, rk);
 	SPECULAR = mix(0.25, 0.5, pud);
@@ -592,7 +597,13 @@ func _h(x: float, z: float) -> float:
 	var m = _mtn(abs(x) - _hw(z) + en, x, z) * mk
 	m += _mtn(z - 400.0 + n_edge.get_noise_2d(x * .7, 40.0) * 18.0, x, z + 300.0)
 	m += _mtn(-525.0 - z + n_edge.get_noise_2d(x * .7, 80.0) * 18.0, x + 200.0, z)
-	h += min(m, 290.0 + n_mount.get_noise_2d(x * 2.0, z * 2.0) * 50.0)
+	# picos: compressão suave (nada de topo cortado reto) + cristas de rocha nas partes altas
+	var cap = 300.0 + n_mount.get_noise_2d(x * 2.0, z * 2.0) * 60.0
+	var ms = cap * (1.0 - exp(-m / cap))
+	var hi = clamp(ms / cap, 0.0, 1.0)
+	ms += (n_mount.get_noise_2d(x * 4.0 + 50.0, z * 4.0) * .5 + .5) * 55.0 * hi * hi
+	ms += n_edge.get_noise_2d(x * 1.5, z * 1.5) * 9.0 * hi
+	h += ms
 	# o abismo corta o mapa de montanha a montanha
 	var nb = clamp((abs(x) - 12.0) / 10.0, 0.0, 1.0)
 	var c0 = BR_Z0 + n_edge.get_noise_2d(x * 1.4, 7.0) * 9.0 * nb

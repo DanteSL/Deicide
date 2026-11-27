@@ -1,5 +1,10 @@
 # Histórico de mudanças
 
+## Vale da Torre: topo das montanhas com textura
+
+- Os picos não são mais cortados retos no limite de altura: sobem suavemente e ganham cristas.
+- As partes altas viram rocha exposta, e um detalhe de dezenas de metros mantém o relevo visível de longe.
+
 ## Vale da Torre: texturas novas e chão sem repetição
 
 - A torre agora é de lajes de pedra com runas que brilham fraco, num ciano que pulsa devagar (o topo acima da neblina
